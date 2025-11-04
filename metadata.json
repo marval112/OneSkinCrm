@@ -1,0 +1,7 @@
+{
+  "name": "OneSkin CRM",
+  "description": "A comprehensive Customer Relationship Management system for OneSkin, a company that manufactures decorative panels. This CRM includes modules for leads, customers, and an AI-powered dashboard for insights and recommendations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

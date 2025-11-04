@@ -1,0 +1,108 @@
+import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
+
+// --- TYPES ---
+
+export enum Command {
+  SHOW_LEADS = 'show_leads',
+  CREATE_TASK = 'create_task',
+  FIND_CUSTOMER = 'find_customer',
+  UNKNOWN = 'unknown',
+}
+
+export interface StructuredCommand {
+  command: Command;
+  args: { [key: string]: any };
+}
+
+export type CommandResponse = 
+    | { type: 'command'; data: StructuredCommand }
+    | { type: 'text'; data: string };
+
+
+// --- GEMINI FUNCTION DECLARATIONS ---
+
+const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
+    {
+        functionDeclarations: [
+            {
+                name: 'show_leads',
+                description: 'Display a list of leads based on specified criteria like status, source, or date range.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        status: { type: Type.STRING, description: 'The status of the leads to show (e.g., "New", "Qualified").' },
+                        source: { type: Type.STRING, description: 'The source of the leads (e.g., "Website", "Referral").' },
+                        dateRange: { type: Type.STRING, description: 'A date range like "this week", "last month", or "today".' },
+                    },
+                },
+            },
+            {
+                name: 'create_task',
+                description: 'Create a new task and assign it to someone.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: 'A brief, descriptive title for the task.' },
+                        assignee: { type: Type.STRING, description: 'The name of the person the task is assigned to (e.g., "Juan", "Sales Team").' },
+                        dueDate: { type: Type.STRING, description: 'An optional due date for the task (e.g., "tomorrow", "next Friday").' },
+                    },
+                    required: ['title', 'assignee'],
+                },
+            },
+            {
+                name: 'find_customer',
+                description: 'Find a specific customer by their name or company.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        name: { type: Type.STRING, description: 'The name of the customer.' },
+                        company: { type: Type.STRING, description: 'The company name of the customer.' },
+                    },
+                },
+            }
+        ]
+    }
+];
+
+// --- SERVICE ---
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
+export const processCommand = async (prompt: string): Promise<CommandResponse> => {
+    if (!process.env.API_KEY) {
+        return { type: 'text', data: "AI features are disabled. Please set your API_KEY." };
+    }
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: { tools },
+            systemInstruction: 'You are an AI assistant for the OneSkin CRM. Understand user commands and use the provided tools to execute actions. If the user is just chatting, respond conversationally.'
+        });
+
+        const functionCalls = response.functionCalls;
+
+        if (functionCalls && functionCalls.length > 0) {
+            const call = functionCalls[0];
+            const command = call.name as Command;
+            // Ensure command is a valid enum value
+            if (Object.values(Command).includes(command)) {
+                return {
+                    type: 'command',
+                    data: {
+                        command,
+                        args: call.args,
+                    },
+                };
+            }
+        }
+        
+        // If no function call, or an invalid one, return the text response
+        return { type: 'text', data: response.text };
+
+    } catch (error) {
+        console.error("Error processing AI command:", error);
+        return { type: 'text', data: "Sorry, I encountered an error trying to understand that. Please try again." };
+    }
+};
