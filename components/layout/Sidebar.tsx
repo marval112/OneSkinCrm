@@ -6,6 +6,7 @@ import { useTranslation } from '../../services/i18nService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { listTasksForUser } from '../../services/tasksService';
 import { getBrandLogoUrl, getBrandName, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
+import { applyTheme, getActiveTheme } from '../../services/themeService';
 
 const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -64,12 +65,13 @@ interface SidebarProps {
 }
 
 function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
   const { user } = useAuth();
   const [brandName, setBrandName] = useState<string>(getBrandName());
   const [brandLogoUrl, setBrandLogoUrl] = useState<string>(getBrandLogoUrl());
   const [overdueCount, setOverdueCount] = useState<number>(0);
   const [todayCount, setTodayCount] = useState<number>(0);
+  const [currentTheme, setCurrentTheme] = useState<string>(getActiveTheme().id);
 
   useEffect(() => {
     const update = () => {
@@ -176,6 +178,29 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         >
             <XMarkIcon className="h-6 w-6" />
         </button>
+        {/* Language and Theme Controls */}
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <div className="relative">
+            <GlobeAltIcon className="w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as 'en' | 'es' | 'pt')}
+              className="pl-7 pr-2 py-1.5 border border-slate-600 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary bg-slate-700 text-white appearance-none"
+              aria-label="Select language"
+            >
+              <option value="en">EN</option>
+              <option value="es">ES</option>
+              <option value="pt">PT</option>
+            </select>
+          </div>
+          <button
+            onClick={() => { const next = currentTheme === 'dark' ? 'default' : 'dark'; applyTheme(next); setCurrentTheme(next); }}
+            className="px-2 py-1 rounded-md text-xs bg-slate-700 hover:bg-slate-600 border border-slate-600"
+            aria-label="Toggle light/dark theme"
+          >
+            {currentTheme === 'dark' ? 'Light' : 'Dark'}
+          </button>
+        </div>
       </div>
       <nav className="flex-1 p-4 overflow-y-auto">
         <div>

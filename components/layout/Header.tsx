@@ -103,27 +103,6 @@ function Header({ onChatToggle, onSidebarToggle }: HeaderProps) {
             </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-             <div className="relative">
-                <GlobeAltIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <select 
-                    value={language} 
-                    onChange={(e) => setLanguage(e.target.value as 'en' | 'es' | 'pt')}
-                    className="pl-8 pr-2 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-transparent dark:bg-slate-700 dark:text-white appearance-none"
-                    aria-label="Select language"
-                >
-                    <option value="en">EN</option>
-                    <option value="es">ES</option>
-                    <option value="pt">PT</option>
-                </select>
-             </div>
-
-            <button
-                onClick={handleThemeToggle}
-                className="p-2 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                aria-label="Toggle light/dark theme"
-            >
-                {currentTheme === 'dark' ? <SunIcon className="h-6 w-6 text-yellow-400" /> : <MoonIcon className="h-6 w-6 text-slate-600" />}
-            </button>
 
             <button 
                 onClick={onChatToggle}
