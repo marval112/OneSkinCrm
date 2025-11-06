@@ -167,7 +167,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div className="flex justify-center items-center h-12 gap-2">
             <img src={brandLogoUrl} alt={brandName} className="h-full object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo.png'; }} />
             <span className="text-sm font-medium text-slate-100">{brandName}</span>
-            <span className="text-xs align-middle font-light text-slate-400 ml-2">v1.1</span>
+            <span className="text-xs align-middle font-light text-slate-400 ml-2">v1.0</span>
         </div>
          <button 
             className="lg:hidden absolute top-1/2 right-4 -translate-y-1/2 p-1 text-slate-300 hover:text-white" 
