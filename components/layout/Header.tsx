@@ -82,7 +82,7 @@ function Header({ onChatToggle, onSidebarToggle }: HeaderProps) {
   return (
     <header className="bg-white dark:bg-slate-800 shadow-sm p-4 border-b border-slate-200 dark:border-slate-700 z-10">
       <div className="flex items-center justify-between">
-        <div className="flex items-center">
+        <div className="flex items-center min-w-0 flex-1">
             <button
                 onClick={onSidebarToggle}
                 className="lg:hidden text-slate-500 hover:text-slate-700 mr-4"
@@ -93,16 +93,16 @@ function Header({ onChatToggle, onSidebarToggle }: HeaderProps) {
             <img
               src={brandLogoUrl}
               alt={brandName}
-              className="h-8 w-auto mr-3 object-contain"
+              className="h-8 w-auto mr-2 object-contain flex-shrink-0"
               onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo.png'; }}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="hidden sm:inline text-slate-700 dark:text-slate-200 font-medium">{brandName}</span>
               <span className="hidden sm:inline text-slate-300">|</span>
-              <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{getTitle()}</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 truncate">{getTitle()}</h1>
             </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
              <div className="relative">
                 <GlobeAltIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <select 
