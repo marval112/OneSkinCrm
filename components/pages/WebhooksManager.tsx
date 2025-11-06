@@ -37,6 +37,9 @@ function WebhooksManager() {
   const [loading, setLoading] = useState(true);
   const [hookToDelete, setHookToDelete] = useState<Webhook | null>(null);
   const toastContext = useContext(ToastContext);
+  const [inboundUrl, setInboundUrl] = useState<string>('');
+  const [inboundKey, setInboundKey] = useState<string>('');
+  const [bucket, setBucket] = useState<string>('activities');
 
   const fetchWebhooks = useCallback(async () => {
     setLoading(true);
@@ -52,6 +55,15 @@ function WebhooksManager() {
 
   useEffect(() => {
     fetchWebhooks();
+    try {
+      const saved = localStorage.getItem('inbound_settings');
+      if (saved) {
+        const s = JSON.parse(saved);
+        setInboundUrl(s.url || '');
+        setInboundKey(s.key || '');
+        setBucket(s.bucket || 'activities');
+      }
+    } catch {}
   }, [fetchWebhooks]);
 
   const handleDelete = async () => {
@@ -79,6 +91,42 @@ function WebhooksManager() {
     }
   };
 
+  const saveInboundSettings = () => {
+    localStorage.setItem('inbound_settings', JSON.stringify({ url: inboundUrl.trim(), key: inboundKey.trim(), bucket: bucket.trim() }));
+    toastContext?.showToast('Inbound settings saved.', 'success');
+  };
+
+  const testInbound = async () => {
+    if (!inboundUrl.trim() || !inboundKey.trim()) {
+      toastContext?.showToast('Set inbound URL and API key first.', 'warning');
+      return;
+    }
+    try {
+      const payload = {
+        subject: 'Test inbound message',
+        from: 'sender@example.com',
+        to: ['you@example.com'],
+        text: 'Hello! This is a test inbound message from OneSkin CRM.',
+        attachments: [
+          {
+            filename: 'hello.txt',
+            content_type: 'text/plain',
+            base64: btoa('Hello from inbound test!')
+          }
+        ]
+      };
+      const resp = await fetch(inboundUrl.trim(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': inboundKey.trim() },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      toastContext?.showToast('Inbound test sent. Check the timeline.', 'success');
+    } catch (e: any) {
+      toastContext?.showToast(`Inbound test failed: ${e?.message || 'Unknown error'}`, 'danger');
+    }
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
        <div className="flex justify-between items-center mb-4">
@@ -88,6 +136,29 @@ function WebhooksManager() {
         </button>
       </div>
       <p className="text-sm text-slate-500 mb-4">Use webhooks to send real-time data from OneSkin CRM to your other applications.</p>
+
+      <div className="border rounded-lg p-4 mb-6">
+        <h3 className="font-semibold mb-2">Inbound Email Settings</h3>
+        <p className="text-sm text-slate-500 mb-4">Configure your inbound email webhook to capture replies and attachments into the activity timeline.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Inbound URL</label>
+            <input type="url" value={inboundUrl} onChange={e => setInboundUrl(e.target.value)} placeholder="https://your-app.vercel.app/api/inbound-email" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">API Key</label>
+            <input type="password" value={inboundKey} onChange={e => setInboundKey(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Storage Bucket</label>
+            <input type="text" value={bucket} onChange={e => setBucket(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md" />
+          </div>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button onClick={saveInboundSettings} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Save</button>
+          <button onClick={testInbound} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover">Send Test</button>
+        </div>
+      </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">

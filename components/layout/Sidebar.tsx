@@ -1,9 +1,11 @@
 
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from '../../services/i18nService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { listTasksForUser } from '../../services/tasksService';
+import { getBrandLogoUrl, getBrandName, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
 
 const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -64,6 +66,42 @@ interface SidebarProps {
 function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [brandName, setBrandName] = useState<string>(getBrandName());
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string>(getBrandLogoUrl());
+  const [overdueCount, setOverdueCount] = useState<number>(0);
+  const [todayCount, setTodayCount] = useState<number>(0);
+
+  useEffect(() => {
+    const update = () => {
+      setBrandName(getBrandName());
+      setBrandLogoUrl(getBrandLogoUrl());
+    };
+    window.addEventListener(BRANDING_UPDATED_EVENT, update as EventListener);
+    return () => window.removeEventListener(BRANDING_UPDATED_EVENT, update as EventListener);
+  }, []);
+
+  // Fetch task counters for badge
+  useEffect(() => {
+    let timer: number | undefined;
+    const refresh = async () => {
+      try {
+        if (!user) return;
+        const tasks = await listTasksForUser(user.id, true); // pending only
+        const now = new Date();
+        const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < startToday).length;
+        const today = tasks.filter(t => t.due_date && new Date(t.due_date) >= startToday && new Date(t.due_date) <= endToday).length;
+        setOverdueCount(overdue);
+        setTodayCount(today);
+      } catch {}
+    };
+    refresh();
+    // periodic refresh each 60s
+    // @ts-ignore - window.setInterval returns number in browsers
+    timer = window.setInterval(refresh, 60000);
+    return () => { if (timer) window.clearInterval(timer); };
+  }, [user]);
 
   const getCoreNavItems = (): NavItem[] => {
     // Define items visible to all roles
@@ -71,6 +109,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         { to: '/dashboard', labelKey: 'sidebar.dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
         { to: '/leads', labelKey: 'sidebar.leads', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
         { to: '/customers', labelKey: 'sidebar.customers', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a6 6 0 00-12 0v2" /></svg> },
+        { to: '/tasks', labelKey: 'sidebar.tasks', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m-7 8h8a2 2 0 002-2V7a2 2 0 00-2-2H9l-2 2H5a2 2 0 00-2 2v7a2 2 0 002 2h2z" /></svg> },
         { to: '/deals', labelKey: 'sidebar.deals', icon: <DocumentCurrencyDollarIcon className="h-6 w-6" /> },
         { to: '/alerts', labelKey: 'sidebar.alerts', icon: <BellIcon className="h-6 w-6" /> },
         { to: '/documents', labelKey: 'sidebar.documents', icon: <FolderIcon className="h-6 w-6" /> },
@@ -92,18 +131,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   };
 
   const ENTERPRISE_NAV_ITEMS: NavItem[] = [
-      { to: '/theme', labelKey: 'sidebar.theme', icon: <PaintBrushIcon className="h-6 w-6" /> },
-      { to: '/reports', labelKey: 'sidebar.reports', icon: <ChartBarIcon className="h-6 w-6" /> },
-      { to: '/integrations', labelKey: 'sidebar.integrations', icon: <PuzzlePieceIcon className="h-6 w-6" /> },
-      { to: '/workflows', labelKey: 'sidebar.workflows', icon: <ShareIcon className="h-6 w-6" /> },
-      { to: '/webhooks', labelKey: 'sidebar.webhooks', icon: <GlobeAltIcon className="h-6 w-6" /> },
-      { to: '/bi-dashboards', labelKey: 'sidebar.biDashboards', icon: <ChartPieIcon className="h-6 w-6" /> },
-      { to: '/omnichannel', labelKey: 'sidebar.omnichannel', icon: <ChatBubbleLeftRightIcon className="h-6 w-6" /> },
-      { to: '/marketing-ai', labelKey: 'sidebar.marketingAi', icon: <LightBulbIcon className="h-6 w-6" /> },
-      { to: '/ab-testing', labelKey: 'sidebar.abTesting', icon: <BeakerIcon className="h-6 w-6" /> },
-      { to: '/legal-fiscal', labelKey: 'sidebar.legalFiscal', icon: <ScaleIcon className="h-6 w-6" /> },
-      { to: '/device-management', labelKey: 'sidebar.deviceMgmt', icon: <DevicePhoneMobileIcon className="h-6 w-6" /> },
-      { to: '/documentation', labelKey: 'sidebar.documentation', icon: <BookOpenIcon className="h-6 w-6" /> },
+      { to: '/settings', labelKey: 'sidebar.settings', icon: <PaintBrushIcon className="h-6 w-6" /> },
   ];
 
   const NavList = ({ items }: { items: NavItem[] }) => (
@@ -118,7 +146,15 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 onClick={() => setIsOpen(false)}
               >
                 {item.icon}
-                <span className="ml-4 font-medium">{t(item.labelKey)}</span>
+                <span className="ml-4 font-medium flex items-center gap-2">
+                  {t(item.labelKey)}
+                  {item.to === '/tasks' && (
+                    <>
+                      {overdueCount > 0 && <span className="px-1.5 rounded-full text-xs bg-red-600 text-white">{overdueCount}</span>}
+                      {todayCount > 0 && <span className="px-1.5 rounded-full text-xs bg-primary text-white">{todayCount}</span>}
+                    </>
+                  )}
+                </span>
               </NavLink>
             </li>
           ))}
@@ -128,8 +164,9 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const SidebarContent = () => (
     <>
       <div className="relative p-4 border-b border-slate-700">
-        <div className="flex justify-center items-center h-12">
-            <img src="/dashboard/logo.png" alt="OneSkin Logo" className="h-full object-contain invert" />
+        <div className="flex justify-center items-center h-12 gap-2">
+            <img src={brandLogoUrl} alt={brandName} className="h-full object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo.png'; }} />
+            <span className="text-sm font-medium text-slate-100">{brandName}</span>
             <span className="text-xs align-middle font-light text-slate-400 ml-2">v1.1</span>
         </div>
          <button 
@@ -147,7 +184,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
         {user?.role === 'Admin' && (
             <div className="mt-4 pt-4 border-t border-slate-700">
-                <h2 className="px-3 mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Enterprise</h2>
+                <h2 className="px-3 mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</h2>
                 <NavList items={ENTERPRISE_NAV_ITEMS} />
             </div>
         )}

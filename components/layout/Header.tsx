@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../../services/i18nService';
 import { applyTheme, getActiveTheme } from '../../services/themeService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { getBrandLogoUrl, getBrandName, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
 
 interface HeaderProps {
     onChatToggle: () => void;
@@ -51,6 +52,17 @@ function Header({ onChatToggle, onSidebarToggle }: HeaderProps) {
   const { t, language, setLanguage } = useTranslation();
   const [currentTheme, setCurrentTheme] = useState(getActiveTheme().id);
   const { user, logout } = useAuth();
+  const [brandName, setBrandName] = useState<string>(getBrandName());
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string>(getBrandLogoUrl());
+
+  useEffect(() => {
+    const updateBranding = () => {
+      setBrandName(getBrandName());
+      setBrandLogoUrl(getBrandLogoUrl());
+    };
+    window.addEventListener(BRANDING_UPDATED_EVENT, updateBranding as EventListener);
+    return () => window.removeEventListener(BRANDING_UPDATED_EVENT, updateBranding as EventListener);
+  }, []);
 
   const getTitle = () => {
     const path = location.pathname.split('/')[1] || 'dashboard';
@@ -78,7 +90,17 @@ function Header({ onChatToggle, onSidebarToggle }: HeaderProps) {
             >
                 <MenuIcon className="h-6 w-6" />
             </button>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{getTitle()}</h1>
+            <img
+              src={brandLogoUrl}
+              alt={brandName}
+              className="h-8 w-auto mr-3 object-contain"
+              onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo.png'; }}
+            />
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline text-slate-700 dark:text-slate-200 font-medium">{brandName}</span>
+              <span className="hidden sm:inline text-slate-300">|</span>
+              <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{getTitle()}</h1>
+            </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
              <div className="relative">

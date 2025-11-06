@@ -4,6 +4,12 @@ import type { ScheduledReport } from '../../types';
 import { ReportFrequency, ReportFormat, ReportType } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import Modal from '../common/Modal';
+import { getReportData } from '../../services/reportDataService';
+import { exportToExcel, exportToCSV, exportToPDF } from '../../services/exportService';
+import DateRangePicker from '../common/DateRangePicker';
+import { getDeliverySettings, saveDeliverySettings, sendReportViaWebhook } from '../../services/reportDeliveryService';
+import { getRunsForReport } from '../../services/reportRunsService';
+import type { ReportRun } from '../../types';
 
 // ICONS
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -22,6 +28,18 @@ const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const DownloadIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 10.5l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3" />
+  </svg>
+);
+
+const PaperAirplaneIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.125a.563.563 0 01.72-.71l17.987 6.46c.44.158.44.792 0 .95l-17.988 6.46a.563.563 0 01-.719-.71L6 12zm0 0l7.5 7.5M6 12l7.5-7.5" />
+  </svg>
+);
+
 // FORM COMPONENT
 const ReportForm = ({
   report, onSave, onCancel
@@ -36,6 +54,7 @@ const ReportForm = ({
     frequency: report?.frequency || ReportFrequency.WEEKLY,
     recipients: report?.recipients.join(', ') || '',
     format: report?.format || ReportFormat.CSV,
+    include_charts: report?.include_charts !== false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -57,7 +76,8 @@ const ReportForm = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const parsed = name === 'include_charts' ? (e as any).target.checked : value;
+    setFormData(prev => ({ ...prev, [name]: parsed }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -103,6 +123,10 @@ const ReportForm = ({
             {Object.values(ReportFormat).map(f => <option key={f} value={f}>{f}</option>)}
           </select>
         </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="include_charts" name="include_charts" checked={!!formData.include_charts} onChange={handleChange} />
+          <label htmlFor="include_charts" className="text-sm text-slate-700 dark:text-slate-300">Include charts in PDF (when available)</label>
+        </div>
       </div>
       <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
         <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover sm:ml-3 sm:w-auto sm:text-sm">Save Report</button>
@@ -120,6 +144,17 @@ function ReportsScheduler() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<ScheduledReport | null>(null);
   const [reportToDelete, setReportToDelete] = useState<ScheduledReport | null>(null);
+  const [downloadReport, setDownloadReport] = useState<ScheduledReport | null>(null);
+  const [downloadRange, setDownloadRange] = useState<{ from: string; to: string } | null>(null);
+  const [isDeliveryOpen, setIsDeliveryOpen] = useState(false);
+  const deliveryInitial = getDeliverySettings();
+  const [deliveryUrl, setDeliveryUrl] = useState<string>(deliveryInitial.webhookUrl);
+  const [deliverySendOnRun, setDeliverySendOnRun] = useState<boolean>(deliveryInitial.sendOnRun);
+  const [deliveryRetries, setDeliveryRetries] = useState<number>(deliveryInitial.retryCount);
+  const [deliveryBackoff, setDeliveryBackoff] = useState<number>(deliveryInitial.backoffMs);
+  const [historyReport, setHistoryReport] = useState<ScheduledReport | null>(null);
+  const [historyRuns, setHistoryRuns] = useState<ReportRun[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const toastContext = useContext(ToastContext);
 
   const fetchReports = useCallback(async () => {
@@ -171,6 +206,22 @@ function ReportsScheduler() {
     }
   };
 
+  const formatRelativeTime = (iso: string) => {
+    try {
+      const target = new Date(iso).getTime();
+      const now = Date.now();
+      const diff = target - now;
+      const abs = Math.abs(diff);
+      const mins = Math.round(abs / 60000);
+      if (mins < 1) return diff >= 0 ? 'in <1 min' : '<1 min ago';
+      if (mins < 60) return diff >= 0 ? `in ${mins} min` : `${mins} min ago`;
+      const hours = Math.round(mins / 60);
+      return diff >= 0 ? `in ${hours} h` : `${hours} h ago`;
+    } catch {
+      return '';
+    }
+  };
+
   const handleRunNow = async (reportId: number) => {
     toastContext?.showToast('Generating and sending report...', 'info');
     const result = await runReportNow(reportId);
@@ -179,6 +230,49 @@ function ReportsScheduler() {
         fetchReports();
     } else {
         toastContext?.showToast(result.message, 'danger');
+    }
+  };
+
+  const handleDownload = async (report: ScheduledReport) => {
+    setDownloadReport(report);
+  };
+
+  const confirmDownload = async () => {
+    if (!downloadReport) return;
+    try {
+      const data = await getReportData(downloadReport.report_type, downloadRange || undefined);
+      const filename = `${downloadReport.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}`;
+      if (downloadReport.format === ReportFormat.EXCEL) {
+        exportToExcel(data, filename);
+        toastContext?.showToast('Report exported as Excel.', 'success');
+      } else if (downloadReport.format === ReportFormat.CSV) {
+        exportToCSV(data, filename);
+        toastContext?.showToast('Report exported as CSV.', 'success');
+      } else {
+        await exportToPDF(data, filename, { includeCharts: downloadReport.include_charts !== false });
+        toastContext?.showToast('Report exported as PDF.', 'success');
+      }
+      setDownloadReport(null);
+      setDownloadRange(null);
+    } catch (e) {
+      toastContext?.showToast('Failed to export report.', 'danger');
+      console.error('Export error', e);
+    }
+  };
+
+  const handleSendNow = async (report: ScheduledReport) => {
+    const settings = getDeliverySettings();
+    if (!settings.webhookUrl) {
+      toastContext?.showToast('Configure a webhook URL in Delivery Settings.', 'warning');
+      setIsDeliveryOpen(true);
+      return;
+    }
+    toastContext?.showToast('Sending report via webhook...', 'info');
+    const res = await sendReportViaWebhook(report, null);
+    if (res.ok) {
+      toastContext?.showToast('Report sent successfully.', 'success');
+    } else {
+      toastContext?.showToast(`Send failed${res.status ? ` (${res.status})` : ''}. ${res.error || ''}`, 'danger');
     }
   };
   
@@ -196,9 +290,12 @@ function ReportsScheduler() {
     <div className="bg-white p-6 rounded-lg shadow-md">
        <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Scheduled Reports</h2>
-        <button onClick={openCreateModal} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
-          New Report
-        </button>
+          <div className="flex gap-2">
+          <button onClick={() => setIsDeliveryOpen(true)} className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-md hover:bg-slate-300 transition-colors">Delivery Settings</button>
+          <button onClick={openCreateModal} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
+            New Report
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -242,9 +339,17 @@ function ReportsScheduler() {
                     <div className="text-sm text-slate-500">{report.report_type} ({report.format})</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">{report.frequency}</td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{new Date(report.next_run).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                    <div className="flex flex-col items-end lg:items-start">
+                      <span>{new Date(report.next_run).toLocaleDateString()}</span>
+                      <span className="text-xs text-slate-500">{formatRelativeTime(report.next_run)}</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button onClick={() => handleRunNow(report.id)} className="text-slate-500 hover:text-success p-1" title="Run Now"><PlayIcon className="h-5 w-5"/></button>
+                      <button onClick={() => handleSendNow(report)} className="text-slate-500 hover:text-indigo-600 p-1" title="Send Now"><PaperAirplaneIcon className="h-5 w-5"/></button>
+                      <button onClick={async () => { setHistoryReport(report); setHistoryLoading(true); try { const runs = await getRunsForReport(report.id, 30); setHistoryRuns(runs); } finally { setHistoryLoading(false); } }} className="text-slate-500 hover:text-slate-700 p-1" title="History">H</button>
+                      <button onClick={() => handleDownload(report)} className="text-slate-500 hover:text-slate-800 p-1" title="Download"><DownloadIcon className="h-5 w-5"/></button>
                       <button onClick={() => openEditModal(report)} className="text-slate-500 hover:text-primary p-1" title="Edit"><EditIcon className="h-5 w-5"/></button>
                       <button onClick={() => setReportToDelete(report)} className="text-slate-500 hover:text-danger p-1" title="Delete"><TrashIcon className="h-5 w-5"/></button>
                   </td>
@@ -258,6 +363,142 @@ function ReportsScheduler() {
       {isModalOpen && (
         <Modal title={editingReport ? 'Edit Report Schedule' : 'Create New Report'} onClose={() => setIsModalOpen(false)}>
           <ReportForm report={editingReport} onSave={handleSaveReport} onCancel={() => setIsModalOpen(false)} />
+        </Modal>
+      )}
+
+      {downloadReport && (
+        <Modal title={`Download: ${downloadReport.name}`} onClose={() => { setDownloadReport(null); setDownloadRange(null); }}>
+          <div className="p-6 space-y-4">
+            <div>
+              <p className="text-sm text-slate-600 mb-2">Select optional date range to filter the data.</p>
+              <DateRangePicker value={downloadRange} onChange={setDownloadRange} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setDownloadReport(null); setDownloadRange(null); }} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
+              <button onClick={confirmDownload} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover">Download</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {isDeliveryOpen && (
+        <Modal title="Delivery Settings" onClose={() => setIsDeliveryOpen(false)}>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Webhook URL</label>
+              <input
+                type="url"
+                value={deliveryUrl}
+                onChange={e => setDeliveryUrl(e.target.value)}
+                placeholder="https://hooks.zapier.com/..."
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+              />
+              <p className="text-xs text-slate-500 mt-1">Usa Zapier/Make u otro endpoint que acepte POST JSON. Atención a CORS en entorno navegador.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input id="sendOnRun" type="checkbox" checked={deliverySendOnRun} onChange={e => setDeliverySendOnRun(e.target.checked)} />
+              <label htmlFor="sendOnRun" className="text-sm text-slate-700 dark:text-slate-300">Send automatically when run</label>
+            </div>
+            <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+              <h4 className="text-sm font-semibold mb-2">Email</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Provider</label>
+                  <select defaultValue={deliveryInitial.emailProvider || 'sendgrid'} onChange={e => { (deliveryInitial as any).emailProvider = e.target.value as any; }} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <option value="sendgrid">SendGrid</option>
+                    <option value="emailjs">EmailJS (client-side)</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <input id="emailEnabled" type="checkbox" checked={deliveryInitial.emailEnabled} onChange={e => { (deliveryInitial as any).emailEnabled = e.target.checked; }} />
+                  <label htmlFor="emailEnabled" className="text-sm text-slate-700 dark:text-slate-300">Enable email delivery</label>
+                </div>
+              </div>
+              {/* SendGrid fields */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-slate-500">SendGrid</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">SendGrid API Key</label>
+                  <input type="password" defaultValue={deliveryInitial.sendgridApiKey || ''} onChange={e => { (deliveryInitial as any).sendgridApiKey = e.target.value; }} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">From Email</label>
+                  <input type="email" defaultValue={deliveryInitial.fromEmail || ''} onChange={e => { (deliveryInitial as any).fromEmail = e.target.value; }} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                </div>
+              </div>
+              {/* EmailJS fields */}
+              <div className="flex items-center gap-2 mt-3 mb-2">
+                <span className="text-xs text-slate-500">EmailJS</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Public Key</label>
+                  <input type="text" defaultValue={deliveryInitial.emailjsPublicKey || ''} onChange={e => { (deliveryInitial as any).emailjsPublicKey = e.target.value; }} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Service ID</label>
+                  <input type="text" defaultValue={deliveryInitial.emailjsServiceId || ''} onChange={e => { (deliveryInitial as any).emailjsServiceId = e.target.value; }} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Template ID</label>
+                  <input type="text" defaultValue={deliveryInitial.emailjsTemplateId || ''} onChange={e => { (deliveryInitial as any).emailjsTemplateId = e.target.value; }} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Max retries</label>
+                <input type="number" min={0} max={5} value={deliveryRetries} onChange={e => setDeliveryRetries(Math.max(0, Math.min(5, parseInt(e.target.value || '0', 10))))} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Backoff (ms)</label>
+                <input type="number" min={500} step={100} value={deliveryBackoff} onChange={e => setDeliveryBackoff(Math.max(500, parseInt(e.target.value || '0', 10)))} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setIsDeliveryOpen(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
+              <button onClick={() => { saveDeliverySettings({ webhookUrl: deliveryUrl.trim(), sendOnRun: deliverySendOnRun, retryCount: deliveryRetries, backoffMs: deliveryBackoff, emailEnabled: (deliveryInitial as any).emailEnabled, sendgridApiKey: (deliveryInitial as any).sendgridApiKey, fromEmail: (deliveryInitial as any).fromEmail }); toastContext?.showToast('Delivery settings saved.', 'success'); setIsDeliveryOpen(false); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover">Save</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {historyReport && (
+        <Modal title={`History: ${historyReport.name}`} onClose={() => { setHistoryReport(null); setHistoryRuns([]); }}>
+          <div className="p-6">
+            {historyLoading ? (
+              <div className="py-8 text-center">Loading...</div>
+            ) : historyRuns.length === 0 ? (
+              <div className="py-8 text-center text-slate-500">No runs found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Started</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Finished</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase">Message</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase">Size</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {historyRuns.map(r => (
+                      <tr key={r.id}>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm">{new Date(r.started_at).toLocaleString()}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm">{r.finished_at ? new Date(r.finished_at).toLocaleString() : '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm capitalize">{r.status}</td>
+                        <td className="px-4 py-2 text-sm">{r.message || ''}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right">{r.file_size_bytes ? `${r.file_size_bytes.toLocaleString()} B` : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </Modal>
       )}
 

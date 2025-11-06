@@ -40,6 +40,10 @@ export const updateLead = async (updatedLead: Omit<Lead, 'created_at'>): Promise
     return db.update<Lead>('leads', leadWithTimestamp as Lead);
 };
 
+export const bulkDeleteLeads = async (ids: number[]): Promise<void> => {
+    return db.bulkRemove('leads', ids);
+};
+
 export const convertLeadToCustomer = async (lead: Lead, user: User): Promise<Customer> => {
     // 1. Check if a customer with the same email already exists
     const { data: existingCustomer, error: checkError } = await supabase
@@ -107,15 +111,29 @@ export const getDeals = async (user: User): Promise<Deal[]> => {
     return data as Deal[];
 };
 
-export const createDeal = async (dealData: Omit<Deal, 'id' | 'created_at' | 'updated_at' | 'user_id'>, userId: number): Promise<Deal> => {
+type NewDealInput = {
+    title: string;
+    value: number;
+    status: Deal['status'];
+    probability: number;
+    expected_close_date: string;
+    notes?: string;
+    customer_id?: number;
+    lead_id?: number | null;
+};
+
+export const createDeal = async (dealData: NewDealInput, userId: number): Promise<Deal> => {
+    if (!dealData.customer_id && !dealData.lead_id) {
+        throw new Error('Either customer_id or lead_id must be provided to create a deal.');
+    }
     const now = new Date().toISOString();
     const newDealData = {
         ...dealData,
         user_id: userId,
         created_at: now,
         updated_at: now,
-    };
-    return db.create<Deal>('deals', newDealData as Omit<Deal, 'id'>);
+    } as Omit<Deal, 'id'>;
+    return db.create<Deal>('deals', newDealData);
 };
 
 export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise<Deal> => {
@@ -126,6 +144,10 @@ export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise
         updated_at: new Date().toISOString(),
     };
     return db.update<Deal>('deals', dealWithTimestamp as Deal);
+};
+
+export const bulkDeleteDeals = async (ids: number[]): Promise<void> => {
+    return db.bulkRemove('deals', ids);
 };
 
 // --- Countries ---

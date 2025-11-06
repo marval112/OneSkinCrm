@@ -71,7 +71,7 @@ function UserManual() {
     const searchContext = useContext(SearchContext);
     const searchTerm = searchContext?.searchTerm ?? '';
     const [activeSection, setActiveSection] = useState('dashboard');
-    const sections = ['dashboard', 'leads', 'customers', 'deals', 'products', 'reports', 'webhooks', 'integrations', 'alerts'];
+    const sections = ['dashboard', 'aiAssistant', 'leads', 'customers', 'deals', 'products', 'reports', 'webhooks', 'integrations', 'alerts'];
 
     const filteredSections = useMemo(() => {
         if (!searchTerm) return sections;

@@ -1,4 +1,5 @@
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
+import { getGeminiApiKey, loadGeminiApiKey } from './aiSettingsService';
 
 // --- TYPES ---
 
@@ -66,11 +67,19 @@ const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
 
 // --- SERVICE ---
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+async function getClient(): Promise<GoogleGenAI | null> {
+    let key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
+    if (!key) {
+        await loadGeminiApiKey();
+        key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
+    }
+    return key ? new GoogleGenAI({ apiKey: key }) : null;
+}
 
 export const processCommand = async (prompt: string): Promise<CommandResponse> => {
-    if (!process.env.API_KEY) {
-        return { type: 'text', data: "AI features are disabled. Please set your API_KEY." };
+    const ai = await getClient();
+    if (!ai) {
+        return { type: 'text', data: "AI features are disabled. Please set your Gemini API key in Settings." };
     }
 
     try {

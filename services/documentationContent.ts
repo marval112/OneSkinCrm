@@ -20,14 +20,60 @@ export const documentationContent = {
         dashboard: {
             title: "Dashboard Guide",
             content: `
-The **Dashboard** is your main control center. It provides a real-time overview of your key business metrics.
+The Dashboard is your control center. It aggregates KPIs and interactive charts so you can understand performance at a glance and drill down when needed.
 
-*   **KPI Cards**: At the top, you'll find key performance indicators like Total Leads, Conversion Rate, Revenue, and Active Customers.
-*   **Deals Funnel**: A visual representation of your sales pipeline, showing how many deals are in each stage.
-*   **Lead Sources**: A pie chart breaking down where your leads are coming from.
-*   **Top Leads**: A list of your 5 highest-scoring leads that require immediate attention.
-*   **Date Range Filter**: All dashboard data can be filtered by specific time periods.
-![Dashboard Mockup](https://i.imgur.com/8aZ4b2c.png)
+Filters and scope (top bar)
+- **Date Range**: Applies to ALL widgets. If empty, the view is All Time. Presets: Today, Last 7/30 days, This Month/Quarter, YTD.
+- **Segment**: Limits leads, customers and deals to the selected business segment.
+- **Country**: Filters by customer/lead country (case-insensitive exact match).
+- **Owner** (Admin only): Filters to a specific seller; "All" includes the entire team.
+
+KPI cards (what they mean)
+- **Revenue**: Sum of values of deals in stage Closed Won within the selected date range.
+- **Open Pipeline Value**: Sum of values of deals NOT closed (neither Closed Won nor Closed Lost). If a date range is set, only open deals whose updated_at falls within the range are included.
+- **Win Rate**: Closed Won count divided by (Closed Won + Closed Lost) in the selected date range, shown as a percentage (no decimals).
+- **Lead Conversion Rate**: Leads with status Won divided by total leads created in the selected date range, as a percentage (no decimals).
+- **Total Leads**: Number of leads created in the selected date range.
+- **Active Customers**: Customers whose status is Active (independent of date range).
+
+Charts and interactions
+- **Revenue by Month (line)**
+  - Shows monthly revenue from Closed Won deals inside the selected date range.
+  - Hover to see exact values. Double‑click to navigate to the Deals module filtered by Closed Won.
+
+- **Deal Value by Stage (horizontal bars)**
+  - For open stages: sum of current open deal values (filtered by date range via updated_at).
+  - For closed stages: sum of deal values closed in the range (Closed Won / Closed Lost).
+  - Labels show € values without decimals. Double‑click a bar to open Deals filtered by that stage.
+
+- **Deals Funnel**
+  - Visual pipeline by stage using the same totals as above; labels show “Stage: €value”.
+  - Fully respects the selected date range and filters.
+
+- **Win Rate (semi‑donut)**
+  - Visualizes the percentage of wins out of total closed (wins + losses) for the range.
+
+- **Lead Sources (pie)**
+  - Inside each slice you see the percentage (no decimals) and the source label.
+  - Hover to see absolute counts; double‑click a slice to go to Leads filtered by that source.
+
+- **Team Performance (Admin only)**
+  - Two series per seller: € Won (dark blue) and € Lost (light blue) for deals closed in the date range.
+  - When Owner = All, it also shows an aggregated “All Sellers”. Double‑click a bar to open Deals filtered by that seller and stage.
+
+- **Recent Activity**
+  - Last items across Leads, Deals and Customers (creation timestamps). Click modules in the sidebar to act on them.
+
+Tips
+- Use the **Reset** button to clear Segment/Country/Owner quickly.
+- Export the current dashboard as **PDF/PNG** from the top bar.
+- Non‑admin users only see their own data; Admin can switch the Owner filter to inspect each seller.
+
+Formulas at a glance
+- Revenue = Σ(value) of Closed Won (in range)
+- Open Pipeline = Σ(value) of stages ≠ Closed Won/Closed Lost (filtered by updated_at when a range is set)
+- Win Rate = Closed Won / (Closed Won + Closed Lost)
+- Lead Conversion = Won leads / Leads created (in range)
 `
         },
         leads: {
@@ -62,6 +108,40 @@ The **Dashboard** is your main control center. It provides a real-time overview 
         alerts: {
             title: "Predictive Alerts",
             content: "The **Alerts** system proactively analyzes your data to identify important business events that require your attention, such as leads that are likely to convert ('Hot Leads') or customers at risk of leaving ('Churn Risk')."
+        },
+        aiAssistant: {
+            title: "AI Assistant Guide",
+            content: `
+The AI Assistant is embedded across the CRM to save time and raise win rates. It reads your context (lead/customer/deal + recent activity) and proposes concrete actions you can apply with one click.
+
+Where you'll find it
+- Leads Timeline (clock button): Summarize Lead, Suggest Tasks, Draft Follow‑up Email.
+- Customers Timeline: Summarize Customer, Suggest Tasks, Draft Follow‑up Email.
+- Deals Timeline: Win Strategy, Suggest Tasks, Suggest Stage, Suggest Follow‑up, Draft Email.
+- My Tasks: Prioritize with AI, Propose Agenda (time blocks), Group by Type.
+- Dashboard: AI Insights (short, actionable suggestions with CTAs).
+
+Common actions and what they do
+- Summarize Lead/Customer: 4–6 bullet points with context insights and next best actions.
+- Suggest Tasks: 1–4 specific tasks using the standard types (Follow Up Call, Send Information, Send Samples, Send Quotation, Schedule Visit). You can add them all with one click.
+- Draft Follow‑up Email: subject + body ready, tailored to the context; open in the composer to send.
+- Deals – Win Strategy: risks, objections, and the next steps to accelerate closing.
+- Deals – Suggest Stage: proposes the most appropriate stage; Apply updates the deal.
+- Deals – Suggest Follow‑up: proposes a due window in days and (optionally) a stage; Apply creates the task and can update stage.
+- Tasks – Prioritize with AI: reorders your tasks by impact/urgency; Reset order returns to default.
+- Tasks – Propose Agenda: builds a day plan (starting 09:00, 45‑min blocks) with your current tasks.
+
+Practical day‑to‑day examples
+- New inbound lead: open Timeline → Summarize Lead to understand the context; Suggest Tasks (Send Information + Follow Up Call in 2 days) → Add Suggested Tasks → Draft Email and send the catalog.
+- Dormant opportunity: open the deal Timeline → Win Strategy to reveal risks and next steps → Suggest Follow‑up (in 3 days) → Apply (creates the call + updates stage to Proposal/Negotiation if needed).
+- Account review: open a key Customer → Summarize Customer to spot upsell cues → Draft Follow‑up Email to propose a new line → Suggest Tasks (Schedule Visit) and add it.
+- Start of day: go to My Tasks → Prioritize with AI → Propose Agenda to get a time‑boxed plan; toggle Group by Type to batch “Send Information” or “Calls”.
+
+Tips for best results
+- Keep activity logs updated (emails/calls/notes) so AI has context.
+- Use concise titles for tasks (e.g., “Enviar propuesta 2.0 al comprador”) – improves suggestions.
+- Review AI outputs quickly before applying; you keep control.
+`
         }
     },
     faq: {
@@ -237,12 +317,16 @@ CREATE TABLE IF NOT EXISTS deals (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   title VARCHAR(255) NOT NULL,
   customer_id INT REFERENCES customers(id) ON DELETE SET NULL,
+  -- Optional link to a lead (deal can be created from a lead or a customer)
+  lead_id INT NULL REFERENCES leads(id) ON DELETE SET NULL,
   value NUMERIC(12, 2) NOT NULL DEFAULT 0,
   status VARCHAR(50) NOT NULL,
   probability INT,
   expected_close_date DATE,
   notes TEXT
 );
+-- Add lead_id if upgrading from older schema
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS lead_id INT REFERENCES leads(id) ON DELETE SET NULL;
 
 -- Create Scheduled Reports Table
 CREATE TABLE IF NOT EXISTS scheduled_reports (
@@ -272,6 +356,113 @@ CREATE TABLE IF NOT EXISTS webhooks (
 CREATE TABLE IF NOT EXISTS connected_integrations (
   id TEXT PRIMARY KEY
 );
+
+-- Create Activities Table (timelines for leads/customers/deals)
+CREATE TABLE IF NOT EXISTS activities (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  user_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+  lead_id INT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  customer_id INT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  deal_id INT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL CHECK (channel IN ('email','call','note','meeting')),
+  direction TEXT NULL CHECK (direction IN ('in','out')),
+  subject TEXT NULL,
+  message TEXT NULL,
+  "to" TEXT[] NULL,
+  "from" TEXT NULL,
+  attachments JSONB NULL
+);
+CREATE INDEX IF NOT EXISTS activities_lead_idx ON activities (lead_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS activities_customer_idx ON activities (customer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS activities_deal_idx ON activities (deal_id, created_at DESC);
+
+-- Create Report Runs Table (execution logs for scheduled reports)
+CREATE TABLE IF NOT EXISTS report_runs (
+  id SERIAL PRIMARY KEY,
+  report_id INT NOT NULL REFERENCES scheduled_reports(id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK (status IN ('RUNNING','SUCCESS','FAILED')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ NULL,
+  message TEXT NULL,
+  file_size_bytes BIGINT NULL
+);
+CREATE INDEX IF NOT EXISTS report_runs_report_idx ON report_runs (report_id, started_at DESC);
+
+-- Create Secure Settings Table (centralized key/value config)
+CREATE TABLE IF NOT EXISTS secure_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create Tasks Table (pending actions for reps)
+CREATE TABLE IF NOT EXISTS tasks (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  lead_id INT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  customer_id INT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('Follow Up Call','Send Information','Send Samples','Send Quotation','Schedule Visit')),
+  status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending','Completed','Cancelled')),
+  title TEXT NULL,
+  notes TEXT NULL,
+  due_date TIMESTAMPTZ NULL,
+  completed_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS tasks_user_idx ON tasks (user_id, status, due_date);
+CREATE INDEX IF NOT EXISTS tasks_lead_idx ON tasks (lead_id, status);
+
+-- Optional: Row Level Security (RLS) policies for development
+-- Adjust these in production to fit your security model
+
+-- Activities RLS
+ALTER TABLE IF NOT EXISTS activities ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY activities_select ON activities FOR SELECT USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY activities_insert ON activities FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY activities_update ON activities FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Report Runs RLS
+ALTER TABLE IF NOT EXISTS report_runs ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY report_runs_select ON report_runs FOR SELECT USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY report_runs_insert ON report_runs FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY report_runs_update ON report_runs FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Secure Settings RLS
+ALTER TABLE IF NOT EXISTS secure_settings ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY secure_settings_select ON secure_settings FOR SELECT USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY secure_settings_upsert ON secure_settings FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY secure_settings_update ON secure_settings FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Tasks RLS
+ALTER TABLE IF NOT EXISTS tasks ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY tasks_select ON tasks FOR SELECT USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY tasks_insert ON tasks FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY tasks_update ON tasks FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 `
         },
         apiReference: {
@@ -399,6 +590,40 @@ El **Dashboard** es tu centro de control principal. Proporciona una vista genera
         alerts: {
             title: "Alertas Predictivas",
             content: "El sistema de **Alertas** analiza proactivamente tus datos para identificar eventos de negocio importantes que requieren tu atención, como leads con alta probabilidad de conversión ('Hot Leads') o clientes en riesgo de abandono ('Riesgo de Fuga')."
+        },
+        aiAssistant: {
+            title: "Guía del Asistente IA",
+            content: `
+El Asistente IA está integrado en todo el CRM para ahorrarte tiempo y mejorar tus resultados. Lee el contexto (lead/cliente/oportunidad + actividad reciente) y propone acciones aplicables con un clic.
+
+Dónde encontrarlo
+- Timeline de Leads: Resumir Lead, Sugerir Tareas, Redactar Email de Seguimiento.
+- Timeline de Clientes: Resumir Cliente, Sugerir Tareas, Redactar Email de Seguimiento.
+- Timeline de Oportunidades: Estrategia de Cierre, Sugerir Tareas, Sugerir Etapa, Sugerir Seguimiento, Redactar Email.
+- Mis Tareas: Priorizar con IA, Proponer Agenda (bloques), Agrupar por Tipo.
+- Dashboard: AI Insights (recomendaciones accionables con CTAs).
+
+Acciones principales
+- Resumir Lead/Cliente: 4–6 puntos con insights y próximos pasos.
+- Sugerir Tareas: 1–4 tareas concretas (Llamada, Enviar Información/Muestras/Cotización, Agendar Visita). Puedes agregarlas todas con un clic.
+- Redactar Email de Seguimiento: asunto + cuerpo adaptados al contexto; ábrelo en el composer y envía.
+- Oportunidades – Estrategia de Cierre: riesgos, objeciones y siguientes pasos.
+- Oportunidades – Sugerir Etapa: propone la etapa más adecuada; Aplicar actualiza la oportunidad.
+- Oportunidades – Sugerir Seguimiento: propone ventana en días y (opcional) etapa; Aplicar crea la tarea y puede actualizar la etapa.
+- Tareas – Priorizar con IA: reordena por impacto/urgencia; Reset order restaura el orden previo.
+- Tareas – Proponer Agenda: plan del día (desde 09:00, bloques de 45 min) con tus tareas actuales.
+
+Ejemplos prácticos
+- Lead entrante: abre Timeline → Resumir Lead → Sugerir Tareas (Enviar info + Llamada en 2 días) → Agregar Sugeridas → Redactar Email y enviarlo.
+- Oportunidad parada: abre Timeline → Estrategia de Cierre → Sugerir Seguimiento (3 días) → Aplicar (crea llamada y actualiza etapa si corresponde).
+- Revisión de cuenta: abre Cliente → Resumir Cliente → Redactar Email con propuesta → Sugerir Tareas (Agendar Visita) y agregarla.
+- Inicio del día: en Mis Tareas → Priorizar con IA → Proponer Agenda; usa Agrupar por Tipo para trabajar en lotes.
+
+Consejos
+- Registra emails/llamadas/notas: mejor contexto = mejores sugerencias.
+- Usa títulos claros en tareas: “Enviar propuesta 2.0 a compras”.
+- Revisa en segundos antes de aplicar; tú decides.
+`
         }
     },
     faq: {
@@ -706,6 +931,40 @@ O **Painel de Controle** (Dashboard) é o seu principal centro de comando. Ele f
         alerts: {
             title: "Alertas Preditivos",
             content: "O sistema de **Alertas** analisa proativamente seus dados para identificar eventos de negócios importantes que exigem sua atenção, como leads com alta probabilidade de conversão ('Leads Quentes') ou clientes em risco de cancelamento ('Risco de Churn')."
+        },
+        aiAssistant: {
+            title: "Guia do Assistente de IA",
+            content: `
+O Assistente de IA está embutido no CRM para economizar tempo e melhorar resultados. Ele lê o contexto (lead/cliente/negócio + atividade recente) e propõe ações aplicáveis com um clique.
+
+Onde encontrá‑lo
+- Timeline de Leads: Resumir Lead, Sugerir Tarefas, Redigir Email de Follow‑up.
+- Timeline de Clientes: Resumir Cliente, Sugerir Tarefas, Redigir Email de Follow‑up.
+- Timeline de Negócios: Estratégia de Vitória, Sugerir Tarefas, Sugerir Estágio, Sugerir Follow‑up, Redigir Email.
+- Minhas Tarefas: Priorizar com IA, Propor Agenda (blocos), Agrupar por Tipo.
+- Dashboard: AI Insights (recomendações com CTAs).
+
+Ações comuns
+- Resumir Lead/Cliente: 4–6 tópicos com próximos passos.
+- Sugerir Tarefas: 1–4 tarefas (Ligar, Enviar Informações/Amostras/Cotação, Agendar Visita). Adicione todas com um clique.
+- Redigir Email: assunto + corpo prontos; abra no composer para enviar.
+- Negócios – Estratégia de Vitória: riscos/objeções e próximos passos.
+- Negócios – Sugerir Estágio: propõe o estágio adequado; Aplicar atualiza o negócio.
+- Negócios – Sugerir Follow‑up: sugere janela em dias e (opcional) estágio; Aplicar cria a tarefa e pode atualizar o estágio.
+- Tarefas – Priorizar com IA: reordena por impacto/urgência; Reset restaura.
+- Tarefas – Propor Agenda: plano do dia (a partir de 09:00, blocos de 45 min).
+
+Exemplos do dia a dia
+- Lead novo: abrir Timeline → Resumir → Sugerir Tarefas (Enviar info + Ligar em 2 dias) → Adicionar Sugeridas → Redigir Email e enviar.
+- Negócio parado: Timeline → Estratégia de Vitória → Sugerir Follow‑up (3 dias) → Aplicar.
+- Revisão de cliente: abrir Cliente → Resumir → Redigir Email de upsell → Sugerir Tarefas (Agendar Visita).
+- Rotina diária: Minhas Tarefas → Priorizar com IA → Propor Agenda; Agrupar por Tipo para executar em lote.
+
+Dicas
+- Mantenha as atividades atualizadas.
+- Títulos claros em tarefas melhoram as sugestões.
+- Revise rapidamente antes de aplicar; a decisão é sua.
+`
         }
     },
     faq: {

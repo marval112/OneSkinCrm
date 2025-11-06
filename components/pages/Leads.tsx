@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useContext, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer } from '../../services/crmService';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads } from '../../services/crmService';
 import { scanBusinessCard } from '../../services/geminiService';
 import { calculateLeadScore } from '../../services/leadScoring';
 import { exportToExcel } from '../../services/exportService';
@@ -16,6 +16,11 @@ import EmailComposer from '../common/EmailComposer';
 import CameraScanner from '../common/CameraScanner';
 import ImportModal from '../common/ImportModal';
 import { parseCSV, importLeads } from '../../services/importService';
+import { listActivitiesForLead, logActivity } from '../../services/activityService';
+import { summarizeLead, suggestLeadTasks, draftLeadFollowUpEmail } from '../../services/geminiService';
+import { createTask, listTasksForLead } from '../../services/tasksService';
+import { TaskType, TaskStatus, Task } from '../../types';
+import type { ActivityLog } from '../../types';
 
 const statusColors: Record<LeadStatus, string> = {
   [LeadStatus.New]: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
@@ -54,6 +59,12 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
+);
+
+const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
 );
 
 const ChevronUpIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>;
@@ -250,6 +261,51 @@ function Leads() {
   const toastContext = useContext(ToastContext);
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [timelineLead, setTimelineLead] = useState<Lead | null>(null);
+  const [timelineItems, setTimelineItems] = useState<ActivityLog[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineNote, setTimelineNote] = useState('');
+  const [timelineSaving, setTimelineSaving] = useState(false);
+  const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'email'>('info');
+  const [leadTasks, setLeadTasks] = useState<Task[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [aiEmail, setAiEmail] = useState<{ subject: string; body: string } | null>(null);
+  const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
+  const [stepInfoSent, setStepInfoSent] = useState(false);
+  const [stepSamplesSent, setStepSamplesSent] = useState(false);
+  const [stepPricesSent, setStepPricesSent] = useState(false);
+  const [stepVisitPlanned, setStepVisitPlanned] = useState(false);
+  const [visitDate, setVisitDate] = useState<string>('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const navigate = useNavigate();
+
+  const openTimeline = async (lead: Lead) => {
+    setTimelineLead(lead);
+    setTimelineLoading(true);
+    try { setTimelineItems(await listActivitiesForLead(lead.id, 50)); } catch (e) { console.warn('Activities table missing?', e); }
+    try {
+      const tasks = await listTasksForLead(lead.id, false);
+      setLeadTasks(tasks);
+      setStepInfoSent(tasks.some(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.COMPLETED));
+      setStepSamplesSent(tasks.some(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.COMPLETED));
+      setStepPricesSent(tasks.some(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.COMPLETED));
+      setStepVisitPlanned(tasks.some(t => t.type === TaskType.SCHEDULE_VISIT));
+    } catch (e) { console.warn('Tasks table missing?', e); }
+    setTimelineLoading(false);
+  };
+
+  const addTimelineNote = async () => {
+    if (!timelineLead || !timelineNote.trim()) return;
+    setTimelineSaving(true);
+    try {
+      await logActivity({ user_id: user?.id || null, channel: 'note', message: timelineNote, lead_id: timelineLead.id });
+      setTimelineNote('');
+      setTimelineItems(await listActivitiesForLead(timelineLead.id, 50));
+      toastContext?.showToast(t('leads.timeline.noteSaved'), 'success');
+    } catch (e) { console.error(e); } finally { setTimelineSaving(false); }
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -275,13 +331,21 @@ function Leads() {
   }, [fetchLeads]);
 
   const filteredLeads = useMemo(() => {
+    const qsStatus = searchParams.get('status');
+    const qsSegment = searchParams.get('segment');
+    const qsCountry = searchParams.get('country');
+    const qsUserId = searchParams.get('userId');
     let sortableLeads = [...leads].filter(lead => {
         const searchMatch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
           lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (lead.country && lead.country.toLowerCase().includes(searchTerm.toLowerCase()));
         const sourceMatch = filterSource === 'all' || lead.source === filterSource;
-        return searchMatch && sourceMatch;
+        const statusMatch = !qsStatus || qsStatus === 'all' || String(lead.status) === qsStatus;
+        const segmentMatch = !qsSegment || qsSegment === 'All' || String(lead.segment) === qsSegment;
+        const countryMatch = !qsCountry || String(lead.country) === qsCountry;
+        const ownerMatch = !qsUserId || String(lead.user_id) === qsUserId;
+        return searchMatch && sourceMatch && statusMatch && segmentMatch && countryMatch && ownerMatch;
     });
 
     if (sortConfig !== null) {
@@ -313,7 +377,7 @@ function Leads() {
     }
 
     return sortableLeads;
-  }, [leads, searchTerm, filterSource, sortConfig]);
+  }, [leads, searchTerm, filterSource, sortConfig, searchParams]);
 
   const requestSort = (key: SortableLeadKeys) => {
     let direction: SortDirection = 'ascending';
@@ -474,6 +538,9 @@ function Leads() {
                     {Object.values(LeadStatus).map(s => <option key={s} value={s}>{t('leads.changeStatusTo').replace('{status}', s)}</option>)}
                 </select>
             )}
+            {user?.role === 'Admin' && selectedLeads.length > 0 && view === 'table' && (
+                <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
+            )}
             {user?.role === 'Admin' && (
                 <button onClick={() => setIsImportModalOpen(true)} className="px-4 py-2 bg-success text-white rounded-md hover:bg-success-hover">{t('leads.importExcel')}</button>
             )}
@@ -515,7 +582,7 @@ function Leads() {
                             {inlineEditingId === lead.id ? (
                                 <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
                             ) : (
-                                <div>
+                                <div className="cursor-pointer hover:underline" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
                                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{lead.name}</div>
                                     <div className="text-sm text-slate-500 dark:text-slate-400">{lead.email}</div>
                                 </div>
@@ -548,6 +615,9 @@ function Leads() {
                         <button onClick={() => setEmailingLead(lead)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-1" title="Send Email">
                             <EnvelopeIcon className="h-5 w-5" />
                         </button>
+                        <button onClick={() => { openTimeline(lead); }} className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 p-1" title="Timeline">
+                            <ClockIcon className="h-5 w-5" />
+                        </button>
                         {lead.status !== LeadStatus.Won && (
                             <button onClick={() => setLeadToConvert(lead)} className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-500 p-1" title={t('leads.convertAction')}>
                                 <CheckCircleIcon className="h-5 w-5" />
@@ -579,6 +649,18 @@ function Leads() {
               onCapture={handleScanComplete}
               onClose={() => setIsScannerOpen(false)}
           />
+      )}
+
+      {confirmDelete && (
+          <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
+              <div className="p-6">
+                <p>Delete {selectedLeads.length} selected leads?</p>
+                <div className="mt-6 flex justify-end gap-4">
+                  <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
+                  <button onClick={async () => { try { await bulkDeleteLeads(selectedLeads); toastContext?.showToast('Leads deleted.', 'success'); setSelectedLeads([]); fetchLeads(); } catch { toastContext?.showToast('Failed to delete leads.', 'danger'); } finally { setConfirmDelete(false); } }} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
+                </div>
+              </div>
+          </Modal>
       )}
 
       {isCreateModalOpen && (
@@ -622,6 +704,280 @@ function Leads() {
             onClose={() => setEmailingLead(null)}
             onSent={() => toastContext?.showToast(`Email sent to ${emailingLead.name}`, 'success')}
         />
+      )}
+
+      {detailLead && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDetailLead(null)}></div>
+          <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-800 shadow-xl p-6 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{detailLead.name}</h3>
+              <button onClick={() => setDetailLead(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">Close</button>
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab==='info'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
+              <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab==='timeline'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Timeline</button>
+              <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab==='email'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
+            </div>
+            {detailTab === 'info' && (
+              <div className="space-y-2 text-sm">
+                <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailLead.email}</span></div>
+                <div><span className="text-slate-500">Phone:</span> <span className="font-medium">{detailLead.phone || '-'}</span></div>
+                <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailLead.company}</span></div>
+                <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailLead.country}</span></div>
+                <div><span className="text-slate-500">Source:</span> <span className="font-medium">{detailLead.source}</span></div>
+                <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailLead.segment}</span></div>
+                <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailLead.status}</span></div>
+                <div className="flex items-center gap-2"><span className="text-slate-500">Score:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-primary h-2.5 rounded-full" style={{ width: `${detailLead.score}%` }}></div></div> <span className="font-semibold">{detailLead.score}</span></div>
+              </div>
+            )}
+            {detailTab === 'timeline' && (
+              <div className="space-y-4">
+                {/* Mandatory steps */}
+                <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+                  <div className="text-sm font-semibold mb-2">Mandatory Steps</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="flex flex-col gap-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
+                          const checked = e.target.checked; setStepInfoSent(checked);
+                          if (detailLead && user && checked) {
+                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SEND_INFORMATION, status: TaskStatus.COMPLETED, title: 'Env Do de informaci On solicitada' } as any);
+                            setLeadTasks(await listTasksForLead(detailLead.id, false));
+                          }
+                        }} /> {t('leads.timeline.sendInfo')}
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
+                          const checked = e.target.checked; setStepPricesSent(checked);
+                          if (detailLead && user && checked) {
+                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SEND_QUOTATION, status: TaskStatus.COMPLETED, title: 'Env Do de precios' } as any);
+                            setLeadTasks(await listTasksForLead(detailLead.id, false));
+                          }
+                        }} /> {t('leads.timeline.sendPrices')}
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
+                          const checked = e.target.checked; setStepSamplesSent(checked);
+                          if (detailLead && user && checked) {
+                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SEND_SAMPLES, status: TaskStatus.COMPLETED, title: 'Env Do de muestras' } as any);
+                            setLeadTasks(await listTasksForLead(detailLead.id, false));
+                          }
+                        }} /> {t('leads.timeline.sendSamples')}
+                      </label>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center flex-wrap gap-2">
+                        <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('leads.timeline.visitPlanned')}
+                        {stepVisitPlanned && (
+                          <input type="datetime-local" value={visitDate} onFocus={(e)=>{ try{ e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch{} }} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                        )}
+                        {stepVisitPlanned && visitDate && (
+                          <button className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
+                            if (!detailLead || !user) return;
+                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SCHEDULE_VISIT, status: TaskStatus.PENDING, title: 'Agendar visita', due_date: new Date(visitDate).toISOString() } as any);
+                            setLeadTasks(await listTasksForLead(detailLead.id));
+                            setVisitDate('');
+                          }}>{t('leads.timeline.save')}</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pending tasks list */}
+                <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
+                  <div className="text-sm font-semibold mb-2">{t('leads.timeline.pendingTasks')}</div>
+                  <ul className="text-sm list-disc pl-5">
+                    {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
+                    {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
+                      <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+                {timelineLoading ? (
+                  <div className="py-8 text-center">{t('leads.timeline.loading')}</div>
+                ) : (
+                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {timelineItems.length === 0 && <li className="py-4 text-slate-500">No activity yet.</li>}
+                    {timelineItems.map(item => (
+                      <li key={item.id} className="py-3">
+                        <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                        {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                        {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('leads.timeline.addNote')}</label>
+                  <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                  <div className="text-right mt-2">
+                    <button disabled={timelineSaving} onClick={async () => { await addTimelineNote(); setDetailTab('timeline'); }} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {detailTab === 'email' && (
+              <EmailComposer recipient={{ name: detailLead.name, email: detailLead.email }} onClose={() => setDetailTab('timeline')} onSent={() => { toastContext?.showToast(`Email sent to ${detailLead.name}`, 'success'); setDetailTab('timeline'); }} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {timelineLead && (
+        <Modal title={`Timeline • ${timelineLead.name}`} onClose={() => setTimelineLead(null)}>
+          <div className="p-6 space-y-4">
+            {/* Mandatory steps */}
+            <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+              <div className="text-sm font-semibold mb-2">{t('leads.timeline.mandatorySteps')}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="flex flex-col gap-2">
+                  <label className="inline-flex items-center gap-2">
+                    <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
+                      const checked = e.target.checked; setStepInfoSent(checked);
+                      if (timelineLead && user && checked) {
+                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SEND_INFORMATION, status: TaskStatus.COMPLETED, title: 'Envio de información solicitada' } as any);
+                        setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                      }
+                    }} /> {t('leads.timeline.sendInfo')}
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
+                      const checked = e.target.checked; setStepPricesSent(checked);
+                      if (timelineLead && user && checked) {
+                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SEND_QUOTATION, status: TaskStatus.COMPLETED, title: 'Envio de precios' } as any);
+                        setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                      }
+                    }} /> {t('leads.timeline.sendPrices')}
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
+                      const checked = e.target.checked; setStepSamplesSent(checked);
+                      if (timelineLead && user && checked) {
+                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SEND_SAMPLES, status: TaskStatus.COMPLETED, title: 'Envio de muestras' } as any);
+                        setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                      }
+                    }} /> {t('leads.timeline.sendSamples')}
+                  </label>
+                </div>
+                    <div className="space-y-2">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('leads.timeline.visitPlanned')}
+                    {stepVisitPlanned && (
+                      <input aria-label={t('leads.timeline.pickDate')} type="datetime-local" value={visitDate} onFocus={(e)=>{ try{ e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch{} }} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                    )}
+                    {stepVisitPlanned && visitDate && (
+                      <button type="button" className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
+                        if (!timelineLead || !user) return;
+                        try {
+                          await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SCHEDULE_VISIT, status: TaskStatus.PENDING, title: 'Agendar visita', due_date: new Date(visitDate).toISOString() } as any);
+                          setLeadTasks(await listTasksForLead(timelineLead.id));
+                          setVisitDate('');
+                          setStepVisitPlanned(false);
+                          toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
+                        } catch (e) {
+                          toastContext?.showToast(t('leads.timeline.scheduleError'), 'danger');
+                        }
+                      }}>{t('leads.timeline.save')}</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pending tasks list */}
+            <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
+              <div className="text-sm font-semibold mb-2">{t('leads.timeline.pendingTasks')}</div>
+              <ul className="text-sm list-disc pl-5">
+                {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
+                {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
+                  <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* AI Assistant */}
+            <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
+                <button className="text-xs underline text-slate-600" onClick={()=> navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+                {aiLoading && <div className="text-xs text-slate-500">...</div>}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async ()=>{
+                  if(!timelineLead) return; setAiLoading(true); try{ const text= await summarizeLead(timelineLead, timelineItems); setAiSummary(text);} finally{ setAiLoading(false);} 
+                }}>{t('aiAssistant.summarizeLead')}</button>
+                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async ()=>{
+                  if(!timelineLead) return; setAiLoading(true); try{ const tasks= await suggestLeadTasks(timelineLead, timelineItems); setAiSuggested(tasks||[]);} finally{ setAiLoading(false);} 
+                }}>{t('aiAssistant.suggestTasks')}</button>
+                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async ()=>{
+                  if(!timelineLead) return; setAiLoading(true); try{ const email= await draftLeadFollowUpEmail(timelineLead, timelineItems); setAiEmail(email);} finally{ setAiLoading(false);} 
+                }}>{t('aiAssistant.draftFollowUpEmail')}</button>
+              </div>
+              {aiSummary && (
+                <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>
+              )}
+              {aiSuggested.length>0 && (
+                <div className="mb-3">
+                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
+                  <ul className="text-sm list-disc pl-5">
+                    {aiSuggested.map((s,idx)=>(<li key={idx}>{s.type} • {s.title}{typeof s.dueDays==='number'?` • in ${s.dueDays}d`:''}</li>))}
+                  </ul>
+                  <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async ()=>{
+                    if(!timelineLead||!user) return; 
+                    for (const s of aiSuggested){
+                      const due = typeof s.dueDays==='number' ? new Date(Date.now()+ s.dueDays*24*3600*1000).toISOString() : undefined;
+                      const map: Record<string, TaskType> = {
+                        'Follow Up Call': TaskType.FOLLOW_UP_CALL,
+                        'Send Information': TaskType.SEND_INFORMATION,
+                        'Send Samples': TaskType.SEND_SAMPLES,
+                        'Send Quotation': TaskType.SEND_QUOTATION,
+                        'Schedule Visit': TaskType.SCHEDULE_VISIT,
+                      };
+                      const ttype = map[s.type] || TaskType.FOLLOW_UP_CALL;
+                      await createTask({ user_id: user.id, lead_id: timelineLead.id, type: ttype, status: TaskStatus.PENDING, title: s.title, due_date: due } as any);
+                    }
+                    setLeadTasks(await listTasksForLead(timelineLead.id));
+                    toastContext?.showToast('Suggested tasks added.', 'success');
+                  }}>{t('aiAssistant.addSuggestedTasks')}</button>
+                </div>
+              )}
+              {aiEmail && (
+                <div className="mb-1 text-sm">
+                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.draftEmail')}</div>
+                  <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">
+                    <div className="font-medium">Asunto: {aiEmail.subject}</div>
+                    <pre className="whitespace-pre-wrap text-sm mt-1">{aiEmail.body}</pre>
+                  </div>
+                  <button className="mt-2 px-2 py-1 text-sm bg-slate-600 text-white rounded" onClick={()=>{ setDetailLead(timelineLead); setDetailTab('email'); setTimelineLead(null); setAiEmail(null); }}>{t('aiAssistant.openInEmailComposer')}</button>
+                </div>
+              )}
+            </div>
+
+            {timelineLoading ? (
+              <div className="py-8 text-center">{t('leads.timeline.loading')}</div>
+            ) : (
+              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('leads.timeline.noActivity')}</li>}
+                {timelineItems.map(item => (
+                  <li key={item.id} className="py-3">
+                    <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                    {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                    {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('leads.timeline.addNote')}</label>
+              <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+              <div className="text-right mt-2">
+                <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {isImportModalOpen && (

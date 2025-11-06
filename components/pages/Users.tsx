@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { getUsers, createUser } from '../../services/userService.ts';
+import { getUsers, createUser, bulkDeleteUsers } from '../../services/userService.ts';
 import type { User } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import Modal from '../common/Modal';
@@ -56,6 +56,8 @@ function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selected, setSelected] = useState<number[]>([]);
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const toastContext = useContext(ToastContext);
 
     const fetchUsers = useCallback(async () => {
@@ -85,19 +87,45 @@ function Users() {
         }
     };
 
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSelected(e.target.checked ? users.map(u => u.id) : []);
+    };
+
+    const handleSelectOne = (id: number) => {
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const handleBulkDelete = async () => {
+        try {
+            await bulkDeleteUsers(selected);
+            toastContext?.showToast('Users deleted.', 'success');
+            setSelected([]);
+            setConfirmDelete(false);
+            fetchUsers();
+        } catch {
+            toastContext?.showToast('Failed to delete users.', 'danger');
+        }
+    };
+
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">User Management</h2>
-                <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">
-                    New User
-                </button>
+                <div className="flex items-center gap-2">
+                    {selected.length > 0 && (
+                        <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 bg-danger text-white font-semibold rounded-md hover:bg-danger-hover">Delete</button>
+                    )}
+                    <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">
+                        New User
+                    </button>
+                </div>
             </div>
 
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                         <tr>
+                            <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selected.length > 0 && selected.length === users.length} /></th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Email</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Role</th>
                         </tr>
@@ -105,6 +133,7 @@ function Users() {
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                         {loading ? <TableSkeleton columns={2} rows={3} /> : users.map(user => (
                             <tr key={user.id}>
+                                <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} /></td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{user.email}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-800'}`}>
@@ -120,6 +149,18 @@ function Users() {
              {isModalOpen && (
                 <Modal title="Create New User" onClose={() => setIsModalOpen(false)}>
                     <UserForm onSave={handleSaveUser} onCancel={() => setIsModalOpen(false)} />
+                </Modal>
+             )}
+
+             {confirmDelete && (
+                <Modal title="Confirm Deletion" onClose={() => setConfirmDelete(false)}>
+                    <div className="p-6">
+                        <p>Delete {selected.length} selected users?</p>
+                        <div className="mt-6 flex justify-end gap-4">
+                            <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
+                            <button onClick={handleBulkDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
+                        </div>
+                    </div>
                 </Modal>
              )}
         </div>

@@ -15,6 +15,8 @@ const DB_TABLES = [
     'customers', 
     'deals',
     'scheduled_reports',
+    'report_runs',
+    'activities',
     'webhooks',
     'connected_integrations'
 ] as const;

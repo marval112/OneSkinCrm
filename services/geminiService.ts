@@ -1,19 +1,26 @@
 
 
 import { GoogleGenAI } from "@google/genai";
-import type { Lead, Customer } from '../types';
+import { getGeminiApiKey, loadGeminiApiKey } from './aiSettingsService';
+import type { Lead, Customer, ActivityLog, Deal } from '../types';
+import { DealStage } from '../types';
 
 // IMPORTANT: This check is for the browser environment.
 // In a real application, the API key should be handled securely and not exposed on the client-side.
 // We assume `process.env.API_KEY` is made available through a build process (e.g., Vite, Webpack).
-if (!process.env.API_KEY) {
-  console.warn("API_KEY environment variable not set. AI features will be disabled.");
+// Best-effort: try to warm cache from DB once on module load
+// Note: not blocking; calls may proceed without a key until it is loaded
+void loadGeminiApiKey();
+
+function getClient() {
+  const key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
+  if (!key) return null;
+  return new GoogleGenAI({ apiKey: key });
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
 export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoning: string; }> => {
-  if (!process.env.API_KEY) {
+  const client = getClient();
+  if (!client) {
     return { score: Math.floor(Math.random() * 40) + 60, reasoning: "This is a mock score. Please set your API_KEY to use the AI feature." };
   }
   
@@ -35,7 +42,7 @@ export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoni
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
@@ -60,7 +67,8 @@ export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoni
 };
 
 export const getCustomerInsights = async (customer: Customer): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const client = getClient();
+  if (!client) {
     return "This is a mock insight. Set your API_KEY to generate real insights. Suggest offering a discount on their next order of decorative panels.";
   }
 
@@ -82,7 +90,7 @@ export const getCustomerInsights = async (customer: Customer): Promise<string> =
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
@@ -93,8 +101,289 @@ export const getCustomerInsights = async (customer: Customer): Promise<string> =
   }
 };
 
+export const summarizeLead = async (lead: Lead, activities: ActivityLog[] = []): Promise<string> => {
+  const client = getClient();
+  if (!client) {
+    return `Resumen (mock): ${lead.name} de ${lead.company}. Estado: ${lead.status}. Últimas actividades: ${activities.slice(0,3).map(a=>a.channel).join(', ')}`;
+  }
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}${a.message?`\n  ${a.message.substring(0,160)}...`:''}`)
+    .join('\n');
+  const prompt = `Summarize this lead for a sales rep in 4-6 bullet points with next context-specific hints. Avoid generic advice.
+
+Lead:
+Name: ${lead.name}
+Company: ${lead.company}
+Country: ${lead.country}
+Source: ${lead.source}
+Status: ${lead.status}
+Created at: ${lead.created_at}
+
+Recent activity (most recent first):\n${recent || '(no activity)'}
+`;
+  try {
+    const response = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    return response.text;
+  } catch (e) {
+    console.error('summarizeLead error', e);
+    return 'Could not generate summary.';
+  }
+};
+
+export type SuggestedTask = { type: string; title: string; dueDays?: number };
+export const suggestLeadTasks = async (lead: Lead, activities: ActivityLog[] = []): Promise<SuggestedTask[]> => {
+  const client = getClient();
+  if (!client) {
+    return [
+      { type: 'Follow Up Call', title: `Llamar a ${lead.name} para avanzar`, dueDays: 2 },
+      { type: 'Send Information', title: 'Enviar catálogo y fichas técnicas', dueDays: 1 },
+    ];
+  }
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `You are a CRM assistant. Propose 1-4 concrete next tasks for this lead. Use only these types: "Follow Up Call", "Send Information", "Send Samples", "Send Quotation", "Schedule Visit". Return strict JSON array with items {"type": string, "title": string, "dueDays": number}.
+
+Lead: ${lead.name} (${lead.company}) • Status: ${lead.status} • Country: ${lead.country}
+Recent activity:\n${recent || '(none)'}
+`;
+  try {
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    const text = response.text.trim();
+    const arr = JSON.parse(text);
+    if (Array.isArray(arr)) return arr as SuggestedTask[];
+    throw new Error('Invalid response');
+  } catch (e) {
+    console.error('suggestLeadTasks error', e);
+    return [];
+  }
+};
+
+export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog[] = []): Promise<{ subject: string; body: string; } > => {
+  const client = getClient();
+  if (!client) {
+    return { subject: `Seguimiento ${lead.company}`, body: `Hola ${lead.name},\n\nGracias por tu interés. Adjunto catálogo y propuesta. ¿Te viene bien una llamada esta semana?\n\nSaludos,` };
+  }
+  const lastMsg = activities.find(a => a.channel === 'email' && a.message)?.message || '';
+  const prompt = `Draft a concise, friendly Spanish follow-up email for a sales rep of decorative wall panels. Mention any recent context. Output JSON: {"subject": string, "body": string}.
+
+Lead: ${lead.name} (${lead.company}) • Status: ${lead.status}
+Last email snippet: ${lastMsg.substring(0,300)}
+`;
+  try {
+    const response = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } });
+    const text = response.text.trim();
+    const obj = JSON.parse(text);
+    if (obj && obj.subject && obj.body) return obj;
+    throw new Error('Invalid email JSON');
+  } catch (e) {
+    console.error('draftLeadFollowUpEmail error', e);
+    return { subject: 'Seguimiento', body: 'Hola,\n\nQuería dar seguimiento a nuestra conversación. ¿Podemos agendar una llamada?\n\nSaludos,' };
+  }
+};
+export const suggestCustomerTasks = async (customer: Customer, activities: ActivityLog[] = []): Promise<SuggestedTask[]> => {
+  const client = getClient();
+  if (!client) {
+    return [
+      { type: 'Follow Up Call', title: `Llamar a ${customer.name}`, dueDays: 1 },
+      { type: 'Send Quotation', title: 'Enviar propuesta formal', dueDays: 2 },
+    ];
+  }
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `You are a CRM assistant. Propose 1-4 concrete next tasks for this customer. Use only these types: "Follow Up Call", "Send Information", "Send Samples", "Send Quotation", "Schedule Visit". Return strict JSON array with items {"type": string, "title": string, "dueDays": number}.
+
+Customer: ${customer.name} (${customer.company}) • Status: ${customer.status} • Health: ${customer.health_score}
+Recent activity:\n${recent || '(none)'}
+`;
+  try {
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    const text = response.text.trim();
+    const arr = JSON.parse(text);
+    if (Array.isArray(arr)) return arr as SuggestedTask[];
+    throw new Error('Invalid response');
+  } catch (e) {
+    console.error('suggestCustomerTasks error', e);
+    return [];
+  }
+};
+
+export type AgendaItem = { id: number; start: string };
+export const proposeAgenda = async (tasks: { id: number; type: string; due_date?: string | null; title?: string }[]): Promise<AgendaItem[]> => {
+  const client = getClient();
+  if (!client) {
+    const start = new Date(); start.setHours(9,0,0,0);
+    return tasks.slice(0,8).map((t, i) => ({ id: t.id, start: new Date(start.getTime() + i*45*60000).toTimeString().slice(0,5) }));
+  }
+  const prompt = `Create a day agenda starting at 09:00 with 45-min slots for these tasks. Return JSON array of {"id": number, "start": "HH:MM"}. Prioritize overdue and due today tasks first.
+Tasks: ${JSON.stringify(tasks.slice(0,40))}`;
+  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as AgendaItem[]; throw new Error('bad'); } catch { return []; }
+};
+
+export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []): Promise<string> => {
+  const client = getClient();
+  if (!client) return `Estrategia (mock) para ${deal.title}: enfocar en valor, proponer visita y resolver objeciones.`;
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `You are a sales strategist. Provide a concise win plan for this deal in 4-6 bullets: risks, objections, next steps.
+Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value} • Expected Close: ${deal.expected_close_date}
+Recent activity:\n${recent || '(none)'}
+`;
+  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
+};
+
+export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = []): Promise<SuggestedTask[]> => {
+  const client = getClient();
+  if (!client) return [ { type:'Send Quotation', title:'Enviar propuesta revisada', dueDays:1 }, { type:'Schedule Visit', title:'Agendar visita técnica', dueDays:3 } ];
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `Propose 1-4 concrete tasks to progress this deal. Allowed types: "Follow Up Call", "Send Information", "Send Samples", "Send Quotation", "Schedule Visit". Return strict JSON array of {"type","title","dueDays"}.
+Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
+Recent activity:\n${recent || '(none)'}
+`;
+  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as SuggestedTask[]; throw new Error('bad'); } catch { return []; }
+};
+
+export const generateDashboardInsights = async (payload: any): Promise<string> => {
+  const client = getClient();
+  if (!client) return 'Insights (mock): el pipeline abierto y la tasa de éxito se mantienen estables. Prioriza leads de Website y segment Industrial.';
+  const prompt = `Write 4-6 short, actionable CRM insights (Spanish) from this JSON. Avoid generic tips; include specific CTAs.
+JSON: ${JSON.stringify(payload).slice(0,5000)}
+`;
+  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
+};
+
+export const suggestDealStage = async (deal: Deal, activities: ActivityLog[] = []): Promise<DealStage | null> => {
+  const client = getClient();
+  if (!client) return null;
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `Given this deal, suggest the most appropriate next stage strictly as one of: "Qualification", "Proposal", "Negotiation", "Closed Won", "Closed Lost". Return JSON: {"stage": string}.
+Deal: ${deal.title} • Current: ${deal.status} • Value: €${deal.value}
+Recent activity:\n${recent || '(none)'}
+`;
+  try {
+    const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } });
+    const obj = JSON.parse(r.text.trim());
+    const s = String(obj?.stage || '');
+    const map: Record<string, DealStage> = {
+      'Qualification': DealStage.QUALIFICATION,
+      'Proposal': DealStage.PROPOSAL,
+      'Negotiation': DealStage.NEGOTIATION,
+      'Closed Won': DealStage.CLOSED_WON,
+      'Closed Lost': DealStage.CLOSED_LOST,
+    };
+    return map[s] ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const suggestDealFollowUp = async (deal: Deal, activities: ActivityLog[] = []): Promise<{ dueDays: number; stage?: DealStage } | null> => {
+  const client = getClient();
+  if (!client) return { dueDays: 2 };
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `Suggest next follow-up window in DAYS (integer) for this deal and optionally a recommended stage. Return JSON {"dueDays": number, "stage": "Qualification|Proposal|Negotiation|Closed Won|Closed Lost"}.
+Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
+Recent activity:\n${recent || '(none)'}
+`;
+  try {
+    const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } });
+    const obj = JSON.parse(r.text.trim());
+    const d = Number(obj?.dueDays);
+    const s = String(obj?.stage || '');
+    const map: Record<string, DealStage> = {
+      'Qualification': DealStage.QUALIFICATION,
+      'Proposal': DealStage.PROPOSAL,
+      'Negotiation': DealStage.NEGOTIATION,
+      'Closed Won': DealStage.CLOSED_WON,
+      'Closed Lost': DealStage.CLOSED_LOST,
+    };
+    if (!isFinite(d) || d < 0) return { dueDays: 2 };
+    return { dueDays: Math.round(d), stage: map[s] };
+  } catch {
+    return { dueDays: 2 };
+  }
+};
+
+export const summarizeCustomer = async (customer: Customer, activities: ActivityLog[] = []): Promise<string> => {
+  const client = getClient();
+  if (!client) {
+    return `Resumen (mock): ${customer.name} de ${customer.company}. Estado: ${customer.status}. Salud: ${customer.health_score}.`;
+  }
+  const recent = activities
+    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
+    .slice(0,5)
+    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .join('\n');
+  const prompt = `Summarize customer health and upsell opportunity in 4-6 bullets with next actions.
+
+Customer: ${customer.name} (${customer.company}) • Status: ${customer.status} • Health: ${customer.health_score} • Country: ${customer.country}
+Recent activity:\n${recent || '(none)'}
+`;
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'Could not generate summary.'; }
+};
+
+export const draftCustomerFollowUpEmail = async (customer: Customer, activities: ActivityLog[] = []): Promise<{ subject: string; body: string } > => {
+  const client = getClient();
+  if (!client) return { subject: `Propuesta ${customer.company}`, body: `Hola ${customer.name},\n\nAdjunto propuesta y catálogo. ¿Agendamos una llamada esta semana?\n\nSaludos,` };
+  const lastMsg = activities.find(a => a.channel==='email' && a.message)?.message || '';
+  const prompt = `Draft a concise Spanish email for a customer of decorative wall panels. Output JSON {"subject","body"}.
+Customer: ${customer.name} (${customer.company}) • Status: ${customer.status}
+Last email: ${lastMsg.substring(0,300)}
+`;
+  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject:'Seguimiento', body:'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
+};
+
+export const prioritizeTasks = async (tasks: { id: number; type: string; due_date?: string | null; title?: string }[]): Promise<number[]> => {
+  const client = getClient();
+  if (!client) {
+    return [...tasks]
+      .sort((a,b)=>{
+        const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        return ad - bd;
+      })
+      .map(t=>t.id);
+  }
+  const sample = tasks.slice(0,20).map(t=>({ id: t.id, type: t.type, due: t.due_date, title: t.title })).slice(0,50);
+  const prompt = `Rank these tasks from highest to lowest priority for a sales rep. Consider proximity of due date and potential revenue impact inferred from title/type. Return ONLY a JSON array with the ordered ids.
+Tasks: ${JSON.stringify(sample)}
+`;
+  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as number[]; throw new Error('bad'); } catch { return tasks.map(t=>t.id); }
+};
+
 export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lead>> => {
-  if (!process.env.API_KEY) {
+  const client = getClient();
+  if (!client) {
     // Mock response for when API key is not set
     return {
       name: 'John Doe (Mock)',
@@ -131,7 +420,7 @@ export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lea
       text: prompt
     };
 
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: { parts: [imagePart, textPart] },
       config: {

@@ -97,6 +97,7 @@ export interface Deal {
   user_id: number;
   title: string;
   customer_id: number;
+  lead_id?: number | null;
   value: number;
   status: DealStage;
   probability: number;
@@ -104,6 +105,35 @@ export interface Deal {
   created_at: string;
   updated_at: string;
   notes?: string;
+}
+
+// --- TASKS ---
+export enum TaskStatus {
+  PENDING = 'Pending',
+  COMPLETED = 'Completed',
+  CANCELLED = 'Cancelled',
+}
+
+export enum TaskType {
+  FOLLOW_UP_CALL = 'Follow Up Call',
+  SEND_INFORMATION = 'Send Information',
+  SEND_SAMPLES = 'Send Samples',
+  SEND_QUOTATION = 'Send Quotation',
+  SCHEDULE_VISIT = 'Schedule Visit',
+}
+
+export interface Task {
+  id: number;
+  user_id: number;
+  lead_id?: number | null;
+  customer_id?: number | null;
+  type: TaskType;
+  status: TaskStatus;
+  title?: string;
+  notes?: string;
+  due_date?: string | null;
+  created_at: string;
+  completed_at?: string | null;
 }
 
 // --- ENTERPRISE & SHARED TYPES ---
@@ -154,6 +184,19 @@ export interface ScheduledReport {
   format: ReportFormat;
   last_run: string | null;
   next_run: string;
+  include_charts?: boolean;
+}
+
+export enum ReportRunStatus { RUNNING = 'running', SUCCESS = 'success', FAILED = 'failed' }
+
+export interface ReportRun {
+  id: number;
+  report_id: number;
+  status: ReportRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  message?: string;
+  file_size_bytes?: number;
 }
 
 export enum WebhookEvent {
@@ -200,4 +243,29 @@ export interface Alert {
   recommendation: string;
   relatedEntityId: number;
   relatedEntityName: string;
+}
+
+export type ActivityChannel = 'email' | 'call' | 'note' | 'meeting';
+export interface ActivityLog {
+  id: number;
+  user_id: number | null;
+  lead_id?: number | null;
+  customer_id?: number | null;
+  deal_id?: number | null;
+  channel: ActivityChannel;
+  direction?: 'in' | 'out';
+  subject?: string;
+  message?: string;
+  to?: string[];
+  from?: string;
+  created_at: string;
+  attachments?: ActivityAttachment[];
+}
+
+export interface ActivityAttachment {
+  filename: string;
+  content_type: string;
+  size?: number;
+  url?: string;
+  base64?: string; // used when stored inline (small files) or from inbound webhook
 }

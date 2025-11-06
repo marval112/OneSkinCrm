@@ -11,3 +11,7 @@ export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
     // In a real app, hash the password before saving
     return db.create<User>('users', userData);
 };
+
+export const bulkDeleteUsers = async (ids: number[]): Promise<void> => {
+    return db.bulkRemove('users', ids);
+};

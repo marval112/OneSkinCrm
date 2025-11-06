@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getCountries } from '../../services/crmService';
 import { exportToExcel } from '../../services/exportService';
 import type { Customer, Country } from '../../types';
 import { CustomerStatus, Segment } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../common/Modal';
 import TableSkeleton from '../common/TableSkeleton';
 import { useTranslation } from '../../services/i18nService';
@@ -12,6 +14,11 @@ import CustomersKanbanView from '../common/CustomersKanbanView';
 import EmailComposer from '../common/EmailComposer';
 import ImportModal from '../common/ImportModal';
 import { parseCSV, importCustomers } from '../../services/importService';
+import { listActivitiesForCustomer, logActivity } from '../../services/activityService';
+import { summarizeCustomer, draftCustomerFollowUpEmail, suggestCustomerTasks } from '../../services/geminiService';
+import { createTask } from '../../services/tasksService';
+import type { ActivityLog } from '../../types';
+import { TaskStatus, TaskType } from '../../types';
 
 const statusColors: Record<CustomerStatus, string> = {
   [CustomerStatus.Prospect]: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
@@ -29,6 +36,12 @@ const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
     </svg>
+);
+
+const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
 );
 
 const ChevronUpIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>;
@@ -166,6 +179,36 @@ function Customers() {
   const toastContext = useContext(ToastContext);
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [timelineCustomer, setTimelineCustomer] = useState<Customer | null>(null);
+  const [timelineItems, setTimelineItems] = useState<ActivityLog[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineNote, setTimelineNote] = useState('');
+  const [timelineSaving, setTimelineSaving] = useState(false);
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
+  const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'email'>('info');
+  const navigate = useNavigate();
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [aiEmail, setAiEmail] = useState<{ subject: string; body: string } | null>(null);
+  const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
+
+  const openTimeline = async (customer: Customer) => {
+    setTimelineCustomer(customer);
+    setTimelineLoading(true);
+    try { setTimelineItems(await listActivitiesForCustomer(customer.id, 50)); } catch (e) { console.warn('Activities table missing?', e); }
+    setTimelineLoading(false);
+  };
+
+  const addTimelineNote = async () => {
+    if (!timelineCustomer || !timelineNote.trim()) return;
+    setTimelineSaving(true);
+    try {
+      await logActivity({ user_id: user?.id || null, channel: 'note', message: timelineNote, customer_id: timelineCustomer.id });
+      setTimelineNote('');
+      setTimelineItems(await listActivitiesForCustomer(timelineCustomer.id, 50));
+    } catch (e) { console.error(e); } finally { setTimelineSaving(false); }
+  };
 
   const fetchCustomers = useCallback(async () => {
     if (!user) return;
@@ -185,7 +228,17 @@ function Customers() {
   }, [fetchCustomers]);
   
   const sortedCustomers = useMemo(() => {
-    let sortableCustomers = [...customers];
+    const qsStatus = searchParams.get('status');
+    const qsSegment = searchParams.get('segment');
+    const qsCountry = searchParams.get('country');
+    const qsUserId = searchParams.get('userId');
+    let sortableCustomers = customers.filter(c => {
+      const statusMatch = !qsStatus || qsStatus === 'all' || String(c.status) === qsStatus;
+      const segmentMatch = !qsSegment || qsSegment === 'All' || String(c.segment) === qsSegment;
+      const countryMatch = !qsCountry || String(c.country) === qsCountry;
+      const ownerMatch = !qsUserId || String(c.user_id) === qsUserId;
+      return statusMatch && segmentMatch && countryMatch && ownerMatch;
+    });
     if (sortConfig !== null) {
       sortableCustomers.sort((a, b) => {
         const aValue = a[sortConfig.key];
@@ -210,7 +263,7 @@ function Customers() {
       });
     }
     return sortableCustomers;
-  }, [customers, sortConfig]);
+  }, [customers, sortConfig, searchParams]);
 
   const requestSort = (key: SortableCustomerKeys) => {
     let direction: SortDirection = 'ascending';
@@ -354,7 +407,7 @@ function Customers() {
                 <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-6 py-4"><input type="checkbox" checked={selectedCustomers.includes(customer.id)} onChange={() => handleSelectOne(customer.id)} /></td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{customer.name}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 cursor-pointer hover:underline" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>{customer.name}</div>
                     <div className="text-sm text-slate-500 dark:text-slate-400">{customer.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-sm font-medium text-slate-900 dark:text-slate-100">{customer.company}{customer.country && `, ${customer.country}`}</td>
@@ -373,6 +426,9 @@ function Customers() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <button onClick={() => setEmailingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-1" title="Send Email">
                             <EnvelopeIcon className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => openTimeline(customer)} className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 p-1" title="Timeline">
+                            <ClockIcon className="h-5 w-5" />
                         </button>
                         <button onClick={() => setEditingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-1" title="Edit Customer"><EditIcon className="h-5 w-5" /></button>
                     </td>
@@ -403,6 +459,154 @@ function Customers() {
             onClose={() => setEmailingCustomer(null)}
             onSent={() => toastContext?.showToast(`Email sent to ${emailingCustomer.name}`, 'success')}
         />
+      )}
+
+      {detailCustomer && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDetailCustomer(null)}></div>
+          <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-800 shadow-xl p-6 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{detailCustomer.name}</h3>
+              <button onClick={() => setDetailCustomer(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">{t('common.cancel')}</button>
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab==='info'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
+              <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab==='timeline'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>{t('customers.timeline.title')}</button>
+              <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab==='email'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
+            </div>
+            {detailTab === 'info' && (
+              <div className="space-y-2 text-sm">
+                <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailCustomer.email}</span></div>
+                <div><span className="text-slate-500">Phone:</span> <span className="font-medium">{detailCustomer.phone || '-'}</span></div>
+                <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailCustomer.company}</span></div>
+                <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailCustomer.country}</span></div>
+                <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailCustomer.segment}</span></div>
+                <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailCustomer.status}</span></div>
+                <div className="flex items-center gap-2"><span className="text-slate-500">Health:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-success h-2.5 rounded-full" style={{ width: `${detailCustomer.health_score}%` }}></div></div> <span className="font-semibold">{detailCustomer.health_score}</span></div>
+              </div>
+            )}
+            {detailTab === 'timeline' && (
+              <div className="space-y-4">
+                {timelineLoading ? (
+                  <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
+                ) : (
+                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
+                    {timelineItems.map(item => (
+                      <li key={item.id} className="py-3">
+                        <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                        {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                        {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+            <div className="mt-3 p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
+                {aiLoading && <div className="text-xs text-slate-500">...</div>}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3 items-center">
+                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async ()=>{
+                  if(!timelineCustomer) return; setAiLoading(true); try{ const text = await summarizeCustomer(timelineCustomer, timelineItems); setAiSummary(text);} finally{ setAiLoading(false);} 
+                }}>{t('aiAssistant.summarizeCustomer')}</button>
+                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async ()=>{
+                  if(!timelineCustomer) return; setAiLoading(true); try{ const email = await draftCustomerFollowUpEmail(timelineCustomer, timelineItems); setAiEmail(email);} finally{ setAiLoading(false);} 
+                }}>{t('aiAssistant.draftFollowUpEmail')}</button>
+                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async ()=>{
+                  if(!timelineCustomer) return; setAiLoading(true); try{ const tasks = await suggestCustomerTasks(timelineCustomer, timelineItems); setAiSuggested(tasks||[]);} finally{ setAiLoading(false);} 
+                }}>{t('aiAssistant.suggestTasks')}</button>
+                <button className="ml-auto text-xs underline text-slate-600" onClick={()=> navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+              </div>
+              {aiSummary && (
+                <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>
+              )}
+              {aiSuggested.length>0 && (
+                <div className="mb-3">
+                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
+                  <ul className="text-sm list-disc pl-5">
+                    {aiSuggested.map((s,idx)=>(<li key={idx}>{s.type} • {s.title}{typeof s.dueDays==='number'?` • in ${s.dueDays}d`:''}</li>))}
+                  </ul>
+                  <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async ()=>{
+                    if(!timelineCustomer||!user) return;
+                    for (const s of aiSuggested){
+                      const due = typeof s.dueDays==='number' ? new Date(Date.now()+ s.dueDays*24*3600*1000).toISOString() : undefined;
+                      const map: Record<string, TaskType> = {
+                        'Follow Up Call': TaskType.FOLLOW_UP_CALL,
+                        'Send Information': TaskType.SEND_INFORMATION,
+                        'Send Samples': TaskType.SEND_SAMPLES,
+                        'Send Quotation': TaskType.SEND_QUOTATION,
+                        'Schedule Visit': TaskType.SCHEDULE_VISIT,
+                      } as any;
+                      const ttype = map[s.type] || TaskType.FOLLOW_UP_CALL;
+                      await createTask({ user_id: user.id, customer_id: timelineCustomer.id, type: ttype, status: TaskStatus.PENDING, title: s.title, due_date: due } as any);
+                    }
+                    toastContext?.showToast('Suggested tasks added.', 'success');
+                  }}>{t('aiAssistant.addSuggestedTasks')}</button>
+                </div>
+              )}
+              {aiEmail && (
+                <div className="mb-1 text-sm">
+                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.draftEmail')}</div>
+                  <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">
+                    <div className="font-medium">Asunto: {aiEmail.subject}</div>
+                    <pre className="whitespace-pre-wrap text-sm mt-1">{aiEmail.body}</pre>
+                  </div>
+                  <button className="mt-2 px-2 py-1 text-sm bg-slate-600 text-white rounded" onClick={()=>{ setDetailCustomer(timelineCustomer); setDetailTab('email'); setTimelineCustomer(null); setAiEmail(null); }}>{t('aiAssistant.openInEmailComposer')}</button>
+                </div>
+              )}
+            </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
+                  <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                  <div className="text-right mt-2">
+                    <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('customers.timeline.save')}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {detailTab === 'email' && (
+              <EmailComposer recipient={{ name: detailCustomer.name, email: detailCustomer.email }} onClose={() => setDetailTab('timeline')} onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name}`, 'success'); setDetailTab('timeline'); }} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {timelineCustomer && (
+        <Modal title={`${t('customers.timeline.title')} • ${timelineCustomer.name}`} onClose={() => setTimelineCustomer(null)}>
+          <div className="p-6 space-y-4">
+            {timelineLoading ? (
+              <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
+            ) : (
+              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
+                {timelineItems.map(item => (
+                  <li key={item.id} className="py-3">
+                    <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                    {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                    {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                    {item.attachments && item.attachments.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {item.attachments.map((att, idx) => (
+                          <a key={idx} href={att.base64 ? `data:${att.content_type};base64,${att.base64}` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
+                            {att.filename}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
+              <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+              <div className="text-right mt-2">
+                <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('customers.timeline.save')}</button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
        {confirmDelete && (
