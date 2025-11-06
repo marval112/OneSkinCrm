@@ -78,3 +78,17 @@ export function clearUploadedLogo(): void {
   } catch {}
 }
 
+export function applyBrandFavicon(): void {
+  try {
+    if (typeof document === 'undefined') return;
+    const href = getBrandLogoUrl();
+    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = href;
+  } catch {}
+}
+

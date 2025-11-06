@@ -24,6 +24,7 @@ import { applyTheme, getActiveTheme } from './services/themeService';
 import { initializeDatabase } from './services/databaseInitialization';
 import { runDueReports } from './services/scheduledReports';
 import { loadGeminiApiKey } from './services/aiSettingsService';
+import { applyBrandFavicon } from './services/brandingService';
 
 // Import Auth and Login
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
@@ -71,6 +72,14 @@ function AppContent() {
         setIsDbInitialized(true);
     };
     initDb();
+
+    // Apply favicon from brand logo and keep it in sync
+    try {
+      applyBrandFavicon();
+      const handler = () => applyBrandFavicon();
+      window.addEventListener('branding:updated', handler);
+      return () => window.removeEventListener('branding:updated', handler);
+    } catch {}
 
   }, []);
 
