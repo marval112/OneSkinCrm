@@ -99,7 +99,7 @@ function Header({ onChatToggle, onSidebarToggle }: HeaderProps) {
             <div className="flex items-center gap-2 min-w-0">
               <span className="hidden sm:inline text-slate-700 dark:text-slate-200 font-medium">{brandName}</span>
               <span className="hidden sm:inline text-slate-300">|</span>
-              <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-slate-900 dark:text-slate-100 truncate">{getTitle()}</h1>
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-2xl font-semibold text-slate-900 dark:text-slate-100 truncate">{getTitle()}</h1>
             </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
