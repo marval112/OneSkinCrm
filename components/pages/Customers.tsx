@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getCountries } from '../../services/crmService';
+import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getCountries, createDeal } from '../../services/crmService';
 import { exportToExcel } from '../../services/exportService';
 import type { Customer, Country } from '../../types';
+import { DealStage } from '../../types';
 import { CustomerStatus, Segment } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -37,6 +38,11 @@ const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
     </svg>
 );
+const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+    </svg>
+);
 
 const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -47,7 +53,7 @@ const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const ChevronUpIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>;
 const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>;
 
-type SortableCustomerKeys = 'name' | 'company' | 'status' | 'health_score';
+type SortableCustomerKeys = 'name' | 'company' | 'status' | 'health_score' | 'created_at';
 type SortDirection = 'ascending' | 'descending';
 interface SortConfig {
   key: SortableCustomerKeys;
@@ -58,16 +64,34 @@ const CustomerForm = ({
     customer, onSave, onCancel, isEdit = false 
 }: { 
     customer?: Customer, 
-    onSave: (customer: Omit<Customer, 'id' | 'created_at' | 'user_id'>) => void; 
+    onSave: (payload: { 
+        customer: Omit<Customer, 'id' | 'created_at' | 'user_id'>, 
+        deal?: { 
+          title: string; 
+          value: number; 
+          status: DealStage; 
+          expected_close_date: string; 
+          probability: number; 
+          notes?: string; 
+        } 
+    }) => void; 
     onCancel: () => void;
     isEdit?: boolean;
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState(customer || {
         name: '', company: '', email: '', phone: '', country: '',
         segment: Segment.INDUSTRIAL, status: CustomerStatus.Prospect, health_score: 75,
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [createDealFlag, setCreateDealFlag] = useState(false);
+    const [dealTitle, setDealTitle] = useState('');
+    const [dealValue, setDealValue] = useState<number>(0);
+    const [dealStatus, setDealStatus] = useState<DealStage>(DealStage.QUALIFICATION);
+    const [dealProbability, setDealProbability] = useState<number>(50);
+    const [dealExpectedClose, setDealExpectedClose] = useState<string>(new Date(Date.now() + 14*24*3600*1000).toISOString().slice(0,16));
+    const [dealNotes, setDealNotes] = useState('');
     const [countries, setCountries] = useState<Country[]>([]);
 
     useEffect(() => {
@@ -105,7 +129,18 @@ const CustomerForm = ({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
-          onSave(isEdit ? formData as Customer : { ...formData, last_contact: new Date().toISOString() });
+          const payload: any = { customer: isEdit ? formData as Customer : { ...formData, last_contact: new Date().toISOString() } };
+          if (!isEdit && createDealFlag) {
+            payload.deal = {
+                title: dealTitle || `${formData.name} • ${formData.company || 'Deal'}`,
+                value: Number(dealValue) || 0,
+                status: dealStatus,
+                expected_close_date: new Date(dealExpectedClose).toISOString(),
+                probability: Number(dealProbability) || 0,
+                notes: dealNotes || undefined,
+            };
+          }
+          onSave(payload);
         }
     };
 
@@ -152,12 +187,53 @@ const CustomerForm = ({
                     </select>
                 </div>
             </div>
+            {!isEdit && (
+              <div className="mt-4 p-3 border border-slate-200 dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-700/40">
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={createDealFlag} onChange={(e)=> setCreateDealFlag(e.target.checked)} />
+                  <span className="text-sm font-medium">{t('customers.createDeal') || 'Create associated Deal'}</span>
+                </label>
+                {createDealFlag && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+                      <input type="text" value={dealTitle} onChange={(e)=> setDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+                      <input type="number" min="0" value={dealValue} onChange={(e)=> setDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+                      <select value={dealStatus} onChange={(e)=> setDealStatus(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+                        {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+                      <input type="datetime-local" value={dealExpectedClose} onChange={(e)=> setDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
+                      <input type="number" min="0" max="100" value={dealProbability} onChange={(e)=> setDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+                      <textarea rows={2} value={dealNotes} onChange={(e)=> setDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover sm:ml-3 sm:w-auto sm:text-sm">
                     {isEdit ? t('common.saveChanges') : t('common.save')}
                 </button>
                 <button type="button" onClick={onCancel} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500 text-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                     {t('common.cancel')}
+                </button>
+                <button type="button" onClick={() => navigate('/budget')} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500 text-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    {t('budget.title') || 'Budget'}
                 </button>
             </div>
         </form>
@@ -188,6 +264,14 @@ function Customers() {
   const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
   const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'email'>('info');
   const navigate = useNavigate();
+  // Quick create deal
+  const [dealForCustomer, setDealForCustomer] = useState<Customer | null>(null);
+  const [qDealTitle, setQDealTitle] = useState('');
+  const [qDealValue, setQDealValue] = useState<number>(0);
+  const [qDealStage, setQDealStage] = useState<DealStage>(DealStage.QUALIFICATION);
+  const [qDealProbability, setQDealProbability] = useState<number>(50);
+  const [qDealExpectedClose, setQDealExpectedClose] = useState<string>(new Date(Date.now()+14*24*3600*1000).toISOString().slice(0,16));
+  const [qDealNotes, setQDealNotes] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [aiEmail, setAiEmail] = useState<{ subject: string; body: string } | null>(null);
@@ -298,10 +382,13 @@ function Customers() {
     }
   };
 
-  const handleCreateCustomer = async (customerData: Omit<Customer, 'id' | 'created_at' | 'user_id'>) => {
+  const handleCreateCustomer = async (payload: { customer: Omit<Customer, 'id' | 'created_at' | 'user_id'>, deal?: { title: string; value: number; status: DealStage; expected_close_date: string; probability: number; notes?: string } }) => {
     if (!user) return;
     try {
-        await createCustomer(customerData, user.id);
+        const created = await createCustomer(payload.customer, user.id);
+        if (payload.deal) {
+          await createDeal({ ...payload.deal, customer_id: created.id }, user.id);
+        }
         toastContext?.showToast(t('customers.createSuccess'), 'success');
         setIsCreateModalOpen(false);
         fetchCustomers();
@@ -399,15 +486,18 @@ function Customers() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
                     <button onClick={() => requestSort('health_score')} className="flex items-center">Health Score {getSortIcon('health_score')}</button>
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('created_at')} className="flex items-center">{t('common.createdAt')} {getSortIcon('created_at')}</button>
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('common.actions')}</th>
                 </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                {loading ? <TableSkeleton columns={7} rows={5} /> : sortedCustomers.map(customer => (
+                {loading ? <TableSkeleton columns={8} rows={5} /> : sortedCustomers.map(customer => (
                 <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-6 py-4"><input type="checkbox" checked={selectedCustomers.includes(customer.id)} onChange={() => handleSelectOne(customer.id)} /></td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 cursor-pointer hover:underline" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>{customer.name}</div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 cursor-pointer hover:underline" onDoubleClick={() => setEditingCustomer(customer)} onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>{customer.name}</div>
                     <div className="text-sm text-slate-500 dark:text-slate-400">{customer.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-sm font-medium text-slate-900 dark:text-slate-100">{customer.company}{customer.country && `, ${customer.country}`}</td>
@@ -423,7 +513,13 @@ function Customers() {
                             <span className="ml-2 font-semibold">{customer.health_score}</span>
                         </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-sm text-slate-900 dark:text-slate-100">
+                        {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button onClick={() => { setDealForCustomer(customer); setQDealTitle(`${customer.name} • ${customer.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now()+14*24*3600*1000).toISOString().slice(0,16)); setQDealNotes(''); }} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-1" title={t('deals.actions.createDeal')}>
+                            <PlusIcon className="h-5 w-5" />
+                        </button>
                         <button onClick={() => setEmailingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-1" title="Send Email">
                             <EnvelopeIcon className="h-5 w-5" />
                         </button>
@@ -441,6 +537,60 @@ function Customers() {
         <CustomersKanbanView customers={customers} onUpdateCustomer={handleUpdateCustomer} onEmailCustomer={setEmailingCustomer} />
       )}
 
+      {dealForCustomer && (
+        <Modal title={`${t('deals.actions.createDeal')} • ${dealForCustomer.name}`} onClose={() => setDealForCustomer(null)}>
+          <div className="p-6 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+                <input type="text" value={qDealTitle} onChange={(e)=> setQDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+                <input type="number" min="0" value={qDealValue} onChange={(e)=> setQDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+                <select value={qDealStage} onChange={(e)=> setQDealStage(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+                  {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+                <input type="datetime-local" value={qDealExpectedClose} onChange={(e)=> setQDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
+                <input type="number" min="0" max="100" value={qDealProbability} onChange={(e)=> setQDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+                <textarea rows={2} value={qDealNotes} onChange={(e)=> setQDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+            </div>
+            <div className="text-right">
+              <button className="px-4 py-2 bg-primary text-white rounded-md" onClick={async ()=> {
+                if (!user || !dealForCustomer) return;
+                try {
+                  await createDeal({
+                    title: qDealTitle || `${dealForCustomer.name} • ${dealForCustomer.company || 'Deal'}`,
+                    value: Number(qDealValue) || 0,
+                    status: qDealStage,
+                    expected_close_date: new Date(qDealExpectedClose).toISOString(),
+                    probability: Number(qDealProbability) || 0,
+                    notes: qDealNotes || undefined,
+                    customer_id: dealForCustomer.id,
+                  }, user.id);
+                  toastContext?.showToast('Deal created.', 'success');
+                  setDealForCustomer(null);
+                } catch (e) {
+                  toastContext?.showToast('Failed to create deal.', 'danger');
+                }
+              }}>{t('deals.form.saveDeal')}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
        {isCreateModalOpen && (
           <Modal title={t('customers.newCustomer')} onClose={() => setIsCreateModalOpen(false)}>
               <CustomerForm onSave={handleCreateCustomer} onCancel={() => setIsCreateModalOpen(false)} />
@@ -449,7 +599,7 @@ function Customers() {
 
       {editingCustomer && (
           <Modal title={`${t('common.edit')} ${editingCustomer.name}`} onClose={() => setEditingCustomer(null)}>
-              <CustomerForm isEdit customer={editingCustomer} onSave={handleUpdateCustomer as any} onCancel={() => setEditingCustomer(null)} />
+              <CustomerForm isEdit customer={editingCustomer} onSave={(payload)=> handleUpdateCustomer(payload.customer as any)} onCancel={() => setEditingCustomer(null)} />
           </Modal>
       )}
       

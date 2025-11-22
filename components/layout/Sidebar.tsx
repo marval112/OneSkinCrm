@@ -5,6 +5,9 @@ import { NavLink } from 'react-router-dom';
 import { useTranslation } from '../../services/i18nService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { listTasksForUser } from '../../services/tasksService';
+import { getLeads, getCustomers, getDeals } from '../../services/crmService';
+import { generateAlertRecommendations } from '../../services/predictiveAlerts';
+import { getAutomationAlerts } from '../../services/alertsService';
 import { getBrandLogoUrl, getBrandName, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
 import { applyTheme, getActiveTheme } from '../../services/themeService';
 
@@ -71,6 +74,8 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const [brandLogoUrl, setBrandLogoUrl] = useState<string>(getBrandLogoUrl());
   const [overdueCount, setOverdueCount] = useState<number>(0);
   const [todayCount, setTodayCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [alertsCount, setAlertsCount] = useState<number>(0);
   const [currentTheme, setCurrentTheme] = useState<string>(getActiveTheme().id);
 
   useEffect(() => {
@@ -92,10 +97,11 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         const now = new Date();
         const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-        const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < startToday).length;
-        const today = tasks.filter(t => t.due_date && new Date(t.due_date) >= startToday && new Date(t.due_date) <= endToday).length;
+        const overdue = tasks.filter(t => t.status === 'Pending' && t.due_date && new Date(t.due_date) < startToday).length;
+        const today = tasks.filter(t => t.status === 'Pending' && t.due_date && new Date(t.due_date) >= startToday && new Date(t.due_date) <= endToday).length;
         setOverdueCount(overdue);
         setTodayCount(today);
+        setPendingCount(tasks.length);
       } catch {}
     };
     refresh();
@@ -105,15 +111,37 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     return () => { if (timer) window.clearInterval(timer); };
   }, [user]);
 
+  // Fetch alerts count (predictive + automation persisted), minus dismissed
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        if (!user) return;
+        const [leads, customers, deals, autoAlerts] = await Promise.all([
+          getLeads(user), getCustomers(user), getDeals(user), getAutomationAlerts()
+        ]);
+        const predictive = await generateAlertRecommendations(leads, customers, deals);
+        let dismissed: string[] = [];
+        try { const raw = localStorage.getItem('dismissedAlerts'); dismissed = raw ? JSON.parse(raw) : []; } catch {}
+        const combined = [...autoAlerts, ...predictive];
+        const filtered = combined.filter((a: any) => !dismissed.includes(String(a.id)));
+        if (active) setAlertsCount(filtered.length);
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [user]);
+
   const getCoreNavItems = (): NavItem[] => {
     // Define items visible to all roles
     const items: NavItem[] = [
         { to: '/dashboard', labelKey: 'sidebar.dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
         { to: '/leads', labelKey: 'sidebar.leads', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
         { to: '/customers', labelKey: 'sidebar.customers', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a6 6 0 00-12 0v2" /></svg> },
+        { to: '/budget', labelKey: 'sidebar.budget', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" /></svg> },
         { to: '/tasks', labelKey: 'sidebar.tasks', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m-7 8h8a2 2 0 002-2V7a2 2 0 00-2-2H9l-2 2H5a2 2 0 00-2 2v7a2 2 0 002 2h2z" /></svg> },
         { to: '/deals', labelKey: 'sidebar.deals', icon: <DocumentCurrencyDollarIcon className="h-6 w-6" /> },
         { to: '/alerts', labelKey: 'sidebar.alerts', icon: <BellIcon className="h-6 w-6" /> },
+        { to: '/reports', labelKey: 'sidebar.reports', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2h6v2H9zm0-4V7a2 2 0 012-2h6l4 4v4H9zM3 7h4v10H3V7z" /></svg> },
         { to: '/documents', labelKey: 'sidebar.documents', icon: <FolderIcon className="h-6 w-6" /> },
     ];
     
@@ -152,9 +180,13 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   {t(item.labelKey)}
                   {item.to === '/tasks' && (
                     <>
+                      {pendingCount > 0 && <span className="px-1.5 rounded-full text-xs bg-blue-600 text-white">{pendingCount}</span>}
                       {overdueCount > 0 && <span className="px-1.5 rounded-full text-xs bg-red-600 text-white">{overdueCount}</span>}
                       {todayCount > 0 && <span className="px-1.5 rounded-full text-xs bg-primary text-white">{todayCount}</span>}
                     </>
+                  )}
+                  {item.to === '/alerts' && alertsCount > 0 && (
+                    <span className="px-1.5 rounded-full text-xs bg-primary text-white">{alertsCount}</span>
                   )}
                 </span>
               </NavLink>

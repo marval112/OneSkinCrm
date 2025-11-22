@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getLeads, getCustomers, getDeals } from '../../services/crmService';
 import { generateAlertRecommendations } from '../../services/predictiveAlerts';
+import { getAutomationAlerts, removeAutomationAlert } from '../../services/alertsService';
 import type { Alert } from '../../types';
 import { AlertPriority } from '../../types';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -63,9 +64,9 @@ function AlertsPanel() {
     setLoading(true);
     try {
       // Fix: Pass the user object to the data fetching functions as required.
-      const [leads, customers, deals] = await Promise.all([getLeads(user), getCustomers(user), getDeals(user)]);
+      const [leads, customers, deals, automation] = await Promise.all([getLeads(user), getCustomers(user), getDeals(user), getAutomationAlerts()]);
       const generatedAlerts = await generateAlertRecommendations(leads, customers, deals);
-      setAlerts(generatedAlerts);
+      setAlerts([...automation, ...generatedAlerts]);
     } catch (error) {
       console.error("Failed to generate alerts:", error);
     } finally {
@@ -81,6 +82,8 @@ function AlertsPanel() {
     const newDismissed = [...dismissedAlerts, alertId];
     setDismissedAlerts(newDismissed);
     localStorage.setItem('dismissedAlerts', JSON.stringify(newDismissed));
+    // Also remove from automation alerts store if present
+    try { removeAutomationAlert(alertId); } catch {}
   };
 
   const activeAlerts = alerts.filter(a => !dismissedAlerts.includes(a.id));

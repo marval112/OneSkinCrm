@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, FunnelChart, Funnel, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, FunnelChart, Funnel, LabelList, ReferenceLine } from 'recharts';
 import type { Lead, Deal, Customer, User } from '../../types';
 import { DealStage, LeadStatus, Segment, CustomerStatus } from '../../types';
 import { supabase } from '../../services/supabaseClient';
+import { getBudgetsForCustomers } from '../../services/budgetService';
 import DateRangePicker from '../common/DateRangePicker';
 import TopLeadsWidget from '../dashboard/TopLeadsWidget';
 import { useTranslation } from '../../services/i18nService';
@@ -52,6 +53,7 @@ interface DashboardStats {
   topLeads: Lead[];
   recentActivity: Activity[];
   users: { id: number; email: string; }[];
+  budgetVsAchieved?: { budget2026: number; achieved2026: number };
 }
 
 function Dashboard() {
@@ -81,10 +83,15 @@ function Dashboard() {
     topLeads: [],
     recentActivity: [],
     users: [],
+    budgetVsAchieved: { budget2026: 0, achieved2026: 0 },
   });
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [budgetYear, setBudgetYear] = useState<number>(2026);
+  const budgetYears = [2026, 2027, 2028];
+  const [chartYear, setChartYear] = useState<number | 'All'>('All');
+  const chartYears: Array<number | 'All'> = ['All', 2026, 2027, 2028];
   
   const BLUE_SHADES = ['#1e3a8a', '#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
   const COLORS = ['#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
@@ -270,9 +277,20 @@ function Dashboard() {
 
       // --- CLIENT-SIDE FILTERING & CALCULATIONS ---
       
+      // Year helpers
+      const dateYear = (iso?: string | null) => (iso ? new Date(iso).getFullYear() : undefined);
+      const matchYear = (yr: number | 'All', val?: number) => (yr === 'All' ? true : val === yr);
+      const closedYearMatches = (deal: Deal) => {
+        if (chartYear === 'All') return true;
+        const closed = (deal as any)['año_closed'];
+        if (typeof closed === 'number') return closed === chartYear;
+        return matchYear(chartYear, dateYear(deal.updated_at));
+      };
+
       const leadsInDateRange = currentDateRange
         ? safeLeads.filter(l => l.created_at >= currentDateRange.from && l.created_at <= currentDateRange.to)
         : safeLeads;
+      const leadsInYear = leadsInDateRange.filter(l => matchYear(chartYear, dateYear(l.created_at)));
 
       const dealsClosedInDateRange = currentDateRange
         ? safeDeals.filter(d =>
@@ -280,16 +298,17 @@ function Dashboard() {
             d.updated_at >= currentDateRange.from && d.updated_at <= currentDateRange.to
           )
         : safeDeals.filter(d => d.status === DealStage.CLOSED_WON || d.status === DealStage.CLOSED_LOST);
+      const dealsClosedInYear = dealsClosedInDateRange.filter(d => closedYearMatches(d));
 
       // KPIs
-      const wonDeals = dealsClosedInDateRange.filter(d => d.status === DealStage.CLOSED_WON);
-      const lostDeals = dealsClosedInDateRange.filter(d => d.status === DealStage.CLOSED_LOST);
+      const wonDeals = dealsClosedInYear.filter(d => d.status === DealStage.CLOSED_WON);
+      const lostDeals = dealsClosedInYear.filter(d => d.status === DealStage.CLOSED_LOST);
       const totalRevenue = wonDeals.reduce((sum, deal) => sum + Number(deal.value), 0);
       const avgDealSize = wonDeals.length > 0 ? totalRevenue / wonDeals.length : 0; // legacy calc (unused)
       const winRate = (wonDeals.length + lostDeals.length) > 0 ? (wonDeals.length / (wonDeals.length + lostDeals.length)) * 100 : 0;
       
-      const wonLeadsInDateRange = leadsInDateRange.filter(l => l.status === LeadStatus.Won);
-      const leadConversionRate = leadsInDateRange.length > 0 ? (wonLeadsInDateRange.length / leadsInDateRange.length) * 100 : 0;
+      const wonLeadsInYear = leadsInYear.filter(l => l.status === LeadStatus.Won);
+      const leadConversionRate = leadsInYear.length > 0 ? (wonLeadsInYear.length / leadsInYear.length) * 100 : 0;
 
       // Chart: Revenue by Month (based on deals won in range)
       const revenueByMonthData = wonDeals.reduce((acc: {[key: string]: number}, deal) => {
@@ -300,28 +319,28 @@ function Dashboard() {
       const revenueByMonth = Object.entries(revenueByMonthData).map(([name, revenue]) => ({ name, revenue }));
 
       // Chart: Lead Sources (based on leads created in range)
-      const sourceCounts = leadsInDateRange.reduce((acc: Record<string, number>, lead) => {
+      const sourceCounts = leadsInYear.reduce((acc: Record<string, number>, lead) => {
         acc[lead.source] = (acc[lead.source] || 0) + 1;
         return acc;
       }, {});
       const leadSourceData = Object.keys(sourceCounts).map(name => ({ name, value: sourceCounts[name] }));
       
       // Chart: Leads by Status (based on leads created in range)
-      const statusCounts = leadsInDateRange.reduce((acc: Record<string, number>, lead) => {
+      const statusCounts = leadsInYear.reduce((acc: Record<string, number>, lead) => {
         acc[lead.status] = (acc[lead.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       const leadsByStatus = Object.values(LeadStatus).map(st => ({ name: st as string, label: t(`labels.leadStatus.${st}`) || st, value: statusCounts[st] || 0 }));
 
       // Chart: Leads by Segment (based on leads created in range)
-      const segCounts = leadsInDateRange.reduce((acc: Record<string, number>, lead) => {
+      const segCounts = leadsInYear.reduce((acc: Record<string, number>, lead) => {
         acc[lead.segment] = (acc[lead.segment] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       const leadsBySegment = Object.values(Segment).map(seg => ({ name: seg as string, label: t(`labels.segments.${seg}`) || seg, value: segCounts[seg] || 0 }));
 
       // Chart: Leads by Country (based on leads created in range)
-      const leadCountryCounts = leadsInDateRange.reduce((acc: Record<string, number>, lead) => {
+      const leadCountryCounts = leadsInYear.reduce((acc: Record<string, number>, lead) => {
         const key = (lead.country || 'Unknown');
         acc[key] = (acc[key] || 0) + 1;
         return acc;
@@ -349,14 +368,15 @@ function Dashboard() {
       const openDeals = currentDateRange
         ? openDealsAll.filter(d => d.updated_at >= currentDateRange.from && d.updated_at <= currentDateRange.to)
         : openDealsAll;
+      const openDealsInYear = openDeals.filter(d => matchYear(chartYear, dateYear(d.updated_at)));
       const openPipelineTotal = openDeals.reduce((sum, d) => sum + Number(d.value), 0);
       
       const dealValueByStage = Object.values(DealStage).map(stage => {
         let dealsForStage: Deal[];
         if (stage === DealStage.CLOSED_WON || stage === DealStage.CLOSED_LOST) {
-            dealsForStage = dealsClosedInDateRange.filter(d => d.status === stage);
+            dealsForStage = dealsClosedInYear.filter(d => d.status === stage);
         } else {
-            dealsForStage = openDeals.filter(d => d.status === stage);
+            dealsForStage = openDealsInYear.filter(d => d.status === stage);
         }
         const total = dealsForStage.reduce((sum, d) => sum + Number(d.value), 0);
         return {
@@ -369,7 +389,7 @@ function Dashboard() {
 
       // Chart: Team Performance (Admin only, based on deals closed in range)
           const userMap = new Map(safeUsers.map(u => [u.id, u.email]));
-      const amountsByUser = dealsClosedInDateRange.reduce((acc: Record<number, { won: number; lost: number }>, d) => {
+      const amountsByUser = dealsClosedInYear.reduce((acc: Record<number, { won: number; lost: number }>, d) => {
         const uid = d.user_id as number | null;
         if (!uid) return acc;
         if (!acc[uid]) acc[uid] = { won: 0, lost: 0 };
@@ -433,6 +453,27 @@ function Dashboard() {
       let customersByOwner = Object.entries(cbOwnerCounts).map(([name, value]) => ({ name, value }));
       customersByOwner.sort((a, b) => b.value - a.value);
 
+      // Budget vs Closed Won (parametric year)
+      const year = budgetYear;
+      const custIds = safeCustomers.map(c => c.id);
+      let budget2026 = 0;
+      try {
+        const budgets = await getBudgetsForCustomers(year, custIds);
+        budget2026 = budgets.reduce((s, b) => s + Number(b.amount || 0), 0);
+      } catch {}
+      const achieved2026 = safeDeals
+        .filter(d => d.status === DealStage.CLOSED_WON)
+        .filter(d => {
+          const closedYear = (d as any)['año_closed'];
+          if (typeof closedYear === 'number' && !Number.isNaN(closedYear)) {
+            return closedYear === year;
+          }
+          // Fallback to updated_at year if legacy data without año_closed
+          const upd = (d as any).hasOwnProperty('updated_at') ? new Date((d as any).updated_at).getFullYear() : undefined;
+          return upd === year;
+        })
+        .reduce((s, d) => s + Number((d as any).value || 0), 0);
+
       setStats({
         kpis: {
           newLeads: leadsInDateRange.length.toString(),
@@ -457,6 +498,7 @@ function Dashboard() {
         topLeads,
         recentActivity,
         users: safeUsers,
+        budgetVsAchieved: { budget2026, achieved2026 },
       });
 
       // Update filter options (countries from customers & leads; users only for admin)
@@ -471,7 +513,7 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user, t, selectedSegment, selectedCountry, selectedUserId]);
+  }, [user, t, selectedSegment, selectedCountry, selectedUserId, budgetYear]);
 
   // AI Insights after stats load
   useEffect(() => {
@@ -506,6 +548,12 @@ function Dashboard() {
     // Run only once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  // Recompute Budget vs Closed Won when budgetYear changes
+  useEffect(() => {
+    fetchData(dateRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [budgetYear, chartYear]);
   
   const handleDateChange = (range: { from: string; to: string } | null) => {
     setDateRange(range);
@@ -733,7 +781,22 @@ function Dashboard() {
     <div className="space-y-8" ref={containerRef}>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <DateRangePicker value={dateRange} onChange={handleDateChange} />
+          <DateRangePicker
+            value={dateRange}
+            onChange={handleDateChange}
+            rightSlot={
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-500">Year</label>
+                <select
+                  value={chartYear === 'All' ? 'All' : String(chartYear)}
+                  onChange={(e)=> setChartYear(e.target.value === 'All' ? 'All' : parseInt(e.target.value,10))}
+                  className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                >
+                  {chartYears.map(y => <option key={String(y)} value={String(y)}>{String(y)}</option>)}
+                </select>
+              </div>
+            }
+          />
           <div className="flex items-center gap-2">
             <button onClick={() => setPresetRange('today')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Today</button>
             <button onClick={() => setPresetRange('7d')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Last 7d</button>
@@ -776,16 +839,87 @@ function Dashboard() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
         <KPICard title={t('dashboard.revenue')} value={stats.kpis.revenue} accent="primary" />
-        <KPICard title={t('dashboard.openPipelineValue') || 'Open Pipeline Value'} value={stats.kpis.openPipeline} />
+        <KPICard title={t('dashboard.openPipelineValue') || 'Running Deals'} value={stats.kpis.openPipeline} />
         <KPICard title={t('dashboard.winRate')} value={stats.kpis.winRate} accent="success" />
         <KPICard title={t('dashboard.leadConversionRate')} value={stats.kpis.leadConversionRate} />
         <KPICard title={t('dashboard.totalLeads')} value={stats.kpis.newLeads} />
         <KPICard title={t('dashboard.activeCustomers')} value={stats.kpis.activeCustomers} />
       </div>
       
+      {/* Global Year selector moved into DateRangePicker rightSlot */}
+      
+      {/* Budget vs Closed Won (Water Glass) */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm" onDoubleClick={() => navigate('/budget')}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-lg">{(t('dashboard.budget') || 'Budget') + ' vs ' + (t('dashboard.achieved') || 'Closed Won') + ` (${budgetYear})`}</h3>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">Budget Year</label>
+            <select
+              value={budgetYear}
+              onChange={(e)=> { const y = parseInt(e.target.value,10); setBudgetYear(y); }}
+              className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+            >
+              {budgetYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+          {(() => {
+            const budget = stats.budgetVsAchieved?.budget2026 || 0;
+            const closed = Math.min(stats.budgetVsAchieved?.achieved2026 || 0, budget);
+            const remaining = Math.max(budget - closed, 0);
+            const percent = budget > 0 ? Math.round((closed / budget) * 100) : 0;
+            const data = [{ name: String(budgetYear), closed, remaining, budget, percent }];
+            const formatEuro = (n: number) => `€${(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            const FillLabel = (props: any) => {
+              const { x, y, width, height, value, payload } = props;
+              const tx = x + 6;
+              const ty = y + height / 2 + 4;
+              const pct = budget > 0 ? Math.round((Number(value || 0) / budget) * 100) : 0;
+              const label = `${formatEuro(Number(value))} (${pct}%)`;
+              const color = '#ffffff';
+              return <text x={tx} y={ty} textAnchor="start" fill={color} fontSize={12}>{label}</text>;
+            };
+            const BudgetLabelOnRemaining = (props: any) => {
+              const { x, y, width, height, payload } = props;
+              if (!payload || Number(payload.remaining) <= 0) return null;
+              const tx = x + width - 6;
+              const ty = y + height / 2 + 4;
+              const label = `${formatEuro(Number(payload.budget || budget))}`;
+              return <text x={tx} y={ty} textAnchor="end" fill="#111827" fontSize={12}>{label}</text>;
+            };
+            const BudgetLabelOnClosed = (props: any) => {
+              const { x, y, width, height, payload } = props;
+              if (!payload || Number(payload.remaining) > 0) return null;
+              const tx = x + width - 6;
+              const ty = y + height / 2 + 4;
+              const label = `${formatEuro(Number(payload.budget || budget))}`;
+              return <text x={tx} y={ty} textAnchor="end" fill="#ffffff" fontSize={12}>{label}</text>;
+            };
+            return (
+              <BarChart className="cursor-pointer" layout="vertical" data={data} margin={{ top: 5, right: 24, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v)=>`€${Math.round(Number(v) / 1000)}k`} />
+                <YAxis type="category" dataKey="name" stroke="rgb(100 116 139)" />
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`€${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
+                {/* Put Closed Won on the left, Remaining on the right */}
+                <Bar dataKey="closed" stackId="g" fill="#1e3a8a" radius={[8, 0, 0, 8]}>
+                  <LabelList dataKey="closed" content={FillLabel as any} />
+                  <LabelList dataKey="closed" content={BudgetLabelOnClosed as any} />
+                </Bar>
+                <Bar dataKey="remaining" stackId="g" fill="#E5E7EB" radius={[0, 8, 8, 0]}>
+                  <LabelList dataKey="remaining" content={BudgetLabelOnRemaining as any} />
+                </Bar>
+                {/* Budget label integrated within the bar; reference line removed */}
+              </BarChart>
+            );
+          })()}
+        </ResponsiveContainer>
+      </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">{t('dashboard.revenueByMonth')}</h3>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-lg mb-4" title="Ingresos por mes a partir de oportunidades Closed Won en el periodo/añ o seleccionado.">{t('dashboard.revenueByMonth')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
@@ -803,7 +937,7 @@ function Dashboard() {
             </ResponsiveContainer>
         </div>
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">{t('dashboard.dealValueByStage')}</h3>
+            <h3 className="font-semibold text-lg mb-4" title="Valor agregado de oportunidades por etapa; para etapas cerradas se toma el año de cierre.">{t('dashboard.dealValueByStage')}</h3>
             <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
@@ -832,7 +966,7 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
+          <h3 className="font-semibold text-lg mb-4" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
           <ResponsiveContainer width="100%" height={320}>
             <FunnelChart>
               <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]} />
@@ -852,7 +986,7 @@ function Dashboard() {
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4">{t('dashboard.winRate')}</h3>
+          <h3 className="font-semibold text-lg mb-4" title="Porcentaje de oportunidades Ganadas frente a Perdidas en el año/periodo.">{t('dashboard.winRate')}</h3>
           <div className="relative" style={{ height: 320 }}>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -884,7 +1018,7 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">{t('dashboard.leadSources')}</h3>
+            <h3 className="font-semibold text-lg mb-4" title="Distribución de leads por fuente para el año/periodo.">{t('dashboard.leadSources')}</h3>
             <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                     <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
@@ -899,7 +1033,7 @@ function Dashboard() {
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                <h3 className="font-semibold text-lg mb-4">{t('dashboard.teamPerformance')}</h3>
+                <h3 className="font-semibold text-lg mb-4" title="Importe ganado y perdido por vendedor en el año/periodo.">{t('dashboard.teamPerformance')}</h3>
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={stats.teamPerformance} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
@@ -1061,7 +1195,7 @@ function Dashboard() {
           )}
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <h3 className="font-semibold text-lg mb-4">{t('dashboard.recentActivity')}</h3>
             <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                 {stats.recentActivity.map(activity => (
@@ -1088,7 +1222,7 @@ function Dashboard() {
           <button onClick={()=> navigate('/deals')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Deals</button>
           <button onClick={()=> navigate('/tasks')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Tasks</button>
         </div>
-      </div>
+        </div>
     </div>
   );
 }

@@ -245,6 +245,21 @@ function Products() {
     }
   };
 
+  const handleCloneFamily = async (fam: ProductCategory) => {
+    try {
+      const clonedData: Omit<ProductCategory, 'id'> = {
+        name: `${fam.name} (Copy)`,
+        description: fam.description,
+        parent_id: fam.parent_id || null,
+      };
+      await createProductCategory(clonedData);
+      toastContext?.showToast('Family cloned successfully!', 'success');
+      fetchData();
+    } catch (e) {
+      toastContext?.showToast('Failed to clone family.', 'danger');
+    }
+  };
+
   const renderModalContent = () => {
     if (!modalState) return null;
     const { type, mode, data } = modalState;
@@ -306,7 +321,8 @@ function Products() {
                  <div className="flex justify-between items-center">
                   <span className="font-medium">{fam.name}</span>
                   <div>
-                    <button onClick={e => { e.stopPropagation(); setModalState({ type: 'family', mode: 'edit', data: fam })}} className="p-1 hover:text-primary"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={e => { e.stopPropagation(); setModalState({ type: 'family', mode: 'edit', data: fam })}} className="p-1 hover:text-primary" title="Edit family"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={e => { e.stopPropagation(); handleCloneFamily(fam); }} className="p-1 hover:text-primary" title="Clone family"><CloneIcon className="h-4 w-4" /></button>
                     <button onClick={e => { e.stopPropagation(); handleDelete('family', fam.id)}} className="p-1 hover:text-danger"><TrashIcon className="h-4 w-4" /></button>
                   </div>
                 </div>

@@ -1,10 +1,12 @@
 
 
 import type { Lead, Customer, Deal, Product, User, Country } from '../types';
-import { CustomerStatus, LeadStatus } from '../types';
+import { CustomerStatus, LeadStatus, TaskType, TaskStatus } from '../types';
 import * as db from './databaseService';
 // Fix: Import supabase client directly to build custom queries.
 import { supabase } from './supabaseClient';
+import { runLeadCreatedAutomations } from './automationService';
+import { sendTelegramMessage } from './telegramService';
 
 const getFilteredQuery = (table: 'leads' | 'customers' | 'deals', user: User) => {
     let query = supabase.from(table).select('*').order('id', { ascending: false });
@@ -29,15 +31,32 @@ export const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'upd
         created_at: now,
         updated_at: now,
     };
-    return db.create<Lead>('leads', newLeadData as Omit<Lead, 'id'>);
+    const lead = await db.create<Lead>('leads', newLeadData as Omit<Lead, 'id'>);
+    // Run user-defined automations for lead creation only (no direct task creation here)
+    try { await runLeadCreatedAutomations(lead); } catch (e) { console.warn('[automation] lead-created automations failed', e); }
+    // Notify Telegram (best-effort)
+    try { await sendTelegramMessage(`🆕 New Lead: ${lead.name} (${lead.email})`); } catch {}
+    return lead;
 };
 
 export const updateLead = async (updatedLead: Omit<Lead, 'created_at'>): Promise<Lead> => {
+    // Fetch previous to detect status change
+    let prev: Lead | null = null;
+    try {
+        const { data } = await supabase.from('leads').select('*').eq('id', (updatedLead as any).id).maybeSingle();
+        prev = (data as Lead) || null;
+    } catch {}
     const leadWithTimestamp = {
         ...updatedLead,
         updated_at: new Date().toISOString(),
     };
-    return db.update<Lead>('leads', leadWithTimestamp as Lead);
+    const saved = await db.update<Lead>('leads', leadWithTimestamp as Lead);
+    try {
+        if (prev && prev.status !== saved.status) {
+            await sendTelegramMessage(`🔄 Lead status changed: ${saved.name} • ${prev.status} → ${saved.status}`);
+        }
+    } catch {}
+    return saved;
 };
 
 export const bulkDeleteLeads = async (ids: number[]): Promise<void> => {
@@ -93,7 +112,9 @@ export const createCustomer = async (customerData: Omit<Customer, 'id' | 'create
         user_id: userId,
         created_at: new Date().toISOString()
     };
-    return db.create<Customer>('customers', newCustomer as Omit<Customer, 'id'>);
+    const saved = await db.create<Customer>('customers', newCustomer as Omit<Customer, 'id'>);
+    try { await sendTelegramMessage(`🧑‍💼 New Customer: ${saved.name} (${saved.email})`); } catch {}
+    return saved;
 };
 
 export const updateCustomer = async (updatedCustomer: Customer): Promise<Customer> => {
@@ -127,23 +148,51 @@ export const createDeal = async (dealData: NewDealInput, userId: number): Promis
         throw new Error('Either customer_id or lead_id must be provided to create a deal.');
     }
     const now = new Date().toISOString();
-    const newDealData = {
+    const isClosed = dealData.status === 'Closed Won' || dealData.status === 'Closed Lost';
+    const newDealData: any = {
         ...dealData,
         user_id: userId,
         created_at: now,
         updated_at: now,
-    } as Omit<Deal, 'id'>;
-    return db.create<Deal>('deals', newDealData);
+    };
+    if (isClosed) {
+        (newDealData as any)['año_closed'] = new Date().getFullYear();
+    }
+    const saved = await db.create<Deal>('deals', newDealData as Omit<Deal, 'id'>);
+    try {
+        const assoc = saved.customer_id ? `Customer #${saved.customer_id}` : saved.lead_id ? `Lead #${saved.lead_id}` : '';
+        await sendTelegramMessage(`💼 New Deal: ${saved.title} • €${Number(saved.value).toLocaleString()} • ${assoc}`);
+    } catch {}
+    return saved;
 };
 
 export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise<Deal> => {
     // Destructure to remove created_at, which should not be updated.
     const { created_at, ...dealData } = updatedDeal as Deal;
+    let prev: Deal | null = null;
+    try {
+        const { data } = await supabase.from('deals').select('*').eq('id', (updatedDeal as any).id).maybeSingle();
+        prev = (data as Deal) || null;
+    } catch {}
+    // Prevent edits when already closed
+    if (prev && (prev.status === 'Closed Won' || prev.status === 'Closed Lost')) {
+        throw new Error('This deal is closed and cannot be modified.');
+    }
     const dealWithTimestamp = {
         ...dealData,
         updated_at: new Date().toISOString(),
     };
-    return db.update<Deal>('deals', dealWithTimestamp as Deal);
+    // If transitioning to a closed state, stamp año_closed
+    if (prev && prev.status !== dealWithTimestamp.status && (dealWithTimestamp.status === 'Closed Won' || dealWithTimestamp.status === 'Closed Lost')) {
+        (dealWithTimestamp as any)['año_closed'] = new Date().getFullYear();
+    }
+    const saved = await db.update<Deal>('deals', dealWithTimestamp as Deal);
+    try {
+        if (prev && prev.status !== saved.status) {
+            await sendTelegramMessage(`🔁 Deal stage changed: ${saved.title} • ${prev.status} → ${saved.status}`);
+        }
+    } catch {}
+    return saved;
 };
 
 export const bulkDeleteDeals = async (ids: number[]): Promise<void> => {

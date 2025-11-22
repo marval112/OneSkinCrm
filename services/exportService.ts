@@ -7,10 +7,18 @@
 import { getBrandName, getBrandLogoUrl } from './brandingService';
 function convertToHTMLTable(data: any[]): string {
     if (!data || data.length === 0) {
-        return '';
+        return '<table><thead><tr><th>No data</th></tr></thead><tbody><tr><td></td></tr></tbody></table>';
     }
 
-    const headers = Object.keys(data[0]);
+    // Build headers as union of all keys to avoid empty headers when first row has no own-keys
+    const headerSet = new Set<string>();
+    for (const row of data) {
+        Object.keys(row || {}).forEach(k => headerSet.add(k));
+    }
+    const headers = Array.from(headerSet);
+    if (headers.length === 0) {
+        return '<table><thead><tr><th>No data</th></tr></thead><tbody><tr><td></td></tr></tbody></table>';
+    }
     const headerRow = `<tr>${headers.map(h => `<th>${String(h)}</th>`).join('')}</tr>`;
     
     const rows = data.map(obj => {
@@ -55,7 +63,8 @@ export function exportToExcel(data: any[], filename: string): void {
             </x:ExcelWorkbook>
           </xml>
           <![endif]-->
-          <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+          <meta charset="UTF-8"/>
         </head>
         <body>
           ${tableHTML}

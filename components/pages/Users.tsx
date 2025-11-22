@@ -1,32 +1,38 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { getUsers, createUser, bulkDeleteUsers } from '../../services/userService.ts';
+import { getUsers, createUser, bulkDeleteUsers, updateUser } from '../../services/userService.ts';
 import type { User } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import Modal from '../common/Modal';
 import TableSkeleton from '../common/TableSkeleton';
 
-const UserForm = ({ onSave, onCancel }: { onSave: (data: Omit<User, 'id'>) => void; onCancel: () => void; }) => {
-    const [formData, setFormData] = useState({ email: '', password: '', role: 'Commercial' as const });
+const UserForm = ({ onSave, onCancel, user, initial }: { onSave: (data: Partial<User> & { password?: string }) => void; onCancel: () => void; user?: User | null; initial?: Partial<Pick<User, 'email' | 'role' | 'seller_code'>> }) => {
+    const [formData, setFormData] = useState<{ email: string; password?: string; role: 'Admin' | 'Commercial'; seller_code?: string }>({
+        email: user?.email || initial?.email || '', 
+        password: '', 
+        role: ((user?.role || initial?.role || 'Commercial') as 'Admin' | 'Commercial'), 
+        seller_code: user?.seller_code || initial?.seller_code || ''
+    });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const validate = () => {
         const newErrors: Record<string, string> = {};
         if (!formData.email.trim()) newErrors.email = "Email is required.";
         else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid.";
-        if (!formData.password) newErrors.password = "Password is required.";
-        else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters.";
+        if (!user && !formData.password) newErrors.password = "Password is required.";
+        else if (formData.password && formData.password.length < 6) newErrors.password = "Password must be at least 6 characters.";
+        if (formData.seller_code && !/^[0-9]{3}$/.test(formData.seller_code)) newErrors.seller_code = "Seller code must be exactly 3 digits.";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
-            onSave(formData);
+            onSave({ ...(user ? { id: user.id } as any : {}), ...formData });
         }
     };
 
@@ -38,11 +44,25 @@ const UserForm = ({ onSave, onCancel }: { onSave: (data: Omit<User, 'id'>) => vo
                     <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2 bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
+                 {!user && (
+                   <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                      <input type="password" name="password" value={formData.password || ''} onChange={handleChange} className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2 bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                      {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                   </div>
+                 )}
                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-                    <input type="password" name="password" value={formData.password} onChange={handleChange} className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2 bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-                </div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Role</label>
+                    <select name="role" value={formData.role} onChange={handleChange} className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2 bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                        <option value="Commercial">Commercial</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Codigo Vendedor (3 dígitos)</label>
+                    <input type="text" name="seller_code" maxLength={3} value={formData.seller_code || ''} onChange={handleChange} placeholder="Ej: 047" className="mt-1 w-32 border border-slate-300 rounded-md px-3 py-2 bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                    {errors.seller_code && <p className="text-red-500 text-xs mt-1">{errors.seller_code}</p>}
+                 </div>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover sm:ml-3 sm:w-auto sm:text-sm">Create User</button>
@@ -56,6 +76,8 @@ function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [cloneInitial, setCloneInitial] = useState<Partial<Pick<User, 'email' | 'role' | 'seller_code'>> | null>(null);
     const [selected, setSelected] = useState<number[]>([]);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const toastContext = useContext(ToastContext);
@@ -106,6 +128,20 @@ function Users() {
             toastContext?.showToast('Failed to delete users.', 'danger');
         }
     };
+    
+    const handleUpdateUser = async (payload: Partial<User> & { password?: string }) => {
+        try {
+            if (!editingUser) return;
+            // Merge updates; password handling would be in backend in a real app
+            const updated: User = { ...editingUser, ...payload } as User;
+            await updateUser(updated);
+            toastContext?.showToast('User updated successfully!', 'success');
+            setEditingUser(null);
+            fetchUsers();
+        } catch {
+            toastContext?.showToast('Failed to update user.', 'danger');
+        }
+    };
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
@@ -115,9 +151,9 @@ function Users() {
                     {selected.length > 0 && (
                         <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 bg-danger text-white font-semibold rounded-md hover:bg-danger-hover">Delete</button>
                     )}
-                    <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">
-                        New User
-                    </button>
+                <button onClick={() => { setCloneInitial(null); setIsModalOpen(true); }} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">
+                    New User
+                </button>
                 </div>
             </div>
 
@@ -128,6 +164,8 @@ function Users() {
                             <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selected.length > 0 && selected.length === users.length} /></th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Email</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Seller Code</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -140,6 +178,19 @@ function Users() {
                                         {user.role}
                                     </span>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100">{user.seller_code || '-'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                                    <button onClick={() => setEditingUser(user)} className="px-3 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Edit</button>
+                                    <button
+                                        onClick={() => { 
+                                            setCloneInitial({ email: '', role: user.role, seller_code: '' }); 
+                                            setIsModalOpen(true); 
+                                        }}
+                                        className="px-3 py-1 text-sm rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                        title="Clone seller (prefill role and blank email/code)">
+                                        Clone
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -148,7 +199,13 @@ function Users() {
 
              {isModalOpen && (
                 <Modal title="Create New User" onClose={() => setIsModalOpen(false)}>
-                    <UserForm onSave={handleSaveUser} onCancel={() => setIsModalOpen(false)} />
+                    <UserForm initial={cloneInitial || undefined} onSave={handleSaveUser as any} onCancel={() => setIsModalOpen(false)} />
+                </Modal>
+             )}
+             
+             {editingUser && (
+                <Modal title={`Edit User: ${editingUser.email}`} onClose={() => setEditingUser(null)}>
+                    <UserForm user={editingUser} onSave={handleUpdateUser} onCancel={() => setEditingUser(null)} />
                 </Modal>
              )}
 

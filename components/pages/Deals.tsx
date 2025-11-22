@@ -82,7 +82,7 @@ const DealForm = ({
         if (!formData.expected_close_date) newErrors.expected_close_date = 'Expected close date is required.';
         if (formData.value === undefined || formData.value === null || formData.value <= 0) newErrors.value = 'Value must be a positive number.';
         if (association === 'customer') {
-          if (!formData.customer_id) newErrors.customer_id = 'A customer must be selected.';
+        if (!formData.customer_id) newErrors.customer_id = 'A customer must be selected.';
         } else {
           if (!formData.lead_id) newErrors.lead_id = 'A lead must be selected.';
         }
@@ -128,14 +128,14 @@ const DealForm = ({
                     {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
                 </div>
                 {association === 'customer' ? (
-                  <div>
+                <div>
                     <label htmlFor="customer_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.customer')}</label>
                     <select name="customer_id" id="customer_id" value={formData.customer_id ?? ''} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         <option value="">{t('deals.form.selectCustomer')}</option>
                         {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
                     </select>
                     {errors.customer_id && <p className="text-red-500 text-xs mt-1">{errors.customer_id}</p>}
-                  </div>
+                </div>
                 ) : (
                   <div>
                     <label htmlFor="lead_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.lead')}</label>
@@ -318,7 +318,11 @@ function Deals() {
   };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDeals(e.target.checked ? processedDeals.map(d => d.id) : []);
+    if (e.target.checked) {
+      setSelectedDeals(processedDeals.filter(d => d.status!==DealStage.CLOSED_WON && d.status!==DealStage.CLOSED_LOST).map(d => d.id));
+    } else {
+      setSelectedDeals([]);
+    }
   };
 
   const handleSelectOne = (id: number) => {
@@ -347,7 +351,7 @@ function Deals() {
   
   const handleUpdateDeal = async (dealData: Deal) => {
     try {
-        const { customerName, ...dealToUpdate } = dealData as any;
+        const { customerName, partyName, ...dealToUpdate } = dealData as any;
         await updateDeal(dealToUpdate);
         toastContext?.showToast('Deal updated successfully!', 'success');
         setEditingDeal(null);
@@ -409,7 +413,7 @@ function Deals() {
 
 
       <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
+        <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
                   <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
@@ -434,8 +438,8 @@ function Deals() {
           <tbody className="bg-white divide-y divide-slate-200">
             {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
               <tr key={deal.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} /></td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 cursor-pointer hover:underline" onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
+                <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status===DealStage.CLOSED_WON || deal.status===DealStage.CLOSED_LOST} /></td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status!==DealStage.CLOSED_WON && deal.status!==DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
                 <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-slate-600">{(deal as any).partyName || ''}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell text-slate-600">{deal.probability}%</td>
@@ -444,7 +448,9 @@ function Deals() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
-                    <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
+                    {!(deal.status===DealStage.CLOSED_WON || deal.status===DealStage.CLOSED_LOST) && (
+                      <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
+                    )}
                 </td>
               </tr>
             ))}
@@ -460,7 +466,14 @@ function Deals() {
 
        {editingDeal && (
           <Modal title={`${t('deals.form.editTitlePrefix')} ${editingDeal.title}`} onClose={() => setEditingDeal(null)}>
-              <DealForm isEdit deal={editingDeal} customers={customers} leads={leads} onSave={handleUpdateDeal as any} onCancel={() => setEditingDeal(null)} />
+              <DealForm
+                isEdit
+                deal={editingDeal}
+                customers={customers}
+                leads={leads}
+                onSave={(data) => handleUpdateDeal({ ...(editingDeal as Deal), ...(data as any) })}
+                onCancel={() => setEditingDeal(null)}
+              />
           </Modal>
       )}
 

@@ -12,10 +12,13 @@ import Deals from './components/pages/Deals';
 import Automation from './components/pages/Automation';
 import ThemeCustomizer from './components/pages/ThemeCustomizer';
 import ReportsScheduler from './components/pages/ReportsScheduler';
+import Reports from './components/pages/Reports';
 import Integrations from './components/pages/Integrations';
 import WorkflowBuilder from './components/pages/WorkflowBuilder';
 import WebhooksManager from './components/pages/WebhooksManager';
 import AIChatPanel from './components/common/AIChatPanel';
+import AINudgeTray from './components/common/AINudgeTray';
+import Budget from './components/pages/Budget';
 import Toast from './components/common/Toast';
 import { ToastContext } from './contexts/ToastContext';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
@@ -24,6 +27,7 @@ import { applyTheme, getActiveTheme } from './services/themeService';
 import { initializeDatabase } from './services/databaseInitialization';
 import { runDueReports } from './services/scheduledReports';
 import { loadGeminiApiKey } from './services/aiSettingsService';
+import { runNurtureCoach } from './services/nurtureCoach';
 import { applyBrandFavicon } from './services/brandingService';
 
 // Import Auth and Login
@@ -83,6 +87,17 @@ function AppContent() {
 
   }, []);
 
+  // Periodic AI Nurture Coach
+  useEffect(() => {
+    if (!isDbInitialized || loading) return;
+    let id: number | undefined;
+    const tick = async () => { try { if (user) await runNurtureCoach(user); } catch {} };
+    tick(); // run once on mount
+    // @ts-ignore
+    id = window.setInterval(tick, 5 * 60 * 1000); // every 5 minutes
+    return () => { if (id) window.clearInterval(id); };
+  }, [isDbInitialized, loading, user]);
+
   const showToast = useCallback((message: string, type: 'success' | 'danger' | 'warning' | 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
@@ -117,8 +132,8 @@ function AppContent() {
                 onChatToggle={() => setIsChatPanelOpen(prev => !prev)} 
                 onSidebarToggle={() => setIsSidebarOpen(prev => !prev)}
               />
-              {/* Lightweight scheduler to run due reports every ~60s (Admin only) */}
-              {user.role === 'Admin' && (
+              {/* Lightweight scheduler to run due reports every ~60s (Admin only, gated) */}
+              {user.role === 'Admin' && ((import.meta as any).env?.VITE_ENABLE_SCHEDULER === 'true') && (
                 <SchedulerTicker />
               )}
               <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
@@ -128,6 +143,7 @@ function AppContent() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/leads" element={<Leads />} />
                   <Route path="/customers" element={<Customers />} />
+                  <Route path="/budget" element={<Budget />} />
                   <Route path="/deals" element={<Deals />} />
                   <Route path="/tasks" element={<Tasks />} />
                   <Route path="/alerts" element={<AlertsPanel />} />
@@ -149,7 +165,7 @@ function AppContent() {
                       <Route path="/products" element={<Products />} />
                       <Route path="/automation" element={<Automation />} />
                       <Route path="/theme" element={<Navigate to="/settings/theme" replace />} />
-                      <Route path="/reports" element={<Navigate to="/settings/reports" replace />} />
+                      <Route path="/reports" element={<Reports />} />
                       <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
                       <Route path="/workflows" element={<WorkflowBuilder />} />
                       <Route path="/webhooks" element={<Navigate to="/settings/webhooks" replace />} />
@@ -167,6 +183,7 @@ function AppContent() {
               </main>
             </div>
             {isChatPanelOpen && <AIChatPanel onClose={() => setIsChatPanelOpen(false)} />}
+            <AINudgeTray />
           </div>
         )}
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

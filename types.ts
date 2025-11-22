@@ -131,6 +131,7 @@ export interface Task {
   status: TaskStatus;
   title?: string;
   notes?: string;
+  rule_title?: string;
   due_date?: string | null;
   created_at: string;
   completed_at?: string | null;
@@ -142,6 +143,7 @@ export interface User {
   id: number;
   email: string;
   role: 'Admin' | 'Commercial';
+  seller_code?: string | null;
 }
 
 export interface ToastMessage {

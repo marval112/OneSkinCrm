@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { getRules, createRule, updateRule, deleteRule, TRIGGER_METADATA, ACTION_METADATA } from '../../services/automationService';
+import { getRules, createRule, updateRule, deleteRule, cloneRule, TRIGGER_METADATA, ACTION_METADATA } from '../../services/automationService';
 import type { Rule, Condition, Action } from '../../services/automationService';
 import { TriggerType, ConditionOperator, ActionType } from '../../services/automationService';
 import { ToastContext } from '../../contexts/ToastContext';
@@ -9,6 +9,11 @@ import Modal from '../common/Modal';
 const EditIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>;
 const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>;
 const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>;
+const DuplicateIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6.75A2.25 2.25 0 0014.25 4.5h-7.5A2.25 2.25 0 004.5 6.75v7.5A2.25 2.25 0 006.75 16.5h1.5M9 7.5h7.5A2.25 2.25 0 0118.75 9.75v7.5A2.25 2.25 0 0116.5 19.5H9A2.25 2.25 0 016.75 17.25v-7.5A2.25 2.25 0 009 7.5z" />
+  </svg>
+);
 
 // --- HELPER COMPONENTS ---
 
@@ -31,9 +36,22 @@ const getNewRuleTemplate = (): Omit<Rule, 'id'> => ({
 const RuleBuilder = ({ rule, onSave, onCancel }: { rule: Omit<Rule, 'id'> | Rule, onSave: (rule: Omit<Rule, 'id'> | Rule) => void, onCancel: () => void }) => {
     const [formData, setFormData] = useState(rule);
 
+    const getDefaultValueForField = (f: string) => {
+        const def = triggerFields[f];
+        if (!def) return '';
+        if (def.type === 'enum' && Array.isArray(def.options) && def.options.length > 0) return def.options[0];
+        return '';
+    };
+
     const handleConditionChange = (index: number, field: keyof Condition, value: any) => {
         const newConditions = [...formData.conditions];
-        newConditions[index] = { ...newConditions[index], [field]: value };
+        if (field === 'field') {
+            // When switching the field, reset value to a sensible default
+            const newField = value as string;
+            newConditions[index] = { ...newConditions[index], field: newField, value: getDefaultValueForField(newField) };
+        } else {
+            newConditions[index] = { ...newConditions[index], [field]: value } as any;
+        }
         setFormData({ ...formData, conditions: newConditions });
     };
 
@@ -83,12 +101,17 @@ const RuleBuilder = ({ rule, onSave, onCancel }: { rule: Omit<Rule, 'id'> | Rule
                             <button type="button" onClick={() => setFormData({...formData, conditions: formData.conditions.filter((_, idx) => idx !== i)})} className="text-danger hover:text-danger-hover"><TrashIcon className="h-5 w-5 mx-auto" /></button>
                         </div>
                     ))}
-                    <button type="button" onClick={() => setFormData({...formData, conditions: [...formData.conditions, {field: Object.keys(triggerFields)[0], operator: ConditionOperator.EQUALS, value: ''}]})} className="text-sm text-primary font-semibold mt-2">Add Condition</button>
+                    <button type="button" onClick={() => {
+                        const firstField = Object.keys(triggerFields)[0];
+                        const defaultVal = getDefaultValueForField(firstField);
+                        setFormData({...formData, conditions: [...formData.conditions, {field: firstField, operator: ConditionOperator.EQUALS, value: defaultVal}]});
+                    }} className="text-sm text-primary font-semibold mt-2">Add Condition</button>
                 </div>
 
                 {/* Actions */}
                  <div className="p-4 border rounded-md">
                     <h3 className="font-semibold mb-2 text-lg">THEN... (Actions)</h3>
+                    <div className="text-xs text-slate-500 mb-2">You can use placeholders like <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">{'{{name}}'}</code>, <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">{'{{email}}'}</code>, <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">{'{{company}}'}</code>, <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">{'{{source}}'}</code>, <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">{'{{status}}'}</code> in text fields.</div>
                     {formData.actions.map((act, i) => (
                         <div key={i} className="p-2 bg-white dark:bg-slate-800 rounded mb-2">
                             <div className="flex justify-between items-center mb-2">
@@ -104,8 +127,14 @@ const RuleBuilder = ({ rule, onSave, onCancel }: { rule: Omit<Rule, 'id'> | Rule
                             <div className="space-y-2 pl-2 border-l-2">
                                 {Object.entries(ACTION_METADATA[act.type].params).map(([key, param]: [string, any]) => (
                                     <div key={key}>
-                                        <label className="text-xs">{param.label}</label>
-                                        <input type={param.type} value={act.params[key] || ''} onChange={e => handleActionChange(i, key, e.target.value)} placeholder={param.placeholder} className="w-full text-sm border-slate-300 dark:border-slate-600 rounded-md p-1 mt-1" />
+                                        <label className="text-xs block mb-1">{param.label}</label>
+                                        {param.type === 'enum' ? (
+                                            <select value={act.params[key] || (param.options?.[0] || '')} onChange={e => handleActionChange(i, key, e.target.value)} className="w-full text-sm border-slate-300 dark:border-slate-600 rounded-md p-1">
+                                                {(param.options || []).map((opt: string) => (<option key={opt} value={opt}>{opt}</option>))}
+                                            </select>
+                                        ) : (
+                                            <input type="text" value={act.params[key] || ''} onChange={e => handleActionChange(i, key, e.target.value)} placeholder={param.placeholder} className="w-full text-sm border-slate-300 dark:border-slate-600 rounded-md p-1" />
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -193,6 +222,16 @@ function Automation() {
         toastContext?.showToast('Failed to save rule.', 'danger');
     }
   };
+
+  const handleClone = async (rule: Rule) => {
+    try {
+      const copy = await cloneRule(rule.id);
+      setRules(prev => [copy, ...prev]);
+      toastContext?.showToast(`Rule "${rule.name}" cloned.`, 'success');
+    } catch (e) {
+      toastContext?.showToast('Failed to clone rule.', 'danger');
+    }
+  };
   
   const formatDetail = (item: Condition | Action) => {
     if ('field' in item) { // It's a Condition
@@ -248,6 +287,7 @@ function Automation() {
                     </div>
                     
                     <div className="mt-4 pt-3 border-t dark:border-slate-700 text-right space-x-2">
+                        <button onClick={() => handleClone(rule)} className="text-slate-500 dark:text-slate-400 hover:text-primary p-1" title="Clone Rule"><DuplicateIcon className="h-5 w-5" /></button>
                         <button onClick={() => handleOpenBuilder(rule)} className="text-slate-500 dark:text-slate-400 hover:text-primary p-1" title="Edit Rule"><EditIcon className="h-5 w-5" /></button>
                         <button onClick={() => setRuleToDelete(rule)} className="text-slate-500 dark:text-slate-400 hover:text-danger p-1" title="Delete Rule"><TrashIcon className="h-5 w-5" /></button>
                     </div>

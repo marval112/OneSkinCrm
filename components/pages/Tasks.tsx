@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { listTasksForUser, completeTask } from '../../services/tasksService';
-import type { Task } from '../../types';
+import { listTasksForUser, completeTask, createTask, updateTask, deleteTask } from '../../services/tasksService';
+import type { Task, Lead, Customer } from '../../types';
+import { TaskType, TaskStatus } from '../../types';
 import { useTranslation } from '../../services/i18nService';
 import { prioritizeTasks } from '../../services/geminiService';
 import { getLeads, getCustomers } from '../../services/crmService';
+import Modal from '../common/Modal';
 
 function Tasks() {
   const { user } = useAuth();
@@ -20,6 +22,14 @@ function Tasks() {
   const [agenda, setAgenda] = useState<{ id:number; start:string }[] | null>(null);
   const [leadNames, setLeadNames] = useState<Record<number, string>>({});
   const [customerNames, setCustomerNames] = useState<Record<number, string>>({});
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [builderLoading, setBuilderLoading] = useState(false);
+  const [leadOptions, setLeadOptions] = useState<Lead[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<Customer[]>([]);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [builder, setBuilder] = useState<{ entityType: 'lead' | 'customer'; entityId: number | null; type: TaskType; title: string; notes: string; due: string }>(
+    { entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }
+  );
 
   const refresh = async () => {
     if (!user) return;
@@ -28,6 +38,34 @@ function Tasks() {
   };
 
   useEffect(() => { refresh(); }, [showCompleted, user]);
+
+  const openBuilder = useCallback(async () => {
+    if (!user) return;
+    setIsBuilderOpen(true);
+    setBuilderLoading(true);
+    try {
+      const [ls, cs] = await Promise.all([getLeads(user), getCustomers(user)]);
+      setLeadOptions(ls);
+      setCustomerOptions(cs);
+      setEditingTask(null);
+      setBuilder(prev => ({ ...prev, entityType: 'lead', entityId: ls[0]?.id ?? null, title: '', notes: '', type: TaskType.FOLLOW_UP_CALL, due: '' }));
+    } finally {
+      setBuilderLoading(false);
+    }
+  }, [user]);
+
+  const openEdit = useCallback((task: Task) => {
+    setEditingTask(task);
+    setIsBuilderOpen(true);
+    setBuilder({
+      entityType: task.lead_id ? 'lead' : 'customer',
+      entityId: task.lead_id || task.customer_id || null,
+      type: task.type as TaskType,
+      title: task.title || '',
+      notes: task.notes || '',
+      due: task.due_date ? task.due_date.substring(0,16) : '',
+    });
+  }, []);
 
   // Load display names for related leads/customers
   useEffect(() => {
@@ -126,6 +164,7 @@ function Tasks() {
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
         <h2 className="text-xl font-semibold">{t('tasks.title')}</h2>
         <div className="flex items-center gap-2">
+          <button onClick={openBuilder} className="px-3 py-1 text-sm bg-primary text-white rounded-md">New Task</button>
           <button disabled={aiLoading || !user} onClick={async ()=>{ setAiLoading(true); try { const ids = await prioritizeTasks(tasks.map(t=>({ id:t.id, type:t.type, due_date:t.due_date as any, title:t.title as any }))); setAiOrdering(ids); } finally { setAiLoading(false);} }} className="px-3 py-1 text-sm bg-primary text-white rounded-md">
             {aiLoading ? '...' : t('tasks.ui.prioritizeWithAi')}
           </button>
@@ -189,6 +228,7 @@ function Tasks() {
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.type')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
@@ -202,13 +242,19 @@ function Tasks() {
               const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
               return (
                 <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-6 py-3 text-sm">{
-                    task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
-                    task.type === 'Send Information' ? t('tasks.types.sendInformation') :
-                    task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
-                    task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
-                    t('tasks.types.scheduleVisit')
-                  }</td>
+                  <td className="px-6 py-3 text-sm">
+                    {
+                      task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
+                      task.type === 'Send Information' ? t('tasks.types.sendInformation') :
+                      task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
+                      task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
+                      t('tasks.types.scheduleVisit')
+                    }
+                    {task.rule_title && (
+                      <div className="text-xs text-slate-500 mt-0.5">{task.rule_title}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-3 text-sm">{task.title || '-'}</td>
                   <td className="px-6 py-3 text-sm">{renderLeadCustomer(task)}</td>
                   <td className="px-6 py-3 text-sm">
                     {task.due_date ? (
@@ -216,11 +262,16 @@ function Tasks() {
                     ) : '-'}
                   </td>
                   <td className="px-6 py-3 text-right text-sm">
-                    {task.status !== 'Completed' ? (
-                      <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
-                    ) : (
-                      <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
-                    )}
+                    <div className="flex gap-2 justify-end items-center">
+                      {task.status !== 'Completed' ? (
+                        <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
+                      ) : (
+                        <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
+                      )}
+                      <button onClick={() => openEdit(task)} className="px-2 py-1 border rounded-md">Edit</button>
+                      <button onClick={async () => { if (!user) return; const payload:any = { user_id: user.id, lead_id: task.lead_id, customer_id: task.customer_id, type: task.type, status: TaskStatus.PENDING, title: task.title, notes: task.notes, due_date: task.due_date, rule_title: 'Cloned manually' }; await createTask(payload); refresh(); }} className="px-2 py-1 border rounded-md">Clone</button>
+                      <button onClick={async () => { await deleteTask(task.id); refresh(); }} className="px-2 py-1 border rounded-md text-danger">Delete</button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -248,6 +299,64 @@ function Tasks() {
             })}
           </ul>
         </div>
+      )}
+
+      {isBuilderOpen && (
+        <Modal title="Create Task" onClose={() => setIsBuilderOpen(false)}>
+          <div className="p-6 space-y-4">
+            {builderLoading ? (
+              <div className="py-6 text-center">...</div>
+            ) : (
+              <form onSubmit={async (e)=>{ e.preventDefault(); if (!user || !builder.entityId) return; if (editingTask) { const updated = { ...editingTask, type: builder.type, title: builder.title || undefined, notes: builder.notes || undefined, due_date: builder.due || undefined, lead_id: builder.entityType==='lead' ? builder.entityId : null, customer_id: builder.entityType==='customer' ? builder.entityId : null }; await updateTask(updated as any); } else { const payload: any = { user_id: user.id, type: builder.type, status: TaskStatus.PENDING, title: builder.title || undefined, notes: builder.notes || undefined, due_date: builder.due || undefined, rule_title: 'Created manually' }; if (builder.entityType==='lead') payload.lead_id = builder.entityId; else payload.customer_id = builder.entityId; await createTask(payload); } setIsBuilderOpen(false); setEditingTask(null); setBuilder({ entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }); refresh(); }}>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Assign to</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={builder.entityType} onChange={e => setBuilder(prev => ({ ...prev, entityType: e.target.value as 'lead' | 'customer', entityId: null }))} className="border-slate-300 rounded-md p-2">
+                      <option value="lead">{t('tasks.ui.lead')}</option>
+                      <option value="customer">{t('tasks.ui.customer')}</option>
+                    </select>
+                    {builder.entityType === 'lead' ? (
+                      <select value={builder.entityId ?? ''} onChange={e => setBuilder(prev => ({ ...prev, entityId: Number(e.target.value) || null }))} className="border-slate-300 rounded-md p-2">
+                        <option value="">Select Lead</option>
+                        {leadOptions.map(l => (<option key={l.id} value={l.id}>{l.name}</option>))}
+                      </select>
+                    ) : (
+                      <select value={builder.entityId ?? ''} onChange={e => setBuilder(prev => ({ ...prev, entityId: Number(e.target.value) || null }))} className="border-slate-300 rounded-md p-2">
+                        <option value="">Select Customer</option>
+                        {customerOptions.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <select value={builder.type} onChange={e => setBuilder(prev => ({ ...prev, type: e.target.value as TaskType }))} className="border-slate-300 rounded-md p-2 w-full">
+                    <option value={TaskType.FOLLOW_UP_CALL}>{t('tasks.types.followUpCall')}</option>
+                    <option value={TaskType.SEND_INFORMATION}>{t('tasks.types.sendInformation')}</option>
+                    <option value={TaskType.SEND_SAMPLES}>{t('tasks.types.sendSamples')}</option>
+                    <option value={TaskType.SEND_QUOTATION}>{t('tasks.types.sendQuotation')}</option>
+                    <option value={TaskType.SCHEDULE_VISIT}>{t('tasks.types.scheduleVisit')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Title</label>
+                  <input type="text" value={builder.title} onChange={e => setBuilder(prev => ({ ...prev, title: e.target.value }))} className="border-slate-300 rounded-md p-2 w-full" placeholder="e.g., Call {{name}}" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea rows={3} value={builder.notes} onChange={e => setBuilder(prev => ({ ...prev, notes: e.target.value }))} className="border-slate-300 rounded-md p-2 w-full" placeholder="Details about this task..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Due</label>
+                  <input type="datetime-local" value={builder.due} onChange={e => setBuilder(prev => ({ ...prev, due: e.target.value }))} className="border-slate-300 rounded-md p-2 w-full" />
+                </div>
+                <div className="pt-2 text-right">
+                  <button type="submit" className="px-3 py-1.5 bg-primary text-white rounded-md">{editingTask ? 'Save' : 'Create'}</button>
+                </div>
+              </form>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );

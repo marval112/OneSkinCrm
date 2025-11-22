@@ -5,7 +5,7 @@ import { scanBusinessCard } from '../../services/geminiService';
 import { calculateLeadScore } from '../../services/leadScoring';
 import { exportToExcel } from '../../services/exportService';
 import type { Lead, Country } from '../../types';
-import { LeadStatus, LeadSource, Segment } from '../../types';
+import { LeadStatus, LeadSource, Segment, DealStage } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import Modal from '../common/Modal';
@@ -18,7 +18,8 @@ import ImportModal from '../common/ImportModal';
 import { parseCSV, importLeads } from '../../services/importService';
 import { listActivitiesForLead, logActivity } from '../../services/activityService';
 import { summarizeLead, suggestLeadTasks, draftLeadFollowUpEmail } from '../../services/geminiService';
-import { createTask, listTasksForLead } from '../../services/tasksService';
+import { createDeal } from '../../services/crmService';
+import { createTask, listTasksForLead, completeTask, updateTask } from '../../services/tasksService';
 import { TaskType, TaskStatus, Task } from '../../types';
 import type { ActivityLog } from '../../types';
 
@@ -60,6 +61,11 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
+const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+    </svg>
+);
 
 const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -70,7 +76,7 @@ const ClockIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const ChevronUpIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>;
 const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>;
 
-type SortableLeadKeys = 'name' | 'company' | 'status' | 'score';
+type SortableLeadKeys = 'name' | 'company' | 'source' | 'status' | 'score' | 'created_at';
 type SortDirection = 'ascending' | 'descending';
 interface SortConfig {
   key: SortableLeadKeys;
@@ -85,11 +91,22 @@ const LeadForm = ({
   isEdit = false
 }: {
   lead?: Partial<Lead>,
-  onSave: (lead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
+  onSave: (payload: {
+    lead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>,
+    deal?: {
+      title: string;
+      value: number;
+      status: DealStage;
+      expected_close_date: string;
+      probability: number;
+      notes?: string;
+    }
+  }) => void;
   onCancel: () => void;
   isEdit?: boolean;
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: lead?.name || '', 
         company: lead?.company || '', 
@@ -102,6 +119,13 @@ const LeadForm = ({
         score: lead?.score || 0, 
         notes: lead?.notes || '',
     });
+    const [createDealFlag, setCreateDealFlag] = useState(false);
+    const [dealTitle, setDealTitle] = useState('');
+    const [dealValue, setDealValue] = useState<number>(0);
+    const [dealStatus, setDealStatus] = useState<DealStage>(DealStage.QUALIFICATION);
+    const [dealProbability, setDealProbability] = useState<number>(50);
+    const [dealExpectedClose, setDealExpectedClose] = useState<string>(new Date(Date.now() + 14*24*3600*1000).toISOString().slice(0,16));
+    const [dealNotes, setDealNotes] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [countries, setCountries] = useState<Country[]>([]);
 
@@ -140,7 +164,18 @@ const LeadForm = ({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
-            onSave(formData);
+            const payload: any = { lead: formData };
+            if (!isEdit && createDealFlag) {
+                payload.deal = {
+                    title: dealTitle || `${formData.name} • ${formData.company || 'Deal'}`,
+                    value: Number(dealValue) || 0,
+                    status: dealStatus,
+                    expected_close_date: new Date(dealExpectedClose).toISOString(),
+                    probability: Number(dealProbability) || 0,
+                    notes: dealNotes || undefined,
+                };
+            }
+            onSave(payload);
         }
     };
 
@@ -199,12 +234,53 @@ const LeadForm = ({
                     <textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
                 </div>
             </div>
+            {!isEdit && (
+                <div className="mt-4 p-3 border border-slate-200 dark:border-slate-600 rounded-md bg-slate-50 dark:bg-slate-700/40">
+                  <label className="inline-flex items-center gap-2">
+                    <input type="checkbox" checked={createDealFlag} onChange={(e)=> setCreateDealFlag(e.target.checked)} />
+                    <span className="text-sm font-medium">{t('leads.createDeal') || 'Create associated Deal'}</span>
+                  </label>
+                  {createDealFlag && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+                        <input type="text" value={dealTitle} onChange={(e)=> setDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+                        <input type="number" min="0" value={dealValue} onChange={(e)=> setDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+                        <select value={dealStatus} onChange={(e)=> setDealStatus(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+                          {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+                        <input type="datetime-local" value={dealExpectedClose} onChange={(e)=> setDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
+                        <input type="number" min="0" max="100" value={dealProbability} onChange={(e)=> setDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+                        <textarea rows={2} value={dealNotes} onChange={(e)=> setDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+            )}
             <div className="bg-slate-50 dark:bg-slate-700/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                     {isEdit ? t('common.saveChanges') : t('common.save')}
                 </button>
                 <button type="button" onClick={onCancel} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500 text-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                     {t('common.cancel')}
+                </button>
+                <button type="button" onClick={() => navigate('/budget')} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500 text-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    {t('budget.title') || 'Budget'}
                 </button>
             </div>
         </form>
@@ -280,6 +356,14 @@ function Leads() {
   const [visitDate, setVisitDate] = useState<string>('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const navigate = useNavigate();
+  // Quick create deal modal state
+  const [dealForLead, setDealForLead] = useState<Lead | null>(null);
+  const [qDealTitle, setQDealTitle] = useState('');
+  const [qDealValue, setQDealValue] = useState<number>(0);
+  const [qDealStage, setQDealStage] = useState<DealStage>(DealStage.QUALIFICATION);
+  const [qDealProbability, setQDealProbability] = useState<number>(50);
+  const [qDealExpectedClose, setQDealExpectedClose] = useState<string>(new Date(Date.now()+14*24*3600*1000).toISOString().slice(0,16));
+  const [qDealNotes, setQDealNotes] = useState('');
 
   const openTimeline = async (lead: Lead) => {
     setTimelineLead(lead);
@@ -410,11 +494,14 @@ function Leads() {
     setIsCreateModalOpen(false);
   };
 
-  const handleCreateLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+  const handleCreateLead = async (payload: { lead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>, deal?: { title: string; value: number; status: DealStage; expected_close_date: string; probability: number; notes?: string } }) => {
     if (!user) return;
     try {
-        const score = calculateLeadScore(leadData as Lead);
-        await createLead({ ...leadData, score }, user.id);
+        const score = calculateLeadScore(payload.lead as Lead);
+        const created = await createLead({ ...payload.lead, score }, user.id);
+        if (payload.deal) {
+          await createDeal({ ...payload.deal, lead_id: created.id }, user.id);
+        }
         toastContext?.showToast(t('leads.createSuccess'), 'success');
         handleCloseCreateModal();
         fetchLeads();
@@ -562,6 +649,9 @@ function Leads() {
                     <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('source')} className="flex items-center">Source {getSortIcon('source')}</button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
                     {t('common.segment')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
@@ -570,14 +660,17 @@ function Leads() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
                     <button onClick={() => requestSort('score')} className="flex items-center">Lead Score {getSortIcon('score')}</button>
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('created_at')} className="flex items-center">{t('common.createdAt')} {getSortIcon('created_at')}</button>
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('common.actions')}</th>
                 </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                {loading ? <TableSkeleton columns={7} rows={5} /> : filteredLeads.map(lead => (
+                {loading ? <TableSkeleton columns={8} rows={5} /> : filteredLeads.map(lead => (
                 <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedLeads.includes(lead.id)} onChange={() => handleSelectOne(lead.id)} /></td>
-                    <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => setInlineEditingId(lead.id)}>
+                    <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => setEditingLead(lead)}>
                         <div className="flex items-center gap-2">
                             {inlineEditingId === lead.id ? (
                                 <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
@@ -599,7 +692,9 @@ function Leads() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                     <div className="text-sm text-slate-900 dark:text-slate-100">{lead.company}{lead.country && `, ${lead.country}`}</div>
-                    <div className="text-sm text-slate-500 dark:text-slate-400">{lead.source}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-sm text-slate-900 dark:text-slate-100">
+                      {lead.source}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         {lead.segment && <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{lead.segment}</span>}
@@ -611,11 +706,30 @@ function Leads() {
                             <span className="ml-2 font-semibold">{lead.score}</span>
                         </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-sm text-slate-900 dark:text-slate-100">
+                      {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button onClick={() => setEmailingLead(lead)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-1" title="Send Email">
+                        {/** Disable all lead actions when the lead is already converted (Won) */}
+                        <button 
+                            disabled={lead.status === LeadStatus.Won}
+                            onClick={() => { setDealForLead(lead); setQDealTitle(`${lead.name} • ${lead.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now()+14*24*3600*1000).toISOString().slice(0,16)); setQDealNotes(''); }} 
+                            className={`p-1 ${lead.status===LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`} 
+                            title={t('deals.actions.createDeal')}>
+                            <PlusIcon className="h-5 w-5" />
+                        </button>
+                        <button 
+                            disabled={lead.status === LeadStatus.Won}
+                            onClick={() => setEmailingLead(lead)} 
+                            className={`p-1 ${lead.status===LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500'}`} 
+                            title="Send Email">
                             <EnvelopeIcon className="h-5 w-5" />
                         </button>
-                        <button onClick={() => { openTimeline(lead); }} className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 p-1" title="Timeline">
+                        <button 
+                            disabled={lead.status === LeadStatus.Won}
+                            onClick={() => { openTimeline(lead); }} 
+                            className={`p-1 ${lead.status===LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600'}`} 
+                            title="Timeline">
                             <ClockIcon className="h-5 w-5" />
                         </button>
                         {lead.status !== LeadStatus.Won && (
@@ -623,7 +737,11 @@ function Leads() {
                                 <CheckCircleIcon className="h-5 w-5" />
                             </button>
                         )}
-                        <button onClick={() => setEditingLead(lead)} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-1" title="Edit Lead"><EditIcon className="h-5 w-5" /></button>
+                        <button 
+                            disabled={lead.status === LeadStatus.Won}
+                            onClick={() => setEditingLead(lead)} 
+                            className={`p-1 ${lead.status===LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`} 
+                            title="Edit Lead"><EditIcon className="h-5 w-5" /></button>
                     </td>
                 </tr>
                 ))}
@@ -674,11 +792,11 @@ function Leads() {
               <LeadForm 
                 isEdit 
                 lead={editingLead} 
-                onSave={(formData) => {
+                onSave={(payload) => {
                   if (!editingLead) return;
                   const updatedLead = {
                     ...editingLead,
-                    ...formData,
+                    ...(payload.lead as any),
                   };
                   handleUpdateLead(updatedLead);
                 }} 
@@ -742,8 +860,13 @@ function Leads() {
                         <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
                           const checked = e.target.checked; setStepInfoSent(checked);
                           if (detailLead && user && checked) {
-                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SEND_INFORMATION, status: TaskStatus.COMPLETED, title: 'Env Do de informaci On solicitada' } as any);
-                            setLeadTasks(await listTasksForLead(detailLead.id, false));
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await completeTask(existing.id);
+                              setLeadTasks(await listTasksForLead(detailLead.id, false));
+                            } else {
+                              toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                            }
                           }
                         }} /> {t('leads.timeline.sendInfo')}
                       </label>
@@ -751,8 +874,13 @@ function Leads() {
                         <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
                           const checked = e.target.checked; setStepPricesSent(checked);
                           if (detailLead && user && checked) {
-                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SEND_QUOTATION, status: TaskStatus.COMPLETED, title: 'Env Do de precios' } as any);
-                            setLeadTasks(await listTasksForLead(detailLead.id, false));
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await completeTask(existing.id);
+                              setLeadTasks(await listTasksForLead(detailLead.id, false));
+                            } else {
+                              toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                            }
                           }
                         }} /> {t('leads.timeline.sendPrices')}
                       </label>
@@ -760,8 +888,13 @@ function Leads() {
                         <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
                           const checked = e.target.checked; setStepSamplesSent(checked);
                           if (detailLead && user && checked) {
-                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SEND_SAMPLES, status: TaskStatus.COMPLETED, title: 'Env Do de muestras' } as any);
-                            setLeadTasks(await listTasksForLead(detailLead.id, false));
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await completeTask(existing.id);
+                              setLeadTasks(await listTasksForLead(detailLead.id, false));
+                            } else {
+                              toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                            }
                           }
                         }} /> {t('leads.timeline.sendSamples')}
                       </label>
@@ -775,9 +908,14 @@ function Leads() {
                         {stepVisitPlanned && visitDate && (
                           <button className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
                             if (!detailLead || !user) return;
-                            await createTask({ user_id: user.id, lead_id: detailLead.id, type: TaskType.SCHEDULE_VISIT, status: TaskStatus.PENDING, title: 'Agendar visita', due_date: new Date(visitDate).toISOString() } as any);
-                            setLeadTasks(await listTasksForLead(detailLead.id));
-                            setVisitDate('');
+                            const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
+                              setLeadTasks(await listTasksForLead(detailLead.id));
+                              setVisitDate('');
+                            } else {
+                              toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
+                            }
                           }}>{t('leads.timeline.save')}</button>
                         )}
                       </div>
@@ -825,6 +963,60 @@ function Leads() {
         </div>
       )}
 
+      {dealForLead && (
+        <Modal title={`${t('deals.actions.createDeal')} • ${dealForLead.name}`} onClose={() => setDealForLead(null)}>
+          <div className="p-6 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+                <input type="text" value={qDealTitle} onChange={(e)=> setQDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+                <input type="number" min="0" value={qDealValue} onChange={(e)=> setQDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+                <select value={qDealStage} onChange={(e)=> setQDealStage(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+                  {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+                <input type="datetime-local" value={qDealExpectedClose} onChange={(e)=> setQDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
+                <input type="number" min="0" max="100" value={qDealProbability} onChange={(e)=> setQDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+                <textarea rows={2} value={qDealNotes} onChange={(e)=> setQDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+            </div>
+            <div className="text-right">
+              <button className="px-4 py-2 bg-primary text-white rounded-md" onClick={async ()=> {
+                if (!user || !dealForLead) return;
+                try {
+                  await createDeal({
+                    title: qDealTitle || `${dealForLead.name} • ${dealForLead.company || 'Deal'}`,
+                    value: Number(qDealValue) || 0,
+                    status: qDealStage,
+                    expected_close_date: new Date(qDealExpectedClose).toISOString(),
+                    probability: Number(qDealProbability) || 0,
+                    notes: qDealNotes || undefined,
+                    lead_id: dealForLead.id,
+                  }, user.id);
+                  toastContext?.showToast('Deal created.', 'success');
+                  setDealForLead(null);
+                } catch (e) {
+                  toastContext?.showToast('Failed to create deal.', 'danger');
+                }
+              }}>{t('deals.form.saveDeal')}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {timelineLead && (
         <Modal title={`Timeline • ${timelineLead.name}`} onClose={() => setTimelineLead(null)}>
           <div className="p-6 space-y-4">
@@ -837,8 +1029,13 @@ function Leads() {
                     <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
                       const checked = e.target.checked; setStepInfoSent(checked);
                       if (timelineLead && user && checked) {
-                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SEND_INFORMATION, status: TaskStatus.COMPLETED, title: 'Envio de información solicitada' } as any);
-                        setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                        const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                        if (existing) {
+                          await completeTask(existing.id);
+                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                        } else {
+                          toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                        }
                       }
                     }} /> {t('leads.timeline.sendInfo')}
                   </label>
@@ -846,8 +1043,13 @@ function Leads() {
                     <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
                       const checked = e.target.checked; setStepPricesSent(checked);
                       if (timelineLead && user && checked) {
-                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SEND_QUOTATION, status: TaskStatus.COMPLETED, title: 'Envio de precios' } as any);
-                        setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                        const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                        if (existing) {
+                          await completeTask(existing.id);
+                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                        } else {
+                          toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                        }
                       }
                     }} /> {t('leads.timeline.sendPrices')}
                   </label>
@@ -855,8 +1057,13 @@ function Leads() {
                     <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
                       const checked = e.target.checked; setStepSamplesSent(checked);
                       if (timelineLead && user && checked) {
-                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SEND_SAMPLES, status: TaskStatus.COMPLETED, title: 'Envio de muestras' } as any);
-                        setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                        const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                        if (existing) {
+                          await completeTask(existing.id);
+                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                        } else {
+                          toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                        }
                       }
                     }} /> {t('leads.timeline.sendSamples')}
                   </label>
@@ -871,11 +1078,16 @@ function Leads() {
                       <button type="button" className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
                         if (!timelineLead || !user) return;
                         try {
-                          await createTask({ user_id: user.id, lead_id: timelineLead.id, type: TaskType.SCHEDULE_VISIT, status: TaskStatus.PENDING, title: 'Agendar visita', due_date: new Date(visitDate).toISOString() } as any);
-                          setLeadTasks(await listTasksForLead(timelineLead.id));
-                          setVisitDate('');
-                          setStepVisitPlanned(false);
-                          toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
+                          const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
+                          if (existing) {
+                            await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
+                            setLeadTasks(await listTasksForLead(timelineLead.id));
+                            setVisitDate('');
+                            setStepVisitPlanned(false);
+                            toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
+                          } else {
+                            toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
+                          }
                         } catch (e) {
                           toastContext?.showToast(t('leads.timeline.scheduleError'), 'danger');
                         }

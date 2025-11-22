@@ -18,7 +18,9 @@ const DB_TABLES = [
     'report_runs',
     'activities',
     'webhooks',
-    'connected_integrations'
+    'connected_integrations',
+    'automation_rules',
+    'automation_alerts'
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];

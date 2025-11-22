@@ -1,5 +1,8 @@
 import type { Lead, Customer } from '../types';
-import { LeadStatus, LeadSource, CustomerStatus } from '../types';
+import { LeadStatus, LeadSource, CustomerStatus, TaskType, TaskStatus } from '../types';
+import { createTask } from './tasksService';
+import * as db from './databaseService';
+import { addAutomationAlert } from './alertsService';
 
 // --- TYPES ---
 
@@ -83,6 +86,7 @@ export const ACTION_METADATA = {
     [ActionType.CREATE_TASK]: {
         name: 'Create Task',
         params: {
+            taskType: { label: 'Task Type', type: 'enum', options: Object.values(TaskType) },
             title: { label: 'Task Title', type: 'string', placeholder: 'e.g., Call new lead {{name}}' },
             assignedTo: { label: 'Assigned To', type: 'string', placeholder: 'e.g., sales_manager' }
         }
@@ -102,9 +106,9 @@ export const ACTION_METADATA = {
     }
 };
 
-// --- IN-MEMORY DATA STORE ---
+// --- PERSISTENCE (Supabase) ---
 
-let rules: Rule[] = [
+const seedRules: Rule[] = [
   {
     id: 1,
     name: 'Follow up on new high-value website leads',
@@ -130,9 +134,22 @@ let rules: Rule[] = [
       { type: ActionType.SHOW_NOTIFICATION, params: { message: '🎉 Lead {{name}} from {{company}} has been won!' } },
     ],
     enabled: true,
+  },
+  {
+    id: 3,
+    name: 'Lead Creation generic automation',
+    trigger: TriggerType.LEAD_CREATED,
+    conditions: [],
+    actions: [
+      { type: ActionType.CREATE_TASK, params: { taskType: 'Send Information', title: 'Send information requested', assignedTo: 'owner' } },
+      { type: ActionType.CREATE_TASK, params: { taskType: 'Send Quotation',  title: 'Send prices', assignedTo: 'owner' } },
+      { type: ActionType.CREATE_TASK, params: { taskType: 'Send Samples',    title: 'Send samples', assignedTo: 'owner' } },
+      { type: ActionType.CREATE_TASK, params: { taskType: 'Schedule Visit',  title: 'Visit scheduled', assignedTo: 'owner' } },
+    ],
+    enabled: true,
   }
 ];
-let ruleIdCounter = rules.length + 1;
+// Simulate network delay for UI consistency
 
 // Simulate API delay
 const delay = <T,>(data: T): Promise<T> => new Promise(resolve => setTimeout(() => resolve(data), 300));
@@ -240,43 +257,66 @@ const executeAction = (action: Action, data: Lead | Customer): void => {
 /**
  * Retrieves all automation rules.
  */
-export const getRules = async (): Promise<Rule[]> => delay(rules);
+export const getRules = async (): Promise<Rule[]> => {
+    const list = await db.getAll<Rule>('automation_rules' as any);
+    if (list.length === 0) {
+        // Seed initial rules
+        await db.upsert<Rule>('automation_rules' as any, seedRules.map(r => ({
+            name: r.name,
+            trigger: r.trigger,
+            conditions: r.conditions,
+            actions: r.actions,
+            enabled: r.enabled,
+        }) as any));
+        return await db.getAll<Rule>('automation_rules' as any);
+    }
+    return list;
+};
 
 /**
  * Retrieves a single rule by ID.
  */
-export const getRuleById = async (id: number): Promise<Rule | undefined> => delay(rules.find(r => r.id === id));
+export const getRuleById = async (id: number): Promise<Rule | undefined> => {
+    const r = await db.getById<Rule>('automation_rules' as any, id);
+    return r ?? undefined;
+};
 
 /**
  * Creates a new automation rule.
  */
 export const createRule = async (ruleData: Omit<Rule, 'id'>): Promise<Rule> => {
-    const newRule: Rule = {
-        id: ruleIdCounter++,
-        ...ruleData,
-    };
-    rules.push(newRule);
-    return delay(newRule);
+    return db.create<Rule>('automation_rules' as any, ruleData as any);
 };
 
 /**
  * Updates an existing automation rule.
  */
 export const updateRule = async (updatedRule: Rule): Promise<Rule> => {
-    const ruleIndex = rules.findIndex(r => r.id === updatedRule.id);
-    if (ruleIndex === -1) {
-        throw new Error('Rule not found');
-    }
-    rules[ruleIndex] = updatedRule;
-    return delay(updatedRule);
+    return db.update<Rule>('automation_rules' as any, updatedRule as any);
 };
 
 /**
  * Deletes an automation rule by its ID.
  */
 export const deleteRule = async (ruleId: number): Promise<void> => {
-    rules = rules.filter(r => r.id !== ruleId);
-    return delay(undefined);
+    return db.remove('automation_rules' as any, ruleId);
+};
+
+/**
+ * Clones an existing rule creating a new one with a new id and "(Copy)" suffix.
+ * The clone is created disabled by default to avoid unintended execution.
+ */
+export const cloneRule = async (ruleId: number): Promise<Rule> => {
+    const original = await getRuleById(ruleId);
+    if (!original) throw new Error('Rule not found');
+    const deepClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+    return db.create<Rule>('automation_rules' as any, {
+        name: `${original.name} (Copy)`,
+        trigger: original.trigger,
+        conditions: deepClone(original.conditions),
+        actions: deepClone(original.actions),
+        enabled: false,
+    } as any);
 };
 
 /**
@@ -296,5 +336,49 @@ export const executeRule = async (rule: Rule, data: Lead | Customer): Promise<vo
         }
     } else {
          console.log(`[AUTOMATION] Rule "${rule.name}" conditions not met for ${data.name}.`);
+    }
+};
+
+/**
+ * Run all Lead-Created rules and execute side effects (e.g., create tasks).
+ * This bridges the in-memory automation rules with actual app actions.
+ */
+export const runLeadCreatedAutomations = async (lead: Lead): Promise<void> => {
+    try {
+        const all = await getRules();
+        const matching = all.filter(r => r.trigger === TriggerType.LEAD_CREATED && r.enabled && evaluateConditions(lead, r.conditions));
+        if (matching.length === 0) return;
+        for (const rule of matching) {
+            for (const action of rule.actions) {
+                const resolve = (tpl: string) => {
+                    if (typeof tpl !== 'string') return tpl;
+                    return tpl.replace(/{{(.*?)}}/g, (_, path) => {
+                        const v = path.split('.').reduce((o, i) => (o as any)?.[i], lead as any);
+                        return v !== undefined ? String(v) : '';
+                    });
+                };
+                if (action.type === ActionType.CREATE_TASK) {
+                    const title = resolve(action.params.title || 'Follow up');
+                    const wanted = String(action.params.taskType || '').trim();
+                    const type = (Object.values(TaskType) as string[]).includes(wanted) ? (wanted as TaskType) : TaskType.FOLLOW_UP_CALL;
+                    await createTask({ user_id: lead.user_id, lead_id: lead.id, type, status: TaskStatus.PENDING, title, rule_title: rule.name } as any);
+                } else if (action.type === ActionType.SHOW_NOTIFICATION) {
+                    const message = resolve(action.params.message || '');
+                    await addAutomationAlert({
+                        type: 'follow_up_needed' as any,
+                        priority: 'Low' as any,
+                        message,
+                        recommendation: '',
+                        relatedEntityId: lead.id,
+                        relatedEntityName: lead.name,
+                        rule_title: rule.name,
+                    } as any);
+                } else {
+                    // noop for SEND_EMAIL / UPDATE_FIELD in this lightweight client implementation
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[automation] runLeadCreatedAutomations failed', e);
     }
 };

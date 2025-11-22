@@ -11,6 +11,10 @@ export async function updateTask(task: Task): Promise<Task> {
   return db.update<Task>('tasks', task);
 }
 
+export async function deleteTask(taskId: number): Promise<void> {
+  return db.remove('tasks', taskId);
+}
+
 export async function completeTask(taskId: number): Promise<Task> {
   const { data, error } = await supabase
     .from('tasks')

@@ -3,6 +3,7 @@ import React from 'react';
 interface DateRangePickerProps {
     value: { from: string, to: string } | null;
     onChange: (range: { from: string, to: string } | null) => void;
+    rightSlot?: React.ReactNode;
 }
 
 const presets = [
@@ -10,6 +11,8 @@ const presets = [
     { label: 'Last 7 Days', value: '7d' },
     { label: 'Last 30 Days', value: '30d' },
     { label: 'This Month', value: 'month' },
+    { label: 'This Quarter', value: 'quarter' },
+    { label: 'This Year', value: 'year' },
 ];
 
 const getRangeFromPreset = (preset: string | null) => {
@@ -32,6 +35,15 @@ const getRangeFromPreset = (preset: string | null) => {
         case 'month':
             from = new Date(to.getFullYear(), to.getMonth(), 1);
             break;
+        case 'quarter': {
+            const month = to.getMonth();
+            const quarterStartMonth = Math.floor(month / 3) * 3;
+            from = new Date(to.getFullYear(), quarterStartMonth, 1);
+            break;
+        }
+        case 'year':
+            from = new Date(to.getFullYear(), 0, 1);
+            break;
         default:
             return null;
     }
@@ -43,7 +55,7 @@ const getRangeFromPreset = (preset: string | null) => {
 };
 
 
-function DateRangePicker({ value, onChange }: DateRangePickerProps) {
+function DateRangePicker({ value, onChange, rightSlot }: DateRangePickerProps) {
     
     const handlePresetClick = (presetValue: string | null) => {
         onChange(presetValue ? getRangeFromPreset(presetValue) : null);
@@ -77,6 +89,7 @@ function DateRangePicker({ value, onChange }: DateRangePickerProps) {
                         {p.label}
                     </button>
                 ))}
+                {rightSlot && <div className="ml-2">{rightSlot}</div>}
             </div>
         </div>
     );
