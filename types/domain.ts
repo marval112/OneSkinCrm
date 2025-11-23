@@ -1,5 +1,4 @@
 
-
 // --- CORE TYPES ---
 
 export enum Segment {
@@ -24,6 +23,9 @@ export enum LeadSource {
   OnlineAd = 'Online Ad',
   Organic = 'Organic',
   Paid = 'Paid',
+  LinkedIn = 'LinkedIn',
+  Google = 'Google',
+  Directory = 'Directory',
 }
 
 export interface Lead {
@@ -47,9 +49,9 @@ export interface Lead {
 }
 
 export enum CustomerStatus {
-    Active = 'Active',
-    Churned = 'Churned',
-    Prospect = 'Prospect',
+  Active = 'Active',
+  Churned = 'Churned',
+  Prospect = 'Prospect',
 }
 
 export interface Customer {
@@ -68,10 +70,10 @@ export interface Customer {
 }
 
 export interface ProductCategory {
-    id: number;
-    name: string;
-    description?: string;
-    parent_id: number | null;
+  id: number;
+  name: string;
+  description?: string;
+  parent_id: number | null;
 }
 
 export interface Product {
@@ -146,108 +148,11 @@ export interface User {
   seller_code?: string | null;
 }
 
-export interface ToastMessage {
-  message: string;
-  type: 'success' | 'danger' | 'warning' | 'info';
-}
-
-export interface ToastContextType {
-  showToast: (message: string, type: ToastMessage['type']) => void;
-}
-
 export interface Country {
   code: string;
   name: string;
 }
 
-export interface ThemeColors {
-  primary: string; primaryHover: string;
-  success: string; successHover: string;
-  warning: string; warningHover: string;
-  danger: string; dangerHover: string;
-}
-
-export interface Theme {
-  id: string;
-  name: string;
-  colors: ThemeColors;
-}
-
-export enum ReportFrequency { DAILY = 'Daily', WEEKLY = 'Weekly', MONTHLY = 'Monthly' }
-export enum ReportFormat { PDF = 'PDF', CSV = 'CSV', EXCEL = 'Excel' }
-export enum ReportType { LEADS = 'Leads Data', DEALS = 'Deals Pipeline', REVENUE = 'Revenue Summary' }
-
-export interface ScheduledReport {
-  id: number;
-  name: string;
-  report_type: ReportType;
-  frequency: ReportFrequency;
-  recipients: string[];
-  format: ReportFormat;
-  last_run: string | null;
-  next_run: string;
-  include_charts?: boolean;
-}
-
-export enum ReportRunStatus { RUNNING = 'running', SUCCESS = 'success', FAILED = 'failed' }
-
-export interface ReportRun {
-  id: number;
-  report_id: number;
-  status: ReportRunStatus;
-  started_at: string;
-  finished_at: string | null;
-  message?: string;
-  file_size_bytes?: number;
-}
-
-export enum WebhookEvent {
-    LEAD_CREATED = 'lead.created',
-    LEAD_UPDATED = 'lead.updated',
-    CUSTOMER_CREATED = 'customer.created',
-    DEAL_STAGE_CHANGED = 'deal.stage_changed',
-}
-
-export interface Webhook {
-    id: number;
-    name: string;
-    url: string;
-    events: WebhookEvent[];
-    active: boolean;
-    // Fix: Add optional `last_triggered` property to match usage in services.
-    last_triggered?: string | null;
-}
-
-export interface Integration {
-  id: string;
-  // Fix: Renamed 'service' to 'name' to match data and UI usage.
-  name: string;
-  status: 'connected' | 'disconnected';
-  config: Record<string, any>;
-  logo?: string;
-  description?: string;
-}
-
-export enum AlertType {
-  CHURN_RISK = 'churn_risk',
-  HOT_LEAD = 'hot_lead',
-  STALE_DEAL = 'stale_deal',
-  FOLLOW_UP_NEEDED = 'follow_up_needed',
-}
-
-export enum AlertPriority { HIGH = 'High', MEDIUM = 'Medium', LOW = 'Low' }
-
-export interface Alert {
-  id: string;
-  type: AlertType;
-  priority: AlertPriority;
-  message: string;
-  recommendation: string;
-  relatedEntityId: number;
-  relatedEntityName: string;
-}
-
-export type ActivityChannel = 'email' | 'call' | 'note' | 'meeting';
 export interface ActivityLog {
   id: number;
   user_id: number | null;
@@ -263,6 +168,8 @@ export interface ActivityLog {
   created_at: string;
   attachments?: ActivityAttachment[];
 }
+
+export type ActivityChannel = 'email' | 'call' | 'note' | 'meeting';
 
 export interface ActivityAttachment {
   filename: string;

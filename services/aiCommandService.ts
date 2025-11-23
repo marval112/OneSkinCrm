@@ -4,18 +4,18 @@ import { getGeminiApiKey, loadGeminiApiKey } from './aiSettingsService';
 // --- TYPES ---
 
 export enum Command {
-  SHOW_LEADS = 'show_leads',
-  CREATE_TASK = 'create_task',
-  FIND_CUSTOMER = 'find_customer',
-  UNKNOWN = 'unknown',
+    SHOW_LEADS = 'show_leads',
+    CREATE_TASK = 'create_task',
+    FIND_CUSTOMER = 'find_customer',
+    UNKNOWN = 'unknown',
 }
 
 export interface StructuredCommand {
-  command: Command;
-  args: { [key: string]: any };
+    command: Command;
+    args: { [key: string]: any };
 }
 
-export type CommandResponse = 
+export type CommandResponse =
     | { type: 'command'; data: StructuredCommand }
     | { type: 'text'; data: string };
 
@@ -76,18 +76,41 @@ async function getClient(): Promise<GoogleGenAI | null> {
     return key ? new GoogleGenAI({ apiKey: key }) : null;
 }
 
-export const processCommand = async (prompt: string): Promise<CommandResponse> => {
+export const processCommand = async (prompt: string, context?: string): Promise<CommandResponse> => {
     const ai = await getClient();
     if (!ai) {
         return { type: 'text', data: "AI features are disabled. Please set your Gemini API key in Settings." };
     }
 
     try {
+        const systemInstruction = `You are an AI assistant for the OneSkin CRM, a premium manufacturer of high-end lacquered decorative panels (MDF/Melamine) for the furniture and interior design industry.
+        
+        CURRENT CONTEXT: ${context || 'None'}
+        
+        CAPABILITIES:
+        - Analyze leads and customers based on their information
+        - Provide insights about lead quality, potential, and next steps
+        - Suggest follow-up actions and strategies
+        - Answer questions about CRM data and operations
+        - Help with sales and business development strategies
+        
+        When analyzing a lead, consider:
+        - Company name and industry relevance
+        - Lead source and quality indicators
+        - Potential for business in the decorative panels/furniture sector
+        - Suggested next steps for engagement
+        - Timeline recommendations
+        
+        Be helpful, professional, and provide actionable insights. Use the context to give relevant answers.`;
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
-            config: { tools },
-            systemInstruction: 'You are an AI assistant for the OneSkin CRM. Understand user commands and use the provided tools to execute actions. If the user is just chatting, respond conversationally.'
+            config: {
+                // Removed tools to prevent function calling loop
+                // AI will respond with text analysis instead
+                systemInstruction
+            }
         });
 
         const functionCalls = response.functionCalls;
@@ -106,7 +129,7 @@ export const processCommand = async (prompt: string): Promise<CommandResponse> =
                 };
             }
         }
-        
+
         // If no function call, or an invalid one, return the text response
         return { type: 'text', data: response.text };
 

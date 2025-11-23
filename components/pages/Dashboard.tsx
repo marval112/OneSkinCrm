@@ -16,24 +16,28 @@ import { generateDashboardInsights } from '../../services/geminiService';
 const UserPlusIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg>;
 const CurrencyDollarIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ArrowTrendingUpIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.328 4.329 7.09-7.091M2.25 18h19.5v-19.5" /></svg>;
+const DocumentCurrencyDollarIcon = CurrencyDollarIcon; // Reusing CurrencyDollarIcon for DocumentCurrencyDollarIcon
+const UserGroupIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.75c-.256-.81-.9-1.548-1.752-2.071a9.71 9.71 0 00-5.498-1.52c-2.26 0-4.44.69-6.24 1.994a10.007 10.007 0 01-4.24 2.387c-.403.078-.753.307-.97.614-.216.307-.284.66-.196 1.007.088.347.39.625.754.757a10.007 10.007 0 004.24 2.387c2.26 0 4.44-.69 6.24-1.994a10.007 10.007 0 014.24-2.387c.403-.078.753-.307.97-.614.216-.307.284-.66.196-1.007-.088-.347-.39-.625-.754-.757zM12 12a4.5 4.5 0 100-9 4.5 4.5 0 000 9z" /></svg>;
 
 
 const KPICard = ({ title, value, accent }: { title: string; value: string; accent?: 'primary' | 'success' | 'warning'; }) => (
-  <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+  <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
     <div className="flex items-center justify-between">
       <h3 className="text-xs font-semibold tracking-wider uppercase text-slate-500 dark:text-slate-400">{title}</h3>
-      <span className={`inline-block h-2 w-2 rounded-full ${accent === 'success' ? 'bg-success' : accent === 'warning' ? 'bg-warning' : 'bg-primary'}`}></span>
+      {accent === 'primary' && <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><DocumentCurrencyDollarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>}
+      {accent === 'success' && <div className="p-1.5 bg-green-50 dark:bg-green-900/30 rounded-lg"><ArrowTrendingUpIcon className="w-4 h-4 text-green-600 dark:text-green-400" /></div>}
+      {!accent && <div className="p-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg"><UserGroupIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" /></div>}
     </div>
-    <p className="text-3xl font-bold mt-2 text-slate-900 dark:text-slate-100">{value}</p>
+    <p className="text-2xl font-bold mt-2 text-slate-900 dark:text-slate-100">{value}</p>
   </div>
 );
 
 type Activity = {
-    id: string;
-    type: 'lead' | 'deal' | 'customer';
-    text: string;
-    date: string;
-    icon: React.ReactElement;
+  id: string;
+  type: 'lead' | 'deal' | 'customer';
+  text: string;
+  date: string;
+  icon: React.ReactElement;
 };
 
 interface DashboardStats {
@@ -92,7 +96,7 @@ function Dashboard() {
   const budgetYears = [2026, 2027, 2028];
   const [chartYear, setChartYear] = useState<number | 'All'>('All');
   const chartYears: Array<number | 'All'> = ['All', 2026, 2027, 2028];
-  
+
   const BLUE_SHADES = ['#1e3a8a', '#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
   const COLORS = ['#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
   const SERIES_ACCENT = '#2563eb';
@@ -209,7 +213,7 @@ function Dashboard() {
     if (!user) return;
     try {
       setLoading(true);
-      
+
       // Fetch all data first, without date range filters
       let leadsQuery = supabase.from('leads').select('*');
       let customersQuery = supabase.from('customers').select('*');
@@ -217,9 +221,9 @@ function Dashboard() {
       let usersQuery = supabase.from('users').select('id, email');
 
       if (user.role === 'Commercial') {
-          leadsQuery = leadsQuery.eq('user_id', user.id);
-          customersQuery = customersQuery.eq('user_id', user.id);
-          dealsQuery = dealsQuery.eq('user_id', user.id);
+        leadsQuery = leadsQuery.eq('user_id', user.id);
+        customersQuery = customersQuery.eq('user_id', user.id);
+        dealsQuery = dealsQuery.eq('user_id', user.id);
       }
 
       const [
@@ -276,7 +280,7 @@ function Dashboard() {
       }
 
       // --- CLIENT-SIDE FILTERING & CALCULATIONS ---
-      
+
       // Year helpers
       const dateYear = (iso?: string | null) => (iso ? new Date(iso).getFullYear() : undefined);
       const matchYear = (yr: number | 'All', val?: number) => (yr === 'All' ? true : val === yr);
@@ -294,9 +298,9 @@ function Dashboard() {
 
       const dealsClosedInDateRange = currentDateRange
         ? safeDeals.filter(d =>
-            (d.status === DealStage.CLOSED_WON || d.status === DealStage.CLOSED_LOST) &&
-            d.updated_at >= currentDateRange.from && d.updated_at <= currentDateRange.to
-          )
+          (d.status === DealStage.CLOSED_WON || d.status === DealStage.CLOSED_LOST) &&
+          d.updated_at >= currentDateRange.from && d.updated_at <= currentDateRange.to
+        )
         : safeDeals.filter(d => d.status === DealStage.CLOSED_WON || d.status === DealStage.CLOSED_LOST);
       const dealsClosedInYear = dealsClosedInDateRange.filter(d => closedYearMatches(d));
 
@@ -306,15 +310,15 @@ function Dashboard() {
       const totalRevenue = wonDeals.reduce((sum, deal) => sum + Number(deal.value), 0);
       const avgDealSize = wonDeals.length > 0 ? totalRevenue / wonDeals.length : 0; // legacy calc (unused)
       const winRate = (wonDeals.length + lostDeals.length) > 0 ? (wonDeals.length / (wonDeals.length + lostDeals.length)) * 100 : 0;
-      
+
       const wonLeadsInYear = leadsInYear.filter(l => l.status === LeadStatus.Won);
       const leadConversionRate = leadsInYear.length > 0 ? (wonLeadsInYear.length / leadsInYear.length) * 100 : 0;
 
       // Chart: Revenue by Month (based on deals won in range)
-      const revenueByMonthData = wonDeals.reduce((acc: {[key: string]: number}, deal) => {
-          const month = new Date(deal.updated_at).toLocaleString('default', { month: 'short', year: '2-digit' });
-          acc[month] = (acc[month] || 0) + Number(deal.value);
-          return acc;
+      const revenueByMonthData = wonDeals.reduce((acc: { [key: string]: number }, deal) => {
+        const month = new Date(deal.updated_at).toLocaleString('default', { month: 'short', year: '2-digit' });
+        acc[month] = (acc[month] || 0) + Number(deal.value);
+        return acc;
       }, {} as Record<string, number>);
       const revenueByMonth = Object.entries(revenueByMonthData).map(([name, revenue]) => ({ name, revenue }));
 
@@ -324,7 +328,7 @@ function Dashboard() {
         return acc;
       }, {});
       const leadSourceData = Object.keys(sourceCounts).map(name => ({ name, value: sourceCounts[name] }));
-      
+
       // Chart: Leads by Status (based on leads created in range)
       const statusCounts = leadsInYear.reduce((acc: Record<string, number>, lead) => {
         acc[lead.status] = (acc[lead.status] || 0) + 1;
@@ -361,7 +365,7 @@ function Dashboard() {
       });
       let leadsByOwner = Object.entries(leadOwnerCounts).map(([name, value]) => ({ name, value }));
       leadsByOwner.sort((a, b) => b.value - a.value);
-      
+
       // Chart: Deal Value by Stage
       // Respect date range for both open and closed stages
       const openDealsAll = safeDeals.filter(d => d.status !== DealStage.CLOSED_WON && d.status !== DealStage.CLOSED_LOST);
@@ -370,13 +374,13 @@ function Dashboard() {
         : openDealsAll;
       const openDealsInYear = openDeals.filter(d => matchYear(chartYear, dateYear(d.updated_at)));
       const openPipelineTotal = openDeals.reduce((sum, d) => sum + Number(d.value), 0);
-      
+
       const dealValueByStage = Object.values(DealStage).map(stage => {
         let dealsForStage: Deal[];
         if (stage === DealStage.CLOSED_WON || stage === DealStage.CLOSED_LOST) {
-            dealsForStage = dealsClosedInYear.filter(d => d.status === stage);
+          dealsForStage = dealsClosedInYear.filter(d => d.status === stage);
         } else {
-            dealsForStage = openDealsInYear.filter(d => d.status === stage);
+          dealsForStage = openDealsInYear.filter(d => d.status === stage);
         }
         const total = dealsForStage.reduce((sum, d) => sum + Number(d.value), 0);
         return {
@@ -388,21 +392,21 @@ function Dashboard() {
 
 
       // Chart: Team Performance (Admin only, based on deals closed in range)
-          const userMap = new Map(safeUsers.map(u => [u.id, u.email]));
+      const userMap = new Map(safeUsers.map(u => [u.id, u.email]));
       const amountsByUser = dealsClosedInYear.reduce((acc: Record<number, { won: number; lost: number }>, d) => {
         const uid = d.user_id as number | null;
         if (!uid) return acc;
         if (!acc[uid]) acc[uid] = { won: 0, lost: 0 };
         if (d.status === DealStage.CLOSED_WON) acc[uid].won += Number(d.value);
         if (d.status === DealStage.CLOSED_LOST) acc[uid].lost += Number(d.value);
-              return acc;
+        return acc;
       }, {} as Record<number, { won: number; lost: number }>);
 
       let teamPerformance: { name: string, won: number, lost: number }[] = [];
       if (user.role === 'Admin') {
         teamPerformance = Object.entries(amountsByUser)
           .map(([userId, vals]) => ({ name: userMap.get(parseInt(userId)) || `User #${userId}`, won: vals.won, lost: vals.lost }))
-          .sort((a,b) => (b.won + b.lost) - (a.won + a.lost));
+          .sort((a, b) => (b.won + b.lost) - (a.won + a.lost));
         if (teamPerformance.length > 0 && selectedUserId === 'All') {
           const totals = teamPerformance.reduce((acc, cur) => ({ won: acc.won + cur.won, lost: acc.lost + cur.lost }), { won: 0, lost: 0 });
           teamPerformance.unshift({ name: t('dashboard.allSellers') || 'All Sellers', won: totals.won, lost: totals.lost });
@@ -415,15 +419,15 @@ function Dashboard() {
 
       // Widget: Top 5 Leads (all-time)
       const topLeads = [...safeLeads].sort((a, b) => b.score - a.score).slice(0, 5);
-      
+
       // Widget: Recent Activity
       const recentActivity: Activity[] = [
-          ...safeLeads.slice(0, 5).map(l => ({ id: `l-${l.id}`, type: 'lead' as const, text: t('dashboard.activity.leadCreated').replace('{name}', l.name), date: l.created_at, icon: <UserPlusIcon className="w-5 h-5 text-blue-500" /> })),
-          ...safeDeals.slice(0, 5).map(d => ({ id: `d-${d.id}`, type: 'deal' as const, text: t('dashboard.activity.dealCreated').replace('{title}', d.title), date: d.created_at, icon: <CurrencyDollarIcon className="w-5 h-5 text-green-500" /> })),
-          ...safeCustomers.slice(0, 5).map(c => ({ id: `c-${c.id}`, type: 'customer' as const, text: t('dashboard.activity.customerCreated').replace('{name}', c.name), date: c.created_at, icon: <ArrowTrendingUpIcon className="w-5 h-5 text-purple-500" /> }))
+        ...safeLeads.slice(0, 5).map(l => ({ id: `l-${l.id}`, type: 'lead' as const, text: t('dashboard.activity.leadCreated').replace('{name}', l.name), date: l.created_at, icon: <UserPlusIcon className="w-5 h-5 text-blue-500" /> })),
+        ...safeDeals.slice(0, 5).map(d => ({ id: `d-${d.id}`, type: 'deal' as const, text: t('dashboard.activity.dealCreated').replace('{title}', d.title), date: d.created_at, icon: <CurrencyDollarIcon className="w-5 h-5 text-green-500" /> })),
+        ...safeCustomers.slice(0, 5).map(c => ({ id: `c-${c.id}`, type: 'customer' as const, text: t('dashboard.activity.customerCreated').replace('{name}', c.name), date: c.created_at, icon: <ArrowTrendingUpIcon className="w-5 h-5 text-purple-500" /> }))
       ]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 7);
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 7);
 
       // Customers in date range (for charts)
       const customersInDateRange = currentDateRange
@@ -460,7 +464,7 @@ function Dashboard() {
       try {
         const budgets = await getBudgetsForCustomers(year, custIds);
         budget2026 = budgets.reduce((s, b) => s + Number(b.amount || 0), 0);
-      } catch {}
+      } catch { }
       const achieved2026 = safeDeals
         .filter(d => d.status === DealStage.CLOSED_WON)
         .filter(d => {
@@ -523,7 +527,7 @@ function Dashboard() {
           const payload = { kpis: stats.kpis, leadSourceData: stats.leadSourceData, dealValueByStage: stats.dealValueByStage, teamPerformance: stats.teamPerformance };
           const text = await generateDashboardInsights(payload as any);
           setAiInsights(text);
-        } catch {}
+        } catch { }
       })();
     }
   }, [loading, stats]);
@@ -540,7 +544,7 @@ function Dashboard() {
         if (f.segment) setSelectedSegment(f.segment as Segment | 'All');
         if (typeof f.userId !== 'undefined') setSelectedUserId(f.userId as number | 'All');
         if (f.country) setSelectedCountry(f.country as string | 'All');
-      } catch {}
+      } catch { }
     }
 
     // Initial fetch with the computed range (null => All Time)
@@ -548,13 +552,13 @@ function Dashboard() {
     // Run only once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
+
   // Recompute Budget vs Closed Won when budgetYear changes
   useEffect(() => {
     fetchData(dateRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [budgetYear, chartYear]);
-  
+
   const handleDateChange = (range: { from: string; to: string } | null) => {
     setDateRange(range);
     localStorage.setItem('dashboardDateRange', JSON.stringify(range));
@@ -567,7 +571,7 @@ function Dashboard() {
     let start: string;
     if (preset === 'today') {
       const d = new Date(now);
-      d.setHours(0,0,0,0);
+      d.setHours(0, 0, 0, 0);
       start = d.toISOString();
     } else if (preset === '7d') {
       const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -621,7 +625,7 @@ function Dashboard() {
         const logoUrl = getBrandLogoUrl();
         const logo = await loadImageAsDataUrl(logoUrl);
         pdf.addImage(logo, 'PNG', headerPaddingX, 16, 96, 32);
-      } catch {}
+      } catch { }
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(12);
       const brand = getBrandName();
@@ -654,7 +658,7 @@ function Dashboard() {
         pdf.addImage(imgData, 'PNG', 20, position, imgWidth, imgHeight);
         heightLeft -= (pageHeight - (headerHeight + 36));
       }
-      const filename = `Dashboard_${new Date().toISOString().slice(0,10)}.pdf`;
+      const filename = `Dashboard_${new Date().toISOString().slice(0, 10)}.pdf`;
       pdf.save(filename);
     } catch (e) {
       console.error('Dashboard export failed', e);
@@ -690,7 +694,7 @@ function Dashboard() {
         const logoW = Math.min(240, outCanvas.width * 0.2);
         const logoH = (img.height / img.width) * logoW;
         ctx.drawImage(img, 20, (headerHeight - logoH) / 2, logoW, logoH);
-      } catch {}
+      } catch { }
 
       ctx.fillStyle = '#ffffff';
       ctx.font = '600 24px system-ui, -apple-system, Segoe UI, Roboto';
@@ -705,7 +709,7 @@ function Dashboard() {
       const pngUrl = outCanvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = pngUrl;
-      a.download = `Dashboard_${new Date().toISOString().slice(0,10)}.png`;
+      a.download = `Dashboard_${new Date().toISOString().slice(0, 10)}.png`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -771,9 +775,9 @@ function Dashboard() {
 
   if (loading) {
     return (
-        <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
+      <div className="flex justify-center items-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
@@ -789,7 +793,7 @@ function Dashboard() {
                 <label className="text-xs text-slate-500">Year</label>
                 <select
                   value={chartYear === 'All' ? 'All' : String(chartYear)}
-                  onChange={(e)=> setChartYear(e.target.value === 'All' ? 'All' : parseInt(e.target.value,10))}
+                  onChange={(e) => setChartYear(e.target.value === 'All' ? 'All' : parseInt(e.target.value, 10))}
                   className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
                 >
                   {chartYears.map(y => <option key={String(y)} value={String(y)}>{String(y)}</option>)}
@@ -845,9 +849,9 @@ function Dashboard() {
         <KPICard title={t('dashboard.totalLeads')} value={stats.kpis.newLeads} />
         <KPICard title={t('dashboard.activeCustomers')} value={stats.kpis.activeCustomers} />
       </div>
-      
+
       {/* Global Year selector moved into DateRangePicker rightSlot */}
-      
+
       {/* Budget vs Closed Won (Water Glass) */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm" onDoubleClick={() => navigate('/budget')}>
         <div className="flex items-center justify-between mb-4">
@@ -856,14 +860,14 @@ function Dashboard() {
             <label className="text-xs text-slate-500">Budget Year</label>
             <select
               value={budgetYear}
-              onChange={(e)=> { const y = parseInt(e.target.value,10); setBudgetYear(y); }}
+              onChange={(e) => { const y = parseInt(e.target.value, 10); setBudgetYear(y); }}
               className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
             >
               {budgetYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={180}>
+        <ResponsiveContainer width="100%" height={150}>
           {(() => {
             const budget = stats.budgetVsAchieved?.budget2026 || 0;
             const closed = Math.min(stats.budgetVsAchieved?.achieved2026 || 0, budget);
@@ -899,9 +903,9 @@ function Dashboard() {
             return (
               <BarChart className="cursor-pointer" layout="vertical" data={data} margin={{ top: 5, right: 24, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v)=>`€${Math.round(Number(v) / 1000)}k`} />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `€${Math.round(Number(v) / 1000)}k`} />
                 <YAxis type="category" dataKey="name" stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`€${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`€${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 {/* Put Closed Won on the left, Remaining on the right */}
                 <Bar dataKey="closed" stackId="g" fill="#1e3a8a" radius={[8, 0, 0, 8]}>
                   <LabelList dataKey="closed" content={FillLabel as any} />
@@ -916,58 +920,58 @@ function Dashboard() {
           })()}
         </ResponsiveContainer>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4" title="Ingresos por mes a partir de oportunidades Closed Won en el periodo/añ o seleccionado.">{t('dashboard.revenueByMonth')}</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
-                  <XAxis dataKey="name" stroke="rgb(100 116 139)" />
-                  <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-                  <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                      labelStyle={{ color: 'rgb(241 245 249)' }}
-                      formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
-                  />
-                  <Line type="monotone" dataKey="revenue" stroke={SERIES_ACCENT} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }}>
-                    <LabelList content={renderLineTopEuroLabel} />
-                  </Line>
-              </LineChart>
-            </ResponsiveContainer>
+          <h3 className="font-semibold text-lg mb-4" title="Ingresos por mes a partir de oportunidades Closed Won en el periodo/añ o seleccionado.">{t('dashboard.revenueByMonth')}</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
+              <XAxis dataKey="name" stroke="rgb(100 116 139)" />
+              <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
+                labelStyle={{ color: 'rgb(241 245 249)' }}
+                formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
+              />
+              <Line type="monotone" dataKey="revenue" stroke={SERIES_ACCENT} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }}>
+                <LabelList content={renderLineTopEuroLabel} />
+              </Line>
+            </LineChart>
+          </ResponsiveContainer>
         </div>
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4" title="Valor agregado de oportunidades por etapa; para etapas cerradas se toma el año de cierre.">{t('dashboard.dealValueByStage')}</h3>
-            <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
-                    <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-                    <YAxis dataKey="name" type="category" width={105} stroke="rgb(100 116 139)" />
-                    <Tooltip
-                        contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                        labelStyle={{ color: 'rgb(241 245 249)' }}
-                        formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
-                    />
-                    <Bar dataKey="value" name="Value in Stage" onDoubleClick={(data) => navigate(`/deals?status=${encodeURIComponent(data.name)}`)} className="cursor-pointer" radius={[4,4,4,4]}>
-                      {stats.dealValueByStage.map((entry, index) => {
-                        const color = entry.name === DealStage.CLOSED_WON
-                          ? '#1e3a8a' // dark blue for Won
-                          : entry.name === DealStage.CLOSED_LOST
-                          ? '#93c5fd' // light blue for Lost
-                          : '#3b82f6';
-                        return <Cell key={`dvbs-cell-${index}`} fill={color} />;
-                      })}
-                      <LabelList content={renderHorizontalBarLabel} />
-                    </Bar>
-                </BarChart>
-            </ResponsiveContainer>
+          <h3 className="font-semibold text-lg mb-4" title="Valor agregado de oportunidades por etapa; para etapas cerradas se toma el año de cierre.">{t('dashboard.dealValueByStage')}</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
+              <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
+              <YAxis dataKey="name" type="category" width={105} stroke="rgb(100 116 139)" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
+                labelStyle={{ color: 'rgb(241 245 249)' }}
+                formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
+              />
+              <Bar dataKey="value" name="Value in Stage" onDoubleClick={(data) => navigate(`/deals?status=${encodeURIComponent(data.name)}`)} className="cursor-pointer" radius={[4, 4, 4, 4]}>
+                {stats.dealValueByStage.map((entry, index) => {
+                  const color = entry.name === DealStage.CLOSED_WON
+                    ? '#1e3a8a' // dark blue for Won
+                    : entry.name === DealStage.CLOSED_LOST
+                      ? '#93c5fd' // light blue for Lost
+                      : '#3b82f6';
+                  return <Cell key={`dvbs-cell-${index}`} fill={color} />;
+                })}
+                <LabelList content={renderHorizontalBarLabel} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-lg mb-4" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={260}>
             <FunnelChart>
               <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]} />
               <Funnel data={stats.dealValueByStage} dataKey="value" nameKey="name" isAnimationActive>
@@ -975,8 +979,8 @@ function Dashboard() {
                   const color = entry.name === DealStage.CLOSED_WON
                     ? '#1e3a8a'
                     : entry.name === DealStage.CLOSED_LOST
-                    ? '#93c5fd'
-                    : '#3b82f6';
+                      ? '#93c5fd'
+                      : '#3b82f6';
                   return <Cell key={`funnel-cell-${index}`} fill={color} />;
                 })}
                 <LabelList dataKey="displayLabel" content={renderFunnelRightSmallLabel} />
@@ -987,11 +991,11 @@ function Dashboard() {
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-lg mb-4" title="Porcentaje de oportunidades Ganadas frente a Perdidas en el año/periodo.">{t('dashboard.winRate')}</h3>
-          <div className="relative" style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height={300}>
+          <div className="relative" style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 {(() => {
-                  const wr = parseFloat((stats.kpis.winRate || '0').toString().replace('%','')) || 0;
+                  const wr = parseFloat((stats.kpis.winRate || '0').toString().replace('%', '')) || 0;
                   const clamped = Math.max(0, Math.min(100, wr));
                   const data = [
                     { name: 'Win', value: clamped },
@@ -1016,51 +1020,51 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4" title="Distribución de leads por fuente para el año/periodo.">{t('dashboard.leadSources')}</h3>
-            <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                    <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
-                        {stats.leadSourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="cursor-pointer" />)}
-                    </Pie>
-                    <Tooltip 
-                        contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                        formatter={(value: number, name: string) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`, name]} />
-                    <Legend wrapperStyle={{color: 'rgb(100 116 139)'}} />
-                </PieChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+          <h3 className="font-semibold text-lg mb-4" title="Distribución de leads por fuente para el año/periodo.">{t('dashboard.leadSources')}</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
+                {stats.leadSourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="cursor-pointer" />)}
+              </Pie>
+              <Tooltip
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
+                formatter={(value: number, name: string) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`, name]} />
+              <Legend wrapperStyle={{ color: 'rgb(100 116 139)' }} />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                <h3 className="font-semibold text-lg mb-4" title="Importe ganado y perdido por vendedor en el año/periodo.">{t('dashboard.teamPerformance')}</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={stats.teamPerformance} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
-                        <XAxis dataKey="name" stroke="rgb(100 116 139)" />
+          <h3 className="font-semibold text-lg mb-4" title="Importe ganado y perdido por vendedor en el año/periodo.">{t('dashboard.teamPerformance')}</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={stats.teamPerformance} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
+              <XAxis dataKey="name" stroke="rgb(100 116 139)" />
               <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                            labelStyle={{ color: 'rgb(241 245 249)' }}
+              <Tooltip
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
+                labelStyle={{ color: 'rgb(241 245 249)' }}
                 formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
-                        />
-              <Legend wrapperStyle={{color: 'rgb(100 116 139)'}} />
-              <Bar dataKey="won" name={t('dashboard.won') || 'Won'} fill="#1e3a8a" className="cursor-pointer" radius={[4,4,0,0]} onDoubleClick={(data) => {
+              />
+              <Legend wrapperStyle={{ color: 'rgb(100 116 139)' }} />
+              <Bar dataKey="won" name={t('dashboard.won') || 'Won'} fill="#1e3a8a" className="cursor-pointer" radius={[4, 4, 0, 0]} onDoubleClick={(data) => {
                 const userEmail = (data as any).name;
-                            const targetUser = stats.users.find(u => u.email === userEmail);
+                const targetUser = stats.users.find(u => u.email === userEmail);
                 if (targetUser) navigate(`/deals?userId=${targetUser.id}&status=${encodeURIComponent(DealStage.CLOSED_WON)}`);
               }}>
                 <LabelList content={renderHorizontalBarLabel} />
               </Bar>
-              <Bar dataKey="lost" name={t('dashboard.lost') || 'Lost'} fill="#93c5fd" className="cursor-pointer" radius={[0,0,4,4]} onDoubleClick={(data) => {
+              <Bar dataKey="lost" name={t('dashboard.lost') || 'Lost'} fill="#93c5fd" className="cursor-pointer" radius={[0, 0, 4, 4]} onDoubleClick={(data) => {
                 const userEmail = (data as any).name;
                 const targetUser = stats.users.find(u => u.email === userEmail);
                 if (targetUser) navigate(`/deals?userId=${targetUser.id}&status=${encodeURIComponent(DealStage.CLOSED_LOST)}`);
               }}>
                 <LabelList content={renderHorizontalBarLabel} />
               </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1068,13 +1072,13 @@ function Dashboard() {
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <h3 className="font-semibold text-sm mb-3">{t('dashboard.leadsByStatus') || 'Leads by Status'}</h3>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.leadsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                <Bar dataKey="value" name="Leads" radius={[4,4,4,4]} onDoubleClick={(d)=>navigate(`/leads?status=${encodeURIComponent((d as any).name)}`)}>
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <Bar dataKey="value" name="Leads" radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/leads?status=${encodeURIComponent((d as any).name)}`)}>
                   {stats.leadsByStatus.map((_, i) => <Cell key={`l-s-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
                 </Bar>
@@ -1083,13 +1087,13 @@ function Dashboard() {
           </div>
           <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <h3 className="font-semibold text-sm mb-3">{t('dashboard.leadsBySegment') || 'Leads by Segment'}</h3>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.leadsBySegment} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                <Bar dataKey="value" name="Leads" radius={[4,4,4,4]} onDoubleClick={(d)=>navigate(`/leads?segment=${encodeURIComponent((d as any).name)}`)}>
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <Bar dataKey="value" name="Leads" radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/leads?segment=${encodeURIComponent((d as any).name)}`)}>
                   {stats.leadsBySegment.map((_, i) => <Cell key={`l-seg-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
                 </Bar>
@@ -1101,10 +1105,10 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.leadsByCountry} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                <Bar dataKey="value" name={t('leads.title')} radius={[4,4,4,4]} onDoubleClick={(d)=>{ const n=(d as any).name; if(!n||n===(t('common.others')||'Others')) return; navigate(`/leads?country=${encodeURIComponent(n)}`) }}>
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <Bar dataKey="value" name={t('leads.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const n = (d as any).name; if (!n || n === (t('common.others') || 'Others')) return; navigate(`/leads?country=${encodeURIComponent(n)}`) }}>
                   {stats.leadsByCountry.map((_, i) => <Cell key={`l-ctry-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
                 </Bar>
@@ -1117,10 +1121,10 @@ function Dashboard() {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={stats.leadsByOwner} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                   <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                  <Bar dataKey="value" name={t('leads.title')} radius={[4,4,4,4]} onDoubleClick={(d)=>{ const email=(d as any).name; const u=stats.users.find(x=>x.email===email); if(u) navigate(`/leads?userId=${u.id}`) }}>
+                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                  <Bar dataKey="value" name={t('leads.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const email = (d as any).name; const u = stats.users.find(x => x.email === email); if (u) navigate(`/leads?userId=${u.id}`) }}>
                     {stats.leadsByOwner.map((_, i) => <Cell key={`l-own-${i}`} fill={COLORS[i % COLORS.length]} />)}
                     <LabelList content={renderHorizontalCountLabel} />
                   </Bar>
@@ -1136,10 +1140,10 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.customersByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                <Bar dataKey="value" name={t('customers.title')} radius={[4,4,4,4]} onDoubleClick={(d)=>navigate(`/customers?status=${encodeURIComponent((d as any).name)}`)}>
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/customers?status=${encodeURIComponent((d as any).name)}`)}>
                   {stats.customersByStatus.map((_, i) => <Cell key={`c-st-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
                 </Bar>
@@ -1151,10 +1155,10 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.customersBySegment} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                <Bar dataKey="value" name={t('customers.title')} radius={[4,4,4,4]} onDoubleClick={(d)=>navigate(`/customers?segment=${encodeURIComponent((d as any).name)}`)}>
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/customers?segment=${encodeURIComponent((d as any).name)}`)}>
                   {stats.customersBySegment.map((_, i) => <Cell key={`c-seg-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
                 </Bar>
@@ -1166,10 +1170,10 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.customersByCountry} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                <Bar dataKey="value" name={t('customers.title')} radius={[4,4,4,4]} onDoubleClick={(d)=>{ const n=(d as any).name; if(!n||n===(t('common.others')||'Others')) return; navigate(`/customers?country=${encodeURIComponent(n)}`) }}>
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const n = (d as any).name; if (!n || n === (t('common.others') || 'Others')) return; navigate(`/customers?country=${encodeURIComponent(n)}`) }}>
                   {stats.customersByCountry.map((_, i) => <Cell key={`c-ctry-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
                 </Bar>
@@ -1182,10 +1186,10 @@ function Dashboard() {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={stats.customersByOwner} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}/>
+                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                   <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v:number)=>[`${Number(v).toLocaleString(undefined,{maximumFractionDigits:0})}`, null]} />
-                  <Bar dataKey="value" name={t('customers.title')} radius={[4,4,4,4]} onDoubleClick={(d)=>{ const email=(d as any).name; const u=stats.users.find(x=>x.email===email); if(u) navigate(`/customers?userId=${u.id}`) }}>
+                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                  <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const email = (d as any).name; const u = stats.users.find(x => x.email === email); if (u) navigate(`/customers?userId=${u.id}`) }}>
                     {stats.customersByOwner.map((_, i) => <Cell key={`c-own-${i}`} fill={COLORS[i % COLORS.length]} />)}
                     <LabelList content={renderHorizontalCountLabel} />
                   </Bar>
@@ -1195,34 +1199,34 @@ function Dashboard() {
           )}
         </div>
       </div>
-       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">{t('dashboard.recentActivity')}</h3>
-            <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                {stats.recentActivity.map(activity => (
-                    <li key={activity.id} className="py-3 flex items-center">
-                        <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-700 rounded-full h-8 w-8 flex items-center justify-center">
-                            {activity.icon}
-                        </div>
-                        <div className="ml-3 flex-grow">
-                            <p className="text-sm text-slate-700 dark:text-slate-300">{activity.text}</p>
-                        </div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">{new Date(activity.date).toLocaleDateString()}</p>
-                    </li>
-                ))}
-            </ul>
-        </div>
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+        <h3 className="font-semibold text-lg mb-4">{t('dashboard.recentActivity')}</h3>
+        <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+          {stats.recentActivity.map(activity => (
+            <li key={activity.id} className="py-3 flex items-center">
+              <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-700 rounded-full h-8 w-8 flex items-center justify-center">
+                {activity.icon}
+              </div>
+              <div className="ml-3 flex-grow">
+                <p className="text-sm text-slate-700 dark:text-slate-300">{activity.text}</p>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500">{new Date(activity.date).toLocaleDateString()}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-lg mb-2">AI Insights</h3>
-          <button className="text-xs underline text-slate-600" onClick={()=> navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+          <button className="text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
         </div>
         <div className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">{aiInsights || '...'}</div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={()=> navigate('/leads')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Leads</button>
-          <button onClick={()=> navigate('/deals')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Deals</button>
-          <button onClick={()=> navigate('/tasks')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Tasks</button>
+          <button onClick={() => navigate('/leads')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Leads</button>
+          <button onClick={() => navigate('/deals')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Deals</button>
+          <button onClick={() => navigate('/tasks')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Tasks</button>
         </div>
-        </div>
+      </div>
     </div>
   );
 }

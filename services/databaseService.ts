@@ -9,10 +9,10 @@ import { supabase } from './supabaseClient';
 const DB_TABLES = [
     'users',
     'countries',
-    'products', 
-    'product_categories', 
-    'leads', 
-    'customers', 
+    'products',
+    'product_categories',
+    'leads',
+    'customers',
     'deals',
     'scheduled_reports',
     'report_runs',
@@ -20,7 +20,8 @@ const DB_TABLES = [
     'webhooks',
     'connected_integrations',
     'automation_rules',
-    'automation_alerts'
+    'automation_alerts',
+    'tasks'
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -37,26 +38,26 @@ const handleResilientOperation = async (error: any, table: DbTable, itemData: an
         if (offendingColumnMatch && offendingColumnMatch[1]) {
             const offendingColumn = offendingColumnMatch[1];
             console.warn(`[DB Service] Column '${offendingColumn}' not found in table '${table}'. Retrying operation without it.`);
-            
+
             const sanitizedData = { ...itemData };
             delete sanitizedData[offendingColumn];
-            
+
             let query;
             if (operation === 'insert') {
                 query = supabase.from(table).insert(sanitizedData).select().single();
             } else {
                 const { id, ...updateData } = sanitizedData;
                 if (!id) {
-                     console.error(`[DB Service] Cannot perform resilient update without an ID for table '${table}'.`);
-                     throw error; // Re-throw original error if ID is missing
+                    console.error(`[DB Service] Cannot perform resilient update without an ID for table '${table}'.`);
+                    throw error; // Re-throw original error if ID is missing
                 }
                 query = supabase.from(table).update(updateData).eq('id', id).select().single();
             }
 
             const { data: retryData, error: retryError } = await query;
             if (retryError) {
-                 console.error(`[DB Error] Retry failed for table: ${table}.`, retryError);
-                 throw retryError;
+                console.error(`[DB Error] Retry failed for table: ${table}.`, retryError);
+                throw retryError;
             }
             return retryData;
         }
@@ -83,7 +84,7 @@ export const getById = async <T>(table: DbTable, id: number | string): Promise<T
     const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
     if (error) {
         if (error.code === 'PGRST116') { // "No rows found"
-            return null; 
+            return null;
         }
         console.error(`[DB Error] Table: ${table}, Code: ${error.code}, Message: ${error.message}, Details: ${error.details}`);
         throw error;

@@ -23,7 +23,7 @@ export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoni
   if (!client) {
     return { score: Math.floor(Math.random() * 40) + 60, reasoning: "This is a mock score. Please set your API_KEY to use the AI feature." };
   }
-  
+
   const prompt = `
     You are a lead scoring expert for "OneSkin", a company that sells high-end decorative wall panels.
     Score the following lead on a scale of 1 to 100, where 100 is the highest potential.
@@ -53,10 +53,10 @@ export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoni
     const text = response.text.trim();
     // Simple check to see if it's a JSON string
     if (text.startsWith('{') && text.endsWith('}')) {
-        const result = JSON.parse(text);
-        if (typeof result.score === 'number' && typeof result.reasoning === 'string') {
-          return result;
-        }
+      const result = JSON.parse(text);
+      if (typeof result.score === 'number' && typeof result.reasoning === 'string') {
+        return result;
+      }
     }
     throw new Error("Invalid JSON response from AI");
 
@@ -104,12 +104,12 @@ export const getCustomerInsights = async (customer: Customer): Promise<string> =
 export const summarizeLead = async (lead: Lead, activities: ActivityLog[] = []): Promise<string> => {
   const client = getClient();
   if (!client) {
-    return `Resumen (mock): ${lead.name} de ${lead.company}. Estado: ${lead.status}. Últimas actividades: ${activities.slice(0,3).map(a=>a.channel).join(', ')}`;
+    return `Resumen (mock): ${lead.name} de ${lead.company}. Estado: ${lead.status}. Últimas actividades: ${activities.slice(0, 3).map(a => a.channel).join(', ')}`;
   }
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}${a.message?`\n  ${a.message.substring(0,160)}...`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}${a.message ? `\n  ${a.message.substring(0, 160)}...` : ''}`)
     .join('\n');
   const prompt = `Summarize this lead for a sales rep in 4-6 bullet points with next context-specific hints. Avoid generic advice.
 
@@ -142,9 +142,9 @@ export const suggestLeadTasks = async (lead: Lead, activities: ActivityLog[] = [
     ];
   }
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `You are a CRM assistant. Propose 1-4 concrete next tasks for this lead. Use only these types: "Follow Up Call", "Send Information", "Send Samples", "Send Quotation", "Schedule Visit". Return strict JSON array with items {"type": string, "title": string, "dueDays": number}.
 
@@ -167,7 +167,7 @@ Recent activity:\n${recent || '(none)'}
   }
 };
 
-export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog[] = []): Promise<{ subject: string; body: string; } > => {
+export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog[] = []): Promise<{ subject: string; body: string; }> => {
   const client = getClient();
   if (!client) {
     return { subject: `Seguimiento ${lead.company}`, body: `Hola ${lead.name},\n\nGracias por tu interés. Adjunto catálogo y propuesta. ¿Te viene bien una llamada esta semana?\n\nSaludos,` };
@@ -176,7 +176,7 @@ export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog
   const prompt = `Draft a concise, friendly Spanish follow-up email for a sales rep of decorative wall panels. Mention any recent context. Output JSON: {"subject": string, "body": string}.
 
 Lead: ${lead.name} (${lead.company}) • Status: ${lead.status}
-Last email snippet: ${lastMsg.substring(0,300)}
+Last email snippet: ${lastMsg.substring(0, 300)}
 `;
   try {
     const response = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } });
@@ -198,9 +198,9 @@ export const suggestCustomerTasks = async (customer: Customer, activities: Activ
     ];
   }
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `You are a CRM assistant. Propose 1-4 concrete next tasks for this customer. Use only these types: "Follow Up Call", "Send Information", "Send Samples", "Send Quotation", "Schedule Visit". Return strict JSON array with items {"type": string, "title": string, "dueDays": number}.
 
@@ -227,67 +227,67 @@ export type AgendaItem = { id: number; start: string };
 export const proposeAgenda = async (tasks: { id: number; type: string; due_date?: string | null; title?: string }[]): Promise<AgendaItem[]> => {
   const client = getClient();
   if (!client) {
-    const start = new Date(); start.setHours(9,0,0,0);
-    return tasks.slice(0,8).map((t, i) => ({ id: t.id, start: new Date(start.getTime() + i*45*60000).toTimeString().slice(0,5) }));
+    const start = new Date(); start.setHours(9, 0, 0, 0);
+    return tasks.slice(0, 8).map((t, i) => ({ id: t.id, start: new Date(start.getTime() + i * 45 * 60000).toTimeString().slice(0, 5) }));
   }
   const prompt = `Create a day agenda starting at 09:00 with 45-min slots for these tasks. Return JSON array of {"id": number, "start": "HH:MM"}. Prioritize overdue and due today tasks first.
-Tasks: ${JSON.stringify(tasks.slice(0,40))}`;
-  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as AgendaItem[]; throw new Error('bad'); } catch { return []; }
+Tasks: ${JSON.stringify(tasks.slice(0, 40))}`;
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as AgendaItem[]; throw new Error('bad'); } catch { return []; }
 };
 
 export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []): Promise<string> => {
   const client = getClient();
   if (!client) return `Estrategia (mock) para ${deal.title}: enfocar en valor, proponer visita y resolver objeciones.`;
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `You are a sales strategist. Provide a concise win plan for this deal in 4-6 bullets: risks, objections, next steps.
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value} • Expected Close: ${deal.expected_close_date}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
 };
 
 export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = []): Promise<SuggestedTask[]> => {
   const client = getClient();
-  if (!client) return [ { type:'Send Quotation', title:'Enviar propuesta revisada', dueDays:1 }, { type:'Schedule Visit', title:'Agendar visita técnica', dueDays:3 } ];
+  if (!client) return [{ type: 'Send Quotation', title: 'Enviar propuesta revisada', dueDays: 1 }, { type: 'Schedule Visit', title: 'Agendar visita técnica', dueDays: 3 }];
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `Propose 1-4 concrete tasks to progress this deal. Allowed types: "Follow Up Call", "Send Information", "Send Samples", "Send Quotation", "Schedule Visit". Return strict JSON array of {"type","title","dueDays"}.
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as SuggestedTask[]; throw new Error('bad'); } catch { return []; }
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as SuggestedTask[]; throw new Error('bad'); } catch { return []; }
 };
 
 export const generateDashboardInsights = async (payload: any): Promise<string> => {
   const client = getClient();
   if (!client) return 'Insights (mock): el pipeline abierto y la tasa de éxito se mantienen estables. Prioriza leads de Website y segment Industrial.';
   const prompt = `Write 4-6 short, actionable CRM insights (Spanish) from this JSON. Avoid generic tips; include specific CTAs.
-JSON: ${JSON.stringify(payload).slice(0,5000)}
+JSON: ${JSON.stringify(payload).slice(0, 5000)}
 `;
-  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
 };
 
 export const suggestDealStage = async (deal: Deal, activities: ActivityLog[] = []): Promise<DealStage | null> => {
   const client = getClient();
   if (!client) return null;
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `Given this deal, suggest the most appropriate next stage strictly as one of: "Qualification", "Proposal", "Negotiation", "Closed Won", "Closed Lost". Return JSON: {"stage": string}.
 Deal: ${deal.title} • Current: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
   try {
-    const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } });
+    const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } });
     const obj = JSON.parse(r.text.trim());
     const s = String(obj?.stage || '');
     const map: Record<string, DealStage> = {
@@ -307,16 +307,16 @@ export const suggestDealFollowUp = async (deal: Deal, activities: ActivityLog[] 
   const client = getClient();
   if (!client) return { dueDays: 2 };
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `Suggest next follow-up window in DAYS (integer) for this deal and optionally a recommended stage. Return JSON {"dueDays": number, "stage": "Qualification|Proposal|Negotiation|Closed Won|Closed Lost"}.
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
   try {
-    const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } });
+    const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } });
     const obj = JSON.parse(r.text.trim());
     const d = Number(obj?.dueDays);
     const s = String(obj?.stage || '');
@@ -340,9 +340,9 @@ export const summarizeCustomer = async (customer: Customer, activities: Activity
     return `Resumen (mock): ${customer.name} de ${customer.company}. Estado: ${customer.status}. Salud: ${customer.health_score}.`;
   }
   const recent = activities
-    .sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime())
-    .slice(0,5)
-    .map(a=>`- [${a.created_at}] ${a.channel}${a.direction?` (${a.direction})`:''}${a.subject?`: ${a.subject}`:''}`)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
+    .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
   const prompt = `Summarize customer health and upsell opportunity in 4-6 bullets with next actions.
 
@@ -352,33 +352,33 @@ Recent activity:\n${recent || '(none)'}
   try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt }); return r.text; } catch { return 'Could not generate summary.'; }
 };
 
-export const draftCustomerFollowUpEmail = async (customer: Customer, activities: ActivityLog[] = []): Promise<{ subject: string; body: string } > => {
+export const draftCustomerFollowUpEmail = async (customer: Customer, activities: ActivityLog[] = []): Promise<{ subject: string; body: string }> => {
   const client = getClient();
   if (!client) return { subject: `Propuesta ${customer.company}`, body: `Hola ${customer.name},\n\nAdjunto propuesta y catálogo. ¿Agendamos una llamada esta semana?\n\nSaludos,` };
-  const lastMsg = activities.find(a => a.channel==='email' && a.message)?.message || '';
+  const lastMsg = activities.find(a => a.channel === 'email' && a.message)?.message || '';
   const prompt = `Draft a concise Spanish email for a customer of decorative wall panels. Output JSON {"subject","body"}.
 Customer: ${customer.name} (${customer.company}) • Status: ${customer.status}
-Last email: ${lastMsg.substring(0,300)}
+Last email: ${lastMsg.substring(0, 300)}
 `;
-  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject:'Seguimiento', body:'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject: 'Seguimiento', body: 'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
 };
 
 export const prioritizeTasks = async (tasks: { id: number; type: string; due_date?: string | null; title?: string }[]): Promise<number[]> => {
   const client = getClient();
   if (!client) {
     return [...tasks]
-      .sort((a,b)=>{
+      .sort((a, b) => {
         const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity;
         const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity;
         return ad - bd;
       })
-      .map(t=>t.id);
+      .map(t => t.id);
   }
-  const sample = tasks.slice(0,20).map(t=>({ id: t.id, type: t.type, due: t.due_date, title: t.title })).slice(0,50);
+  const sample = tasks.slice(0, 20).map(t => ({ id: t.id, type: t.type, due: t.due_date, title: t.title })).slice(0, 50);
   const prompt = `Rank these tasks from highest to lowest priority for a sales rep. Consider proximity of due date and potential revenue impact inferred from title/type. Return ONLY a JSON array with the ordered ids.
 Tasks: ${JSON.stringify(sample)}
 `;
-  try { const r = await client.models.generateContent({ model:'gemini-2.5-flash', contents: prompt, config:{ responseMimeType:'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as number[]; throw new Error('bad'); } catch { return tasks.map(t=>t.id); }
+  try { const r = await client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as number[]; throw new Error('bad'); } catch { return tasks.map(t => t.id); }
 };
 
 export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lead>> => {
@@ -444,5 +444,103 @@ export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lea
   } catch (error) {
     console.error("Error scanning business card with AI:", error);
     throw new Error("Could not extract information from the business card due to an AI service error.");
+  }
+};
+
+export const generateProspects = async (query: string): Promise<any[]> => {
+  const client = getClient();
+  if (!client) return [];
+
+  const prompt = `
+    You are a B2B lead generation expert.
+    Generate 5-8 REALISTIC, high-quality B2B prospects for the following search query: "${query}".
+    Focus on the MDF, Melamine, Furniture, and Interior Design industries if the query allows.
+    
+    For each prospect, provide:
+    - Name: A realistic contact person name.
+    - Company: A realistic company name (sounding like a real business in that region).
+    - Role: A relevant job title (e.g., Purchasing Manager, CEO, Interior Designer).
+    - Location: A specific city and country relevant to the query.
+    - Snippet: A brief description of why they are a good match (e.g., "Large manufacturer of kitchen cabinets looking for new suppliers").
+    - Website: A realistic URL (e.g., companyname.de).
+    - Email: A realistic email pattern (e.g., info@company.com).
+    - Source: Randomly assign "LinkedIn", "Google", or "Directory".
+    - MatchScore: A number between 70 and 99 based on relevance.
+
+    Return a strict JSON array of objects with these keys: id (random string), name, company, role, location, snippet, website, email, source, matchScore.
+  `;
+
+  try {
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const text = response.text.trim();
+    const result = JSON.parse(text);
+    if (Array.isArray(result)) {
+      return result;
+    }
+    return [];
+  } catch (error) {
+    console.error("Error generating prospects with AI:", error);
+    return [];
+  }
+};
+
+export const draftCommercialEmail = async (
+  recipientName: string,
+  recipientCompany: string,
+  language: string = 'English'
+): Promise<{ subject: string; body: string }> => {
+  const client = getClient();
+  if (!client) {
+    return {
+      subject: `Proposal for ${recipientCompany}`,
+      body: `Dear ${recipientName},\n\nI hope this email finds you well.\n\nWe are OneSkin, a premium manufacturer of lacquered boards.\n\nBest regards,\n[Your Name]`
+    };
+  }
+
+  const prompt = `
+    You are an expert sales representative for "OneSkin", a premium manufacturer of high-end lacquered decorative panels (MDF/Melamine) for the furniture and interior design industry.
+    
+    Task: Write a professional, elegant, and commercially effective email to a potential client.
+    
+    Recipient:
+    - Name: ${recipientName}
+    - Company: ${recipientCompany}
+    
+    Goal: Introduce OneSkin, highlight our premium quality and innovation, and politely express interest in presenting our products for their upcoming projects.
+    
+    Tone: Professional, Elegant, Respectful, Persuasive but not pushy.
+    Language: ${language}
+    
+    Output: A JSON object with "subject" and "body" fields. The body should be formatted with newlines.
+  `;
+
+  try {
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const text = response.text.trim();
+    const result = JSON.parse(text);
+    if (result.subject && result.body) {
+      return result;
+    }
+    throw new Error("Invalid JSON response");
+  } catch (error) {
+    console.error("Error drafting commercial email:", error);
+    return {
+      subject: "Introduction to OneSkin",
+      body: `Dear ${recipientName},\n\nI would like to introduce you to OneSkin's premium lacquered panels.\n\nBest regards,`
+    };
   }
 };
