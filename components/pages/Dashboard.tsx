@@ -602,10 +602,10 @@ function Dashboard() {
     try {
       const root = containerRef.current;
       if (!root) return;
-      const html2canvasMod: any = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
-      const html2canvas = (html2canvasMod && (html2canvasMod.default || (window as any).html2canvas)) as any;
-      const jsPdfMod: any = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
-      const jsPDF = (jsPdfMod && (jsPdfMod.default?.jsPDF || jsPdfMod.jsPDF)) || (window as any)?.jspdf?.jsPDF;
+      // @ts-ignore - Dynamic CDN import
+      const html2canvas = (await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')).default;
+      // @ts-ignore - Dynamic CDN import
+      const { jsPDF } = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
       if (!jsPDF) throw new Error('jsPDF failed to load');
 
       const canvas = await html2canvas(root, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
@@ -669,6 +669,7 @@ function Dashboard() {
     try {
       const root = containerRef.current;
       if (!root) return;
+      // @ts-ignore - Dynamic CDN import
       const html2canvasMod: any = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
       const html2canvas = (html2canvasMod && (html2canvasMod.default || (window as any).html2canvas)) as any;
       const shot = await html2canvas(root, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
@@ -812,32 +813,35 @@ function Dashboard() {
             <button onClick={handleExportDashboardPNG} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Export PNG</button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Segment</label>
-            <select value={selectedSegment} onChange={e => setSelectedSegment(e.target.value as Segment | 'All')} className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">
+            <label className="block text-[10px] text-slate-500 mb-0.5">Segment</label>
+            <select value={selectedSegment} onChange={e => setSelectedSegment(e.target.value as Segment | 'All')} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs">
               <option value="All">All</option>
               {Object.values(Segment).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
+
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Country</label>
-            <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value as any)} className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm min-w-[140px]">
+            <label className="block text-[10px] text-slate-500 mb-0.5">Country</label>
+            <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value as any)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs">
               <option value="All">All</option>
               {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+
           {user.role === 'Admin' && (
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Owner</label>
-              <select value={selectedUserId === 'All' ? 'All' : String(selectedUserId)} onChange={e => setSelectedUserId(e.target.value === 'All' ? 'All' : parseInt(e.target.value, 10))} className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm min-w-[180px]">
+              <label className="block text-[10px] text-slate-500 mb-0.5">Owner</label>
+              <select value={selectedUserId === 'All' ? 'All' : String(selectedUserId)} onChange={e => setSelectedUserId(e.target.value === 'All' ? 'All' : parseInt(e.target.value, 10))} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs">
                 <option value="All">All</option>
                 {availableUsers.map(u => <option key={u.id} value={u.id}>{u.email}</option>)}
               </select>
             </div>
           )}
+
           <div className="self-end">
-            <button onClick={() => { setSelectedSegment('All'); setSelectedCountry('All'); setSelectedUserId('All'); }} className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm">Reset</button>
+            <button onClick={() => { setSelectedSegment('All'); setSelectedCountry('All'); setSelectedUserId('All'); }} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs">Reset</button>
           </div>
         </div>
       </div>
@@ -1227,7 +1231,7 @@ function Dashboard() {
           <button onClick={() => navigate('/tasks')} className="px-3 py-1 text-xs bg-primary text-white rounded">Open Tasks</button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 

@@ -77,6 +77,8 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const [todayCount, setTodayCount] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [alertsCount, setAlertsCount] = useState<number>(0);
+  const [leadsCount, setLeadsCount] = useState<number>(0);
+  const [customersCount, setCustomersCount] = useState<number>(0);
   const [currentTheme, setCurrentTheme] = useState<string>(getActiveTheme().id);
 
   useEffect(() => {
@@ -88,7 +90,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     return () => window.removeEventListener(BRANDING_UPDATED_EVENT, update as EventListener);
   }, []);
 
-  // Fetch task counters for badge
+  // Fetch task, leads, and customers counts for badges
   useEffect(() => {
     let timer: number | undefined;
     const refresh = async () => {
@@ -98,6 +100,15 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         setOverdueCount(counts.overdue);
         setTodayCount(counts.today);
         setPendingCount(counts.pending);
+
+        // Get leads count
+        const leadsData = await getLeads(user);
+        setLeadsCount(leadsData.length);
+
+        // Get customers count
+        const customersData = await getCustomers(user);
+        setCustomersCount(customersData.length);
+
       } catch { }
     };
     refresh();
@@ -184,6 +195,12 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               )}
               {item.to === '/alerts' && alertsCount > 0 && (
                 <span className="px-1.5 rounded-full text-[10px] bg-primary text-white">{alertsCount}</span>
+              )}
+              {item.to === '/leads' && leadsCount > 0 && (
+                <span className="px-1.5 rounded-full text-[10px] bg-slate-500 text-white">{leadsCount}</span>
+              )}
+              {item.to === '/customers' && customersCount > 0 && (
+                <span className="px-1.5 rounded-full text-[10px] bg-slate-500 text-white">{customersCount}</span>
               )}
             </span>
           </NavLink>

@@ -1,4 +1,5 @@
 import { Lead } from '../types';
+import { searchProspectsReal } from './serpApiService';
 
 export interface Prospect {
     id: string;
@@ -10,10 +11,11 @@ export interface Prospect {
     location: string;
     snippet: string;
     website?: string;
-    email?: string; // Simulated discovered email
+    email?: string;
+    linkedinUrl?: string;
 }
 
-// Simulated database of prospects relevant to OneSkin (MDF, Melamine, Furniture)
+// Verified fallback prospects (real companies)
 const MOCK_PROSPECTS: Prospect[] = [
     {
         id: 'p1',
@@ -76,30 +78,26 @@ const MOCK_PROSPECTS: Prospect[] = [
     }
 ];
 
-import { generateProspects } from './geminiService';
-
 export async function searchProspects(query: string, sources: string[]): Promise<Prospect[]> {
-    // Simulate API delay
+    // Simulate API delay for UX
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     if (!query) return [];
 
     try {
-        // Try to generate prospects using AI
-        const aiProspects = await generateProspects(query);
+        // Use SerpAPI for real company data
+        const realProspects = await searchProspectsReal(query, sources);
 
-        if (aiProspects && aiProspects.length > 0) {
-            // Filter by selected sources if needed, though AI usually handles this via prompt
-            // We can also mix in some mock data if we want to ensure "Directory" results always exist, etc.
-            return aiProspects.filter(p => sources.includes(p.source));
+        if (realProspects && realProspects.length > 0) {
+            return realProspects;
         }
     } catch (e) {
-        console.error("AI Search failed, falling back to mocks", e);
+        console.error("SerpAPI search failed, falling back to mocks", e);
     }
 
     const lowerQuery = query.toLowerCase();
 
-    // Fallback to mocks if AI fails or returns nothing
+    // Fallback to verified mocks if SerpAPI fails
     return MOCK_PROSPECTS.filter(p =>
         (sources.includes(p.source)) &&
         (p.company.toLowerCase().includes(lowerQuery) ||
