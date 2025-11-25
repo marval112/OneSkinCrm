@@ -44,21 +44,26 @@ vercel login
 vercel
 ```
 
-## Paso 3: Configurar Variables de Entorno
-
-En el dashboard de Vercel, ve a **Settings → Environment Variables** y añade:
-
-| Variable | Valor | Dónde encontrarlo |
-|----------|-------|-------------------|
-| `SUPABASE_URL` | `https://mobyfwaiqixcaenijfim.supabase.co` | Tu proyecto Supabase |
-| `SUPABASE_ANON_KEY` | `eyJhbGc...` | Supabase → Settings → API |
-| `GEMINI_API_KEY` | Tu clave de Gemini | Google AI Studio |
-
-> [!IMPORTANT]
-> Asegúrate de añadir estas variables en **todos los entornos** (Production, Preview, Development)
+## Paso 3: Configurar Variables de Entorno (Opcional)
 
 > [!NOTE]
-> La clave de SerpAPI (`VITE_SERPAPI_KEY`) NO se configura aquí porque ya está almacenada en Supabase en la tabla `secure_settings`.
+> **¡No necesitas configurar variables de entorno!** Tu aplicación ya tiene las credenciales hardcodeadas en el código:
+> - Supabase URL y Anon Key están en `supabaseClient.ts` y `api/serpapi.ts`
+> - SerpAPI Key se obtiene automáticamente desde Supabase
+> - Gemini API Key se compila en build time (si compilas localmente)
+
+**Puedes saltar este paso** y proceder directamente al Paso 4.
+
+### Solo si quieres usar variables de entorno (avanzado)
+
+Si prefieres usar variables de entorno en lugar de credenciales hardcodeadas:
+
+| Variable | Valor | Uso |
+|----------|-------|-----|
+| `GEMINI_API_KEY` | Tu clave de Gemini | Solo si compilas en Vercel |
+
+> [!TIP]
+> La mayoría de usuarios NO necesitan configurar nada aquí. La aplicación funcionará perfectamente sin variables de entorno.
 
 ## Paso 4: Configurar el Build
 
