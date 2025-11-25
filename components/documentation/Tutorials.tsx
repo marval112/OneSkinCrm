@@ -28,11 +28,11 @@ function Tutorials() {
     const filteredTutorials = tutorialKeys.filter(key => {
         const tutorial = t(`tutorials.${key}` as any);
         return !searchTerm ||
-               tutorial.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               tutorial.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               tutorial.steps.some((step: string) => step.toLowerCase().includes(searchTerm.toLowerCase()));
+            tutorial.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tutorial.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tutorial.steps.some((step: string) => step.toLowerCase().includes(searchTerm.toLowerCase()));
     });
-    
+
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             {filteredTutorials.map(key => {
@@ -51,16 +51,16 @@ function Tutorials() {
                                     <div className="flex-shrink-0 h-8 w-8 bg-primary text-white rounded-full flex items-center justify-center font-bold mr-4">
                                         {index + 1}
                                     </div>
-                                    <div className="prose max-w-none pt-1">
-                                         <ReactMarkdown
+                                    <div className="prose max-w-none pt-1 text-slate-900 dark:text-slate-100">
+                                        <ReactMarkdown
                                             components={{
-                                                p: ({node, ...props}) => <Highlight text={props.children as string} highlight={searchTerm} />,
-                                                strong: ({node, ...props}) => <strong><Highlight text={props.children as string} highlight={searchTerm} /></strong>,
-                                                code: ({node, ...props}) => <code className="bg-slate-100 text-sm rounded px-1 py-0.5"><Highlight text={props.children as string} highlight={searchTerm} /></code>
+                                                p: ({ node, ...props }) => <Highlight text={props.children as string} highlight={searchTerm} />,
+                                                strong: ({ node, ...props }) => <strong className="text-slate-900 dark:text-slate-100"><Highlight text={props.children as string} highlight={searchTerm} /></strong>,
+                                                code: ({ node, ...props }) => <code className="bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded px-1 py-0.5"><Highlight text={props.children as string} highlight={searchTerm} /></code>
                                             }}
-                                         >
+                                        >
                                             {step}
-                                         </ReactMarkdown>
+                                        </ReactMarkdown>
                                     </div>
                                 </div>
                             ))}
@@ -68,7 +68,7 @@ function Tutorials() {
                     </div>
                 );
             })}
-             {filteredTutorials.length === 0 && (
+            {filteredTutorials.length === 0 && (
                 <p className="text-center text-slate-500 py-8">No tutorials found matching your search.</p>
             )}
         </div>

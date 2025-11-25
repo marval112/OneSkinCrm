@@ -22,11 +22,13 @@ const UserGroupIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} 
 
 const KPICard = ({ title, value, accent }: { title: string; value: string; accent?: 'primary' | 'success' | 'warning'; }) => (
   <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-    <div className="flex items-center justify-between">
-      <h3 className="text-xs font-semibold tracking-wider uppercase text-slate-500 dark:text-slate-400">{title}</h3>
-      {accent === 'primary' && <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><DocumentCurrencyDollarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>}
-      {accent === 'success' && <div className="p-1.5 bg-green-50 dark:bg-green-900/30 rounded-lg"><ArrowTrendingUpIcon className="w-4 h-4 text-green-600 dark:text-green-400" /></div>}
-      {!accent && <div className="p-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg"><UserGroupIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" /></div>}
+    <div className="flex items-start justify-between gap-2">
+      <h3 className="text-xs font-semibold tracking-wider uppercase text-slate-500 dark:text-slate-400 flex-1 leading-tight">{title}</h3>
+      <div className="flex-shrink-0">
+        {accent === 'primary' && <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><DocumentCurrencyDollarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>}
+        {accent === 'success' && <div className="p-1.5 bg-green-50 dark:bg-green-900/30 rounded-lg"><ArrowTrendingUpIcon className="w-4 h-4 text-green-600 dark:text-green-400" /></div>}
+        {!accent && <div className="p-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg"><UserGroupIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" /></div>}
+      </div>
     </div>
     <p className="text-2xl font-bold mt-2 text-slate-900 dark:text-slate-100">{value}</p>
   </div>
@@ -859,7 +861,7 @@ function Dashboard() {
       {/* Budget vs Closed Won (Water Glass) */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm" onDoubleClick={() => navigate('/budget')}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-lg">{(t('dashboard.budget') || 'Budget') + ' vs ' + (t('dashboard.achieved') || 'Closed Won') + ` (${budgetYear})`}</h3>
+          <h3 className="font-semibold text-base mb-3">{(t('dashboard.budget') || 'Budget') + ' vs ' + (t('dashboard.achieved') || 'Closed Won') + ` (${budgetYear})`}</h3>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Budget Year</label>
             <select
@@ -871,7 +873,7 @@ function Dashboard() {
             </select>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={150}>
+        <ResponsiveContainer width="100%" height={120}>
           {(() => {
             const budget = stats.budgetVsAchieved?.budget2026 || 0;
             const closed = Math.min(stats.budgetVsAchieved?.achieved2026 || 0, budget);
@@ -927,8 +929,8 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4" title="Ingresos por mes a partir de oportunidades Closed Won en el periodo/añ o seleccionado.">{t('dashboard.revenueByMonth')}</h3>
-          <ResponsiveContainer width="100%" height={250}>
+          <h3 className="font-semibold text-base mb-3" title="Ingresos por mes a partir de oportunidades Closed Won en el periodo/añ o seleccionado.">{t('dashboard.revenueByMonth')}</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis dataKey="name" stroke="rgb(100 116 139)" />
@@ -945,8 +947,8 @@ function Dashboard() {
           </ResponsiveContainer>
         </div>
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4" title="Valor agregado de oportunidades por etapa; para etapas cerradas se toma el año de cierre.">{t('dashboard.dealValueByStage')}</h3>
-          <ResponsiveContainer width="100%" height={250}>
+          <h3 className="font-semibold text-base mb-3" title="Valor agregado de oportunidades por etapa; para etapas cerradas se toma el año de cierre.">{t('dashboard.dealValueByStage')}</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
@@ -974,9 +976,9 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <FunnelChart>
+          <h3 className="font-semibold text-base mb-3" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <FunnelChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]} />
               <Funnel data={stats.dealValueByStage} dataKey="value" nameKey="name" isAnimationActive>
                 {stats.dealValueByStage.map((entry, index) => {
@@ -994,9 +996,9 @@ function Dashboard() {
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4" title="Porcentaje de oportunidades Ganadas frente a Perdidas en el año/periodo.">{t('dashboard.winRate')}</h3>
-          <div className="relative" style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height={250}>
+          <h3 className="font-semibold text-base mb-3" title="Porcentaje de oportunidades Ganadas frente a Perdidas en el año/periodo.">{t('dashboard.winRate')}</h3>
+          <div className="relative" style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 {(() => {
                   const wr = parseFloat((stats.kpis.winRate || '0').toString().replace('%', '')) || 0;
@@ -1006,7 +1008,7 @@ function Dashboard() {
                     { name: 'Rest', value: 100 - clamped }
                   ];
                   return (
-                    <Pie data={data} dataKey="value" startAngle={180} endAngle={0} innerRadius={90} outerRadius={120} stroke="none" labelLine={false} label={renderPieLabel}>
+                    <Pie data={data} dataKey="value" startAngle={180} endAngle={0} innerRadius={70} outerRadius={95} stroke="none" labelLine={false} label={renderPieLabel}>
                       <Cell key="win" fill="#2563eb" />
                       <Cell key="rest" fill="#bfdbfe" />
                     </Pie>
@@ -1026,10 +1028,10 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4" title="Distribución de leads por fuente para el año/periodo.">{t('dashboard.leadSources')}</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
+          <h3 className="font-semibold text-base mb-3" title="Distribución de leads por fuente para el año/periodo.">{t('dashboard.leadSources')}</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+              <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={80} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
                 {stats.leadSourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="cursor-pointer" />)}
               </Pie>
               <Tooltip
@@ -1041,8 +1043,8 @@ function Dashboard() {
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-lg mb-4" title="Importe ganado y perdido por vendedor en el año/periodo.">{t('dashboard.teamPerformance')}</h3>
-          <ResponsiveContainer width="100%" height={250}>
+          <h3 className="font-semibold text-base mb-3" title="Importe ganado y perdido por vendedor en el año/periodo.">{t('dashboard.teamPerformance')}</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={stats.teamPerformance} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis dataKey="name" stroke="rgb(100 116 139)" />
@@ -1071,16 +1073,16 @@ function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* LEFT COLUMN: LEADS */}
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-sm mb-3">{t('dashboard.leadsByStatus') || 'Leads by Status'}</h3>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-sm mb-2">{t('dashboard.leadsByStatus') || 'Leads by Status'}</h3>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.leadsByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 <Bar dataKey="value" name="Leads" radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/leads?status=${encodeURIComponent((d as any).name)}`)}>
                   {stats.leadsByStatus.map((_, i) => <Cell key={`l-s-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1089,13 +1091,13 @@ function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-sm mb-3">{t('dashboard.leadsBySegment') || 'Leads by Segment'}</h3>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-sm mb-2">{t('dashboard.leadsBySegment') || 'Leads by Segment'}</h3>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.leadsBySegment} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 <Bar dataKey="value" name="Leads" radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/leads?segment=${encodeURIComponent((d as any).name)}`)}>
                   {stats.leadsBySegment.map((_, i) => <Cell key={`l-seg-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1104,13 +1106,13 @@ function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-sm mb-3">{t('dashboard.leadsByCountry') || 'Leads by Country'}</h3>
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-sm mb-2">{t('dashboard.leadsByCountry') || 'Leads by Country'}</h3>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.leadsByCountry} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 <Bar dataKey="value" name={t('leads.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const n = (d as any).name; if (!n || n === (t('common.others') || 'Others')) return; navigate(`/leads?country=${encodeURIComponent(n)}`) }}>
                   {stats.leadsByCountry.map((_, i) => <Cell key={`l-ctry-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1120,13 +1122,13 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
           {user.role === 'Admin' && (
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-              <h3 className="font-semibold text-sm mb-3">{t('dashboard.leadsByOwner') || 'Leads by Owner'}</h3>
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+              <h3 className="font-semibold text-sm mb-2">{t('dashboard.leadsByOwner') || 'Leads by Owner'}</h3>
+              <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={stats.leadsByOwner} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                  <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" />
+                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                  <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                   <Bar dataKey="value" name={t('leads.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const email = (d as any).name; const u = stats.users.find(x => x.email === email); if (u) navigate(`/leads?userId=${u.id}`) }}>
                     {stats.leadsByOwner.map((_, i) => <Cell key={`l-own-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1139,13 +1141,13 @@ function Dashboard() {
         </div>
         {/* RIGHT COLUMN: CUSTOMERS */}
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-sm mb-3">{t('dashboard.customersByStatus') || 'Customers by Status'}</h3>
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-sm mb-2">{t('dashboard.customersByStatus') || 'Customers by Status'}</h3>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.customersByStatus} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/customers?status=${encodeURIComponent((d as any).name)}`)}>
                   {stats.customersByStatus.map((_, i) => <Cell key={`c-st-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1154,13 +1156,13 @@ function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-sm mb-3">{t('dashboard.customersBySegment') || 'Customers by Segment'}</h3>
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-sm mb-2">{t('dashboard.customersBySegment') || 'Customers by Segment'}</h3>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.customersBySegment} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/customers?segment=${encodeURIComponent((d as any).name)}`)}>
                   {stats.customersBySegment.map((_, i) => <Cell key={`c-seg-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1169,13 +1171,13 @@ function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-            <h3 className="font-semibold text-sm mb-3">{t('dashboard.customersByCountry') || 'Customers by Country'}</h3>
-            <ResponsiveContainer width="100%" height={220}>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+            <h3 className="font-semibold text-sm mb-2">{t('dashboard.customersByCountry') || 'Customers by Country'}</h3>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.customersByCountry} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" />
+                <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                 <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const n = (d as any).name; if (!n || n === (t('common.others') || 'Others')) return; navigate(`/customers?country=${encodeURIComponent(n)}`) }}>
                   {stats.customersByCountry.map((_, i) => <Cell key={`c-ctry-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1185,13 +1187,13 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
           {user.role === 'Admin' && (
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-              <h3 className="font-semibold text-sm mb-3">{t('dashboard.customersByOwner') || 'Customers by Owner'}</h3>
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+              <h3 className="font-semibold text-sm mb-2">{t('dashboard.customersByOwner') || 'Customers by Owner'}</h3>
+              <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={stats.customersByOwner} layout="vertical" margin={{ top: 5, right: 20, left: 16, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
-                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-                  <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" />
+                  <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
+                  <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
                   <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const email = (d as any).name; const u = stats.users.find(x => x.email === email); if (u) navigate(`/customers?userId=${u.id}`) }}>
                     {stats.customersByOwner.map((_, i) => <Cell key={`c-own-${i}`} fill={COLORS[i % COLORS.length]} />)}
@@ -1204,7 +1206,7 @@ function Dashboard() {
         </div>
       </div>
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-        <h3 className="font-semibold text-lg mb-4">{t('dashboard.recentActivity')}</h3>
+        <h3 className="font-semibold text-base mb-3">{t('dashboard.recentActivity')}</h3>
         <ul className="divide-y divide-slate-200 dark:divide-slate-700">
           {stats.recentActivity.map(activity => (
             <li key={activity.id} className="py-3 flex items-center">
@@ -1221,7 +1223,7 @@ function Dashboard() {
       </div>
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-lg mb-2">AI Insights</h3>
+          <h3 className="font-semibold text-base mb-2">AI Insights</h3>
           <button className="text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
         </div>
         <div className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">{aiInsights || '...'}</div>

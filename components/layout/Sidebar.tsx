@@ -8,8 +8,8 @@ import { listTasksForUser, getTaskCounts } from '../../services/tasksService';
 import { getLeads, getCustomers, getDeals } from '../../services/crmService';
 import { generateAlertRecommendations } from '../../services/predictiveAlerts';
 import { getAutomationAlerts } from '../../services/alertsService';
-import { getBrandLogoUrl, getBrandName, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
-import { applyTheme, getActiveTheme } from '../../services/themeService';
+import { getBrandName, getSidebarLogoUrl, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
+import { applyTheme, getActiveTheme, getThemeMode, toggleThemeMode } from '../../services/themeService';
 
 const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -72,19 +72,19 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const { t, language, setLanguage } = useTranslation();
   const { user } = useAuth();
   const [brandName, setBrandName] = useState<string>(getBrandName());
-  const [brandLogoUrl, setBrandLogoUrl] = useState<string>(getBrandLogoUrl());
+  const [sidebarLogoUrl, setSidebarLogoUrl] = useState<string>(getSidebarLogoUrl());
   const [overdueCount, setOverdueCount] = useState<number>(0);
   const [todayCount, setTodayCount] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [alertsCount, setAlertsCount] = useState<number>(0);
   const [leadsCount, setLeadsCount] = useState<number>(0);
   const [customersCount, setCustomersCount] = useState<number>(0);
-  const [currentTheme, setCurrentTheme] = useState<string>(getActiveTheme().id);
+  const [currentMode, setCurrentMode] = useState<'light' | 'dark'>(getThemeMode());
 
   useEffect(() => {
     const update = () => {
       setBrandName(getBrandName());
-      setBrandLogoUrl(getBrandLogoUrl());
+      setSidebarLogoUrl(getSidebarLogoUrl());
     };
     window.addEventListener(BRANDING_UPDATED_EVENT, update as EventListener);
     return () => window.removeEventListener(BRANDING_UPDATED_EVENT, update as EventListener);
@@ -179,7 +179,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <NavLink
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center px-3 py-2 my-1 rounded-lg transition-colors hover:bg-slate-700 ${isActive ? 'bg-primary text-white' : 'text-slate-300'}`
+              `flex items-center px-3 py-2 my-1 rounded-lg transition-colors hover:bg-white/10 ${isActive ? 'bg-white/20 text-white font-semibold' : 'text-white/90'}`
             }
             onClick={() => setIsOpen(false)}
           >
@@ -211,68 +211,100 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
   const SidebarContent = () => (
     <>
-      <div className="relative p-4 border-b border-slate-700">
+      <div className="relative p-4 border-b border-white/20">
         <div className="flex justify-center items-center h-12 gap-2">
-          <img src={brandLogoUrl} alt={brandName} className="h-full object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo.png'; }} />
-          <span className="text-sm font-medium text-slate-100">{brandName}</span>
-          <span className="text-xs align-middle font-light text-slate-400 ml-2">v1.0</span>
+          <img src={sidebarLogoUrl} alt={brandName} className="h-full object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo.png'; }} />
+          <span className="text-sm font-medium text-white">{brandName}</span>
+          <span className="text-xs align-middle font-light text-white/60 ml-2">v1.0</span>
         </div>
         <button
-          className="lg:hidden absolute top-1/2 right-4 -translate-y-1/2 p-1 text-slate-300 hover:text-white"
+          className="lg:hidden absolute top-1/2 right-4 -translate-y-1/2 p-1 text-white/80 hover:text-white"
           onClick={() => setIsOpen(false)}
           aria-label="Close sidebar"
         >
           <XMarkIcon className="h-6 w-6" />
         </button>
-        {/* Language and Theme Controls */}
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <div className="relative">
-            <GlobeAltIcon className="w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as 'en' | 'es' | 'pt')}
-              className="pl-7 pr-2 py-1.5 border border-slate-600 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary bg-slate-700 text-white appearance-none"
-              aria-label="Select language"
-            >
-              <option value="en">EN</option>
-              <option value="es">ES</option>
-              <option value="pt">PT</option>
-            </select>
-          </div>
-          <button
-            onClick={() => { const next = currentTheme === 'dark' ? 'default' : 'dark'; applyTheme(next); setCurrentTheme(next); }}
-            className="px-2 py-1 rounded-md text-xs bg-slate-700 hover:bg-slate-600 border border-slate-600"
-            aria-label="Toggle light/dark theme"
-          >
-            {currentTheme === 'dark' ? 'Light' : 'Dark'}
-          </button>
-        </div>
       </div>
+
       <nav className="flex-1 p-4 overflow-y-auto">
         <div>
-          <h2 className="px-3 mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Core</h2>
+          <h2 className="px-3 mb-1 text-xs font-semibold text-white/50 uppercase tracking-wider">Core</h2>
           <NavList items={getCoreNavItems()} />
         </div>
         {user?.role === 'Admin' && (
-          <div className="mt-4 pt-4 border-t border-slate-700">
-            <h2 className="px-3 mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</h2>
+          <div className="mt-4 pt-4 border-t border-white/20">
+            <h2 className="px-3 mb-1 text-xs font-semibold text-white/50 uppercase tracking-wider">Admin</h2>
             <NavList items={ENTERPRISE_NAV_ITEMS} />
           </div>
         )}
       </nav>
+
+      {/* Footer with Language and Theme Controls */}
+      <div className="p-4 border-t border-white/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="relative flex-1">
+            <GlobeAltIcon className="w-4 h-4 text-white/60 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as 'en' | 'es' | 'pt')}
+              className="w-full pl-8 pr-2 py-2 border border-white/20 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-white/40 bg-white/10 text-white appearance-none cursor-pointer hover:bg-white/20 transition-colors"
+              aria-label="Select language"
+            >
+              <option value="en" className="text-slate-900">English</option>
+              <option value="es" className="text-slate-900">Español</option>
+              <option value="pt" className="text-slate-900">Português</option>
+            </select>
+          </div>
+          <button
+            onClick={() => { toggleThemeMode(); setCurrentMode(getThemeMode()); }}
+            className="px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-sm flex items-center gap-2"
+            style={{
+              backgroundColor: 'white',
+              color: 'var(--color-primary)'
+            }}
+            aria-label="Toggle light/dark theme"
+          >
+            {currentMode === 'dark' ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM19.071 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5a.75.75 0 01.75.75zM4.179 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5a.75.75 0 01.75.75zM15.657 15.657a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0zM6.464 6.464a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0zM15.657 4.343a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.061a.75.75 0 011.061 0zM6.464 13.536a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.061a.75.75 0 011.061 0z" />
+                </svg>
+                Light
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M7.455 2.004a.75.75 0 01.26.77 7 7 0 009.958 7.967.75.75 0 011.067.853A8.5 8.5 0 116.647 1.921a.75.75 0 01.808.083z" clipRule="evenodd" />
+                </svg>
+                Dark
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </>
   );
 
   return (
     <>
       {/* Sidebar for Desktop */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-slate-900 text-white">
+      <aside
+        className="hidden lg:flex lg:flex-col w-64 text-white"
+        style={{
+          background: `linear-gradient(180deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 85%, black) 100%)`
+        }}
+      >
         <SidebarContent />
       </aside>
 
       {/* Sidebar for Mobile (Drawer) */}
       <div className={`fixed inset-0 z-40 flex ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:hidden`}>
-        <div className="w-64 h-full bg-slate-900 text-white shadow-lg flex flex-col">
+        <div
+          className="w-64 h-full text-white shadow-lg flex flex-col"
+          style={{
+            background: `linear-gradient(180deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 85%, black) 100%)`
+          }}
+        >
           <SidebarContent />
         </div>
         <div className="flex-1 bg-black bg-opacity-50" onClick={() => setIsOpen(false)}></div>

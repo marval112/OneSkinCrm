@@ -47,15 +47,15 @@ const Section = ({ title, content, searchTerm, initiallyOpen = false }: { title:
                 className="overflow-hidden transition-all duration-300 ease-in-out"
                 style={{ maxHeight: isOpen ? `${contentRef.current?.scrollHeight}px` : '0px' }}
             >
-                <div className="prose max-w-none p-4 pt-0">
-                   <ReactMarkdown
+                <div className="prose max-w-none p-4 pt-0 text-slate-900 dark:text-slate-100">
+                    <ReactMarkdown
                         components={{
-                            p: ({node, ...props}) => <p className="mb-4" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-2" {...props} />,
-                            code: ({node, ...props}) => <code className="bg-slate-100 text-sm rounded px-1 py-0.5" {...props} />,
-                            img: ({node, ...props}) => <img className="rounded-md border border-slate-200" {...props} />
+                            p: ({ node, ...props }) => <p className="mb-4" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-semibold text-slate-900 dark:text-slate-100" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4" {...props} />,
+                            li: ({ node, ...props }) => <li className="mb-2" {...props} />,
+                            code: ({ node, ...props }) => <code className="bg-slate-100 text-sm rounded px-1 py-0.5" {...props} />,
+                            img: ({ node, ...props }) => <img className="rounded-md border border-slate-200" {...props} />
                         }}
                     >
                         {content}
@@ -71,17 +71,17 @@ function UserManual() {
     const searchContext = useContext(SearchContext);
     const searchTerm = searchContext?.searchTerm ?? '';
     const [activeSection, setActiveSection] = useState('dashboard');
-    const sections = ['dashboard', 'aiAssistant', 'leads', 'customers', 'deals', 'products', 'reports', 'webhooks', 'integrations', 'alerts'];
+    const sections = ['dashboard', 'aiAssistant', 'prospecting', 'leads', 'customers', 'deals', 'products', 'reports', 'webhooks', 'integrations', 'alerts'];
 
     const filteredSections = useMemo(() => {
         if (!searchTerm) return sections;
         return sections.filter(sectionKey => {
             const section = t(`userManual.${sectionKey}` as any);
             return section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                   section.content.toLowerCase().includes(searchTerm.toLowerCase());
+                section.content.toLowerCase().includes(searchTerm.toLowerCase());
         });
     }, [searchTerm, t, sections]);
-    
+
     const scrollToSection = (id: string) => {
         const element = document.getElementById(`manual-${id}`);
         element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -98,9 +98,8 @@ function UserManual() {
                         <li key={sectionKey}>
                             <button
                                 onClick={() => scrollToSection(sectionKey)}
-                                className={`w-full text-left px-3 py-2 rounded-md text-sm ${
-                                    activeSection === sectionKey ? 'bg-primary text-white font-semibold' : 'hover:bg-slate-100'
-                                }`}
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm ${activeSection === sectionKey ? 'bg-primary text-white font-semibold' : 'hover:bg-slate-100'
+                                    }`}
                             >
                                 <Highlight text={t(`userManual.${sectionKey}.title`)} highlight={searchTerm} />
                             </button>
@@ -115,7 +114,7 @@ function UserManual() {
                     const section = t(`userManual.${sectionKey}` as any);
                     return (
                         <div id={`manual-${sectionKey}`} key={sectionKey} className="mb-4">
-                             <Section
+                            <Section
                                 title={section.title}
                                 content={section.content}
                                 searchTerm={searchTerm}
