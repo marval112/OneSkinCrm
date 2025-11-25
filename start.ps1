@@ -43,10 +43,14 @@ if (-not $SkipInstall) {
     Write-Info "SkipInstall activado. Omitiendo npm install."
 }
 
-# 4) Lanzar Vite dev server
+# 4) Lanzar Proxy Server
+Write-Info "Arrancando Proxy Server (npm run proxy)..."
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "npm run proxy"
+
+# 5) Lanzar Vite dev server
 Write-Info "Arrancando en modo desarrollo (npm run dev)..."
 if (-not $NoBrowser) {
-    Start-Process powershell -ArgumentList "-NoProfile -Command Start-Sleep 2; Start-Process 'http://localhost:5173'" | Out-Null
+    Start-Process powershell -ArgumentList "-NoProfile -Command Start-Sleep 4; Start-Process 'http://localhost:5173'" | Out-Null
 }
 npm run dev
 

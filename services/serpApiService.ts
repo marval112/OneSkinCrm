@@ -1,7 +1,9 @@
 import { Prospect } from './prospectingService';
 
-// Use local proxy to avoid CORS issues
-const SERPAPI_BASE_URL = 'http://localhost:3001/api/serpapi';
+// Use local proxy in development, Vercel serverless function in production
+const SERPAPI_BASE_URL = import.meta.env.DEV
+    ? 'http://localhost:3001/api/serpapi'
+    : '/api/serpapi';
 
 interface SerpAPIResult {
     title?: string;
@@ -26,7 +28,7 @@ export async function searchCompaniesGoogle(query: string): Promise<Prospect[]> 
         const params = new URLSearchParams({
             engine: 'google',
             q: query,
-            num: '10',
+            num: '100',
             gl: 'es', // Spain
             hl: 'en'
         });
@@ -70,7 +72,7 @@ export async function searchCompaniesGoogle(query: string): Promise<Prospect[]> 
                 console.log('✅ Created prospect:', prospect.company);
                 return prospect;
             })
-            .slice(0, 8);
+            .slice(0, 100);
 
         console.log(`✨ Returning ${prospects.length} Google prospects`);
         return prospects;
@@ -88,7 +90,7 @@ export async function searchLinkedIn(query: string): Promise<Prospect[]> {
         const params = new URLSearchParams({
             engine: 'google',
             q: `site:linkedin.com/in ${query}`,
-            num: '10'
+            num: '100'
         });
 
         console.log('🔍 SerpAPI LinkedIn Search:', query);
@@ -119,7 +121,7 @@ export async function searchLinkedIn(query: string): Promise<Prospect[]> {
                     linkedinUrl: result.link
                 };
             })
-            .slice(0, 5);
+            .slice(0, 100);
 
         console.log(`✨ Returning ${prospects.length} LinkedIn prospects`);
         return prospects;

@@ -70,6 +70,7 @@ export const uiTranslations = {
       deviceMgmt: "Device Mgmt",
       documentation: "Documentation",
       login: "Login",
+      prospecting: "Prospecting",
     },
     budget: {
       title: "Budget",
@@ -92,7 +93,7 @@ export const uiTranslations = {
     dashboard: {
       totalLeads: "Total Leads",
       leadConversionRate: "Lead Conversion Rate",
-        revenue: "Closed Won",
+      revenue: "Closed Won",
       activeCustomers: "Active Customers",
       budgetVsAchieved: "Budget vs Closed Won (2026)",
       budget: "Budget",
@@ -101,7 +102,7 @@ export const uiTranslations = {
       leadSources: "Lead Sources",
       doubleClickToNavigate: "Double-click to navigate to the {module} module",
       avgDealSize: "Avg. Deal Size",
-        openPipelineValue: "Running Deals",
+      openPipelineValue: "Running Deals",
       winRate: "Win Rate",
       revenueByMonth: "Revenue by Month",
       dealValueByStage: "Deal Value by Stage",
@@ -325,6 +326,7 @@ export const uiTranslations = {
       deviceMgmt: "Gestión Dispositivos",
       documentation: "Documentación",
       login: "Iniciar Sesión",
+      prospecting: "Prospección",
     },
     budget: {
       title: "Presupuesto",
@@ -347,7 +349,7 @@ export const uiTranslations = {
     dashboard: {
       totalLeads: "Leads Totales",
       leadConversionRate: "Tasa de Conversión de Leads",
-        revenue: "Closed Won",
+      revenue: "Closed Won",
       activeCustomers: "Clientes Activos",
       budgetVsAchieved: "Budget vs Closed Won (2026)",
       budget: "Budget",
@@ -356,7 +358,7 @@ export const uiTranslations = {
       leadSources: "Fuentes de Leads",
       doubleClickToNavigate: "Doble clic para navegar al módulo de {module}",
       avgDealSize: "Valor Promedio Oportunidad",
-        openPipelineValue: "Oportunidades en curso",
+      openPipelineValue: "Oportunidades en curso",
       winRate: "Tasa de Éxito",
       revenueByMonth: "Ingresos por Mes",
       dealValueByStage: "Valor de Oportunidades por Etapa",
@@ -580,6 +582,7 @@ export const uiTranslations = {
       deviceMgmt: "Gestão de Dispositivos",
       documentation: "Documentação",
       login: "Login",
+      prospecting: "Prospecção",
     },
     budget: {
       title: "Orçamento",
@@ -602,7 +605,7 @@ export const uiTranslations = {
     dashboard: {
       totalLeads: "Leads Totais",
       leadConversionRate: "Taxa de Conversão de Leads",
-        revenue: "Closed Won",
+      revenue: "Closed Won",
       activeCustomers: "Clientes Ativos",
       budgetVsAchieved: "Orçamento vs Closed Won (2026)",
       budget: "Orçamento",
@@ -611,7 +614,7 @@ export const uiTranslations = {
       leadSources: "Fontes de Leads",
       doubleClickToNavigate: "Clique duas vezes para navegar para o módulo {module}",
       avgDealSize: "Tamanho Médio do Negócio",
-        openPipelineValue: "Negócios em curso",
+      openPipelineValue: "Negócios em curso",
       winRate: "Taxa de Sucesso",
       revenueByMonth: "Receita por Mês",
       dealValueByStage: "Valor do Negócio por Estágio",
