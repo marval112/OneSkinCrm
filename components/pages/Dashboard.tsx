@@ -804,15 +804,15 @@ function Dashboard() {
               </div>
             }
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => setPresetRange('today')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Today</button>
             <button onClick={() => setPresetRange('7d')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Last 7d</button>
             <button onClick={() => setPresetRange('30d')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Last 30d</button>
             <button onClick={() => setPresetRange('month')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">This month</button>
-            <button onClick={() => setPresetRange('quarter')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">This quarter</button>
-            <button onClick={() => setPresetRange('ytd')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">YTD</button>
-            <button onClick={handleExportDashboardPDF} className="ml-2 px-2 py-1 text-xs rounded-md bg-primary text-white">Export PDF</button>
-            <button onClick={handleExportDashboardPNG} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700">Export PNG</button>
+            <button onClick={() => setPresetRange('quarter')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hidden sm:inline-block">This quarter</button>
+            <button onClick={() => setPresetRange('ytd')} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hidden sm:inline-block">YTD</button>
+            <button onClick={handleExportDashboardPDF} className="ml-2 px-2 py-1 text-xs rounded-md bg-primary text-white hidden md:inline-block">Export PDF</button>
+            <button onClick={handleExportDashboardPNG} className="px-2 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hidden md:inline-block">Export PNG</button>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
