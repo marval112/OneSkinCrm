@@ -17,9 +17,9 @@ import type { ActivityLog } from '../../types';
 import { TaskStatus, TaskType } from '../../types';
 
 const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
-    </svg>
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+  </svg>
 );
 
 const ChevronUpIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>;
@@ -53,134 +53,134 @@ const DealForm = ({
   onCancel: () => void,
   isEdit?: boolean
 }) => {
-    const { t } = useTranslation();
-    const [formData, setFormData] = useState<NewDealInput>(deal ? {
-        title: deal.title,
-        customer_id: deal.customer_id || undefined,
-        lead_id: deal.lead_id || undefined,
-        value: deal.value,
-        status: deal.status,
-        probability: deal.probability,
-        expected_close_date: deal.expected_close_date,
-        notes: deal.notes,
-    } : {
-        title: '',
-        customer_id: customers[0]?.id || 0,
-        lead_id: undefined,
-        value: 0,
-        status: DealStage.QUALIFICATION,
-        probability: 10,
-        expected_close_date: new Date().toISOString().split('T')[0],
-        notes: '',
-    });
-    const [errors, setErrors] = useState<Record<string,string>>({});
-    const [association, setAssociation] = useState<'customer' | 'lead'>(() => (deal?.lead_id ? 'lead' : 'customer'));
+  const { t } = useTranslation();
+  const [formData, setFormData] = useState<NewDealInput>(deal ? {
+    title: deal.title,
+    customer_id: deal.customer_id || undefined,
+    lead_id: deal.lead_id || undefined,
+    value: deal.value,
+    status: deal.status,
+    probability: deal.probability,
+    expected_close_date: deal.expected_close_date,
+    notes: deal.notes,
+  } : {
+    title: '',
+    customer_id: customers[0]?.id || 0,
+    lead_id: undefined,
+    value: 0,
+    status: DealStage.QUALIFICATION,
+    probability: 10,
+    expected_close_date: new Date().toISOString().split('T')[0],
+    notes: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [association, setAssociation] = useState<'customer' | 'lead'>(() => (deal?.lead_id ? 'lead' : 'customer'));
 
-    const validateForm = () => {
-        const newErrors: Record<string, string> = {};
-        if (!formData.title.trim()) newErrors.title = 'Deal title is required.';
-        if (!formData.expected_close_date) newErrors.expected_close_date = 'Expected close date is required.';
-        if (formData.value === undefined || formData.value === null || formData.value <= 0) newErrors.value = 'Value must be a positive number.';
-        if (association === 'customer') {
-        if (!formData.customer_id) newErrors.customer_id = 'A customer must be selected.';
-        } else {
-          if (!formData.lead_id) newErrors.lead_id = 'A lead must be selected.';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.title.trim()) newErrors.title = 'Deal title is required.';
+    if (!formData.expected_close_date) newErrors.expected_close_date = 'Expected close date is required.';
+    if (formData.value === undefined || formData.value === null || formData.value <= 0) newErrors.value = 'Value must be a positive number.';
+    if (association === 'customer') {
+      if (!formData.customer_id) newErrors.customer_id = 'A customer must be selected.';
+    } else {
+      if (!formData.lead_id) newErrors.lead_id = 'A lead must be selected.';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        let parsedValue: string | number = value;
-        if (name === 'customer_id' || name === 'lead_id') {
-            parsedValue = value === '' ? (undefined as any) : (parseInt(value, 10) || (undefined as any));
-        } else if (name === 'value' || name === 'probability') {
-            parsedValue = parseFloat(value) || 0;
-        }
-        setFormData(prev => ({ ...prev, [name]: parsedValue }));
-    };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    let parsedValue: string | number = value;
+    if (name === 'customer_id' || name === 'lead_id') {
+      parsedValue = value === '' ? (undefined as any) : (parseInt(value, 10) || (undefined as any));
+    } else if (name === 'value' || name === 'probability') {
+      parsedValue = parseFloat(value) || 0;
+    }
+    setFormData(prev => ({ ...prev, [name]: parsedValue }));
+  };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (validateForm()) {
-            onSave(formData);
-        }
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+      onSave(formData);
+    }
+  };
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <div className="p-6 space-y-4">
-                <div className="flex gap-4">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input type="radio" name="assoc" checked={association==='customer'} onChange={() => { setAssociation('customer'); setFormData(prev=>({ ...prev, lead_id: undefined })); }} />
-                    <span>{t('common.customer')}</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input type="radio" name="assoc" checked={association==='lead'} onChange={() => { setAssociation('lead'); setFormData(prev=>({ ...prev, customer_id: undefined })); }} />
-                    <span>{t('common.lead')}</span>
-                  </label>
-                </div>
-                <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
-                    <input type="text" name="title" id="title" value={formData.title} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                    {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
-                </div>
-                {association === 'customer' ? (
-                <div>
-                    <label htmlFor="customer_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.customer')}</label>
-                    <select name="customer_id" id="customer_id" value={formData.customer_id ?? ''} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        <option value="">{t('deals.form.selectCustomer')}</option>
-                        {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
-                    </select>
-                    {errors.customer_id && <p className="text-red-500 text-xs mt-1">{errors.customer_id}</p>}
-                </div>
-                ) : (
-                  <div>
-                    <label htmlFor="lead_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.lead')}</label>
-                    <select name="lead_id" id="lead_id" value={formData.lead_id ?? ''} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        <option value="">{t('deals.form.selectLead')}</option>
-                        {leads.map(l => <option key={l.id} value={l.id}>{l.name} - {l.company}</option>)}
-                    </select>
-                    {errors.lead_id && <p className="text-red-500 text-xs mt-1">{errors.lead_id}</p>}
-                  </div>
-                )}
-                <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
-                    <select name="status" id="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                        {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label htmlFor="value" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
-                        <input type="number" step="100" name="value" id="value" value={formData.value} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                        {errors.value && <p className="text-red-500 text-xs mt-1">{errors.value}</p>}
-                    </div>
-                     <div>
-                        <label htmlFor="expected_close_date" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
-                        <input type="date" name="expected_close_date" id="expected_close_date" value={formData.expected_close_date} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                         {errors.expected_close_date && <p className="text-red-500 text-xs mt-1">{errors.expected_close_date}</p>}
-                    </div>
-                </div>
-                 <div>
-                    <label htmlFor="probability" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')} ({formData.probability}%)</label>
-                    <input type="range" min="0" max="100" step="5" name="probability" id="probability" value={formData.probability} onChange={handleChange} className="mt-1 block w-full accent-primary" />
-                </div>
-                <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
-                    <textarea name="notes" id="notes" value={formData.notes || ''} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                </div>
-            </div>
-            <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover sm:ml-3 sm:w-auto sm:text-sm">
-                    {isEdit ? t('deals.form.saveChanges') : t('deals.form.saveDeal')}
-                </button>
-                <button type="button" onClick={onCancel} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500 text-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">{t('common.cancel')}</button>
-            </div>
-        </form>
-    );
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 space-y-4">
+        <div className="flex gap-4">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input type="radio" name="assoc" checked={association === 'customer'} onChange={() => { setAssociation('customer'); setFormData(prev => ({ ...prev, lead_id: undefined })); }} />
+            <span>{t('common.customer')}</span>
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input type="radio" name="assoc" checked={association === 'lead'} onChange={() => { setAssociation('lead'); setFormData(prev => ({ ...prev, customer_id: undefined })); }} />
+            <span>{t('common.lead')}</span>
+          </label>
+        </div>
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+          <input type="text" name="title" id="title" value={formData.title} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+          {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
+        </div>
+        {association === 'customer' ? (
+          <div>
+            <label htmlFor="customer_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.customer')}</label>
+            <select name="customer_id" id="customer_id" value={formData.customer_id ?? ''} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+              <option value="">{t('deals.form.selectCustomer')}</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+            </select>
+            {errors.customer_id && <p className="text-red-500 text-xs mt-1">{errors.customer_id}</p>}
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="lead_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.lead')}</label>
+            <select name="lead_id" id="lead_id" value={formData.lead_id ?? ''} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+              <option value="">{t('deals.form.selectLead')}</option>
+              {leads.map(l => <option key={l.id} value={l.id}>{l.name} - {l.company}</option>)}
+            </select>
+            {errors.lead_id && <p className="text-red-500 text-xs mt-1">{errors.lead_id}</p>}
+          </div>
+        )}
+        <div>
+          <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+          <select name="status" id="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+            {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="value" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+            <input type="number" step="100" name="value" id="value" value={formData.value} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+            {errors.value && <p className="text-red-500 text-xs mt-1">{errors.value}</p>}
+          </div>
+          <div>
+            <label htmlFor="expected_close_date" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+            <input type="date" name="expected_close_date" id="expected_close_date" value={formData.expected_close_date} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+            {errors.expected_close_date && <p className="text-red-500 text-xs mt-1">{errors.expected_close_date}</p>}
+          </div>
+        </div>
+        <div>
+          <label htmlFor="probability" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')} ({formData.probability}%)</label>
+          <input type="range" min="0" max="100" step="5" name="probability" id="probability" value={formData.probability} onChange={handleChange} className="mt-1 block w-full accent-primary" />
+        </div>
+        <div>
+          <label htmlFor="notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+          <textarea name="notes" id="notes" value={formData.notes || ''} onChange={handleChange} rows={3} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+        </div>
+      </div>
+      <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover sm:ml-3 sm:w-auto sm:text-sm">
+          {isEdit ? t('deals.form.saveChanges') : t('deals.form.saveDeal')}
+        </button>
+        <button type="button" onClick={onCancel} className="mt-3 w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500 text-slate-700 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">{t('common.cancel')}</button>
+      </div>
+    </form>
+  );
 };
 
 type SortableDealKeys = keyof Deal | 'partyName';
@@ -272,32 +272,32 @@ function Deals() {
 
   const processedDeals = useMemo(() => {
     const dealsWithPartyNames = deals.map(deal => ({
-        ...deal,
-        partyName: deal.customer_id ? getCustomerName(deal.customer_id) : (deal.lead_id ? getLeadName(deal.lead_id) : '—')
+      ...deal,
+      partyName: deal.customer_id ? getCustomerName(deal.customer_id) : (deal.lead_id ? getLeadName(deal.lead_id) : '—')
     }));
 
     let filtered = dealsWithPartyNames.filter(deal => {
       const searchMatch = deal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (deal.partyName || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (deal.partyName || '').toLowerCase().includes(searchTerm.toLowerCase());
       const stageMatch = filterStage === 'all' || deal.status === filterStage;
       const userMatch = user?.role !== 'Admin' || filterUser === 'all' || deal.user_id?.toString() === filterUser;
       return searchMatch && stageMatch && userMatch;
     });
 
     if (sortConfig !== null) {
-        filtered.sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
-            if (aValue === undefined || aValue === null || bValue === undefined || bValue === null) return 0;
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        if (aValue === undefined || aValue === null || bValue === undefined || bValue === null) return 0;
 
-            if (aValue < bValue) {
-                return sortConfig.direction === 'ascending' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-                return sortConfig.direction === 'ascending' ? 1 : -1;
-            }
-            return 0;
-        });
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
     }
 
     return filtered;
@@ -307,7 +307,7 @@ function Deals() {
   const requestSort = (key: SortableDealKeys) => {
     let direction: SortDirection = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-        direction = 'descending';
+      direction = 'descending';
     }
     setSortConfig({ key, direction });
   };
@@ -319,7 +319,7 @@ function Deals() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedDeals(processedDeals.filter(d => d.status!==DealStage.CLOSED_WON && d.status!==DealStage.CLOSED_LOST).map(d => d.id));
+      setSelectedDeals(processedDeals.filter(d => d.status !== DealStage.CLOSED_WON && d.status !== DealStage.CLOSED_LOST).map(d => d.id));
     } else {
       setSelectedDeals([]);
     }
@@ -348,23 +348,23 @@ function Deals() {
       toastContext?.showToast('Failed to create deal.', 'danger');
     }
   };
-  
+
   const handleUpdateDeal = async (dealData: Deal) => {
     try {
-        const { customerName, partyName, ...dealToUpdate } = dealData as any;
-        await updateDeal(dealToUpdate);
-        toastContext?.showToast('Deal updated successfully!', 'success');
-        setEditingDeal(null);
-        fetchData();
+      const { customerName, partyName, ...dealToUpdate } = dealData as any;
+      await updateDeal(dealToUpdate);
+      toastContext?.showToast('Deal updated successfully!', 'success');
+      setEditingDeal(null);
+      fetchData();
     } catch (error) {
-        toastContext?.showToast('Failed to update deal.', 'danger');
+      toastContext?.showToast('Failed to update deal.', 'danger');
     }
   };
 
   const handleExport = () => {
     const dataToExport = processedDeals.map(deal => ({
-        ...deal,
-        customer_name: getCustomerName(deal.customer_id)
+      ...deal,
+      customer_name: getCustomerName(deal.customer_id)
     }));
     exportToExcel(dataToExport, 'deals_export');
     toastContext?.showToast(t('deals.exportSuccess'), 'success');
@@ -372,65 +372,65 @@ function Deals() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-                <input
-                    type="text"
-                    placeholder={t('deals.list.searchPlaceholder')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                />
-                <select
-                    value={filterStage}
-                    onChange={(e) => setFilterStage(e.target.value)}
-                    className="border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                >
-                    <option value="all">{t('deals.list.allStages')}</option>
-                    {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {user?.role === 'Admin' && users.length > 0 && (
-                    <select
-                        value={filterUser}
-                        onChange={(e) => setFilterUser(e.target.value)}
-                        className="border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                    >
-                        <option value="all">{t('deals.list.allUsers')}</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.email}</option>)}
-                    </select>
-                )}
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <button onClick={handleExport} className="px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700">{t('deals.exportExcel')}</button>
-                <button onClick={() => setIsCreateModalOpen(true)} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
-                    New Deal
-                </button>
-                {user?.role === 'Admin' && selectedDeals.length > 0 && (
-                  <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
-                )}
-            </div>
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto flex-wrap">
+          <input
+            type="text"
+            placeholder={t('deals.list.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+          />
+          <select
+            value={filterStage}
+            onChange={(e) => setFilterStage(e.target.value)}
+            className="border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+          >
+            <option value="all">{t('deals.list.allStages')}</option>
+            {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {user?.role === 'Admin' && users.length > 0 && (
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+            >
+              <option value="all">{t('deals.list.allUsers')}</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.email}</option>)}
+            </select>
+          )}
         </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+          <button onClick={handleExport} className="px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 hidden sm:inline-block">{t('deals.exportExcel')}</button>
+          <button onClick={() => setIsCreateModalOpen(true)} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
+            New Deal
+          </button>
+          {user?.role === 'Admin' && selectedDeals.length > 0 && (
+            <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
+          )}
+        </div>
+      </div>
 
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-                  <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
+              <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 <button onClick={() => requestSort('title')} className="flex items-center">Deal Title {getSortIcon('title')}</button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
-                 <button onClick={() => requestSort('partyName')} className="flex items-center">Contact {getSortIcon('partyName')}</button>
+                <button onClick={() => requestSort('partyName')} className="flex items-center">Contact {getSortIcon('partyName')}</button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                 <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
+                <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
-                 <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
+                <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                 <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
+                <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
             </tr>
@@ -438,8 +438,8 @@ function Deals() {
           <tbody className="bg-white divide-y divide-slate-200">
             {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
               <tr key={deal.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status===DealStage.CLOSED_WON || deal.status===DealStage.CLOSED_LOST} /></td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status!==DealStage.CLOSED_WON && deal.status!==DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
+                <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
                 <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-slate-600">{(deal as any).partyName || ''}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell text-slate-600">{deal.probability}%</td>
@@ -447,10 +447,10 @@ function Deals() {
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
-                    {!(deal.status===DealStage.CLOSED_WON || deal.status===DealStage.CLOSED_LOST) && (
-                      <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
-                    )}
+                  <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
+                  {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+                    <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -459,34 +459,34 @@ function Deals() {
       </div>
 
       {isCreateModalOpen && (
-          <Modal title={t('deals.form.createTitle')} onClose={() => setIsCreateModalOpen(false)}>
-              <DealForm customers={customers} leads={leads} onSave={handleCreateDeal} onCancel={() => setIsCreateModalOpen(false)} />
-          </Modal>
+        <Modal title={t('deals.form.createTitle')} onClose={() => setIsCreateModalOpen(false)}>
+          <DealForm customers={customers} leads={leads} onSave={handleCreateDeal} onCancel={() => setIsCreateModalOpen(false)} />
+        </Modal>
       )}
 
-       {editingDeal && (
-          <Modal title={`${t('deals.form.editTitlePrefix')} ${editingDeal.title}`} onClose={() => setEditingDeal(null)}>
-              <DealForm
-                isEdit
-                deal={editingDeal}
-                customers={customers}
-                leads={leads}
-                onSave={(data) => handleUpdateDeal({ ...(editingDeal as Deal), ...(data as any) })}
-                onCancel={() => setEditingDeal(null)}
-              />
-          </Modal>
+      {editingDeal && (
+        <Modal title={`${t('deals.form.editTitlePrefix')} ${editingDeal.title}`} onClose={() => setEditingDeal(null)}>
+          <DealForm
+            isEdit
+            deal={editingDeal}
+            customers={customers}
+            leads={leads}
+            onSave={(data) => handleUpdateDeal({ ...(editingDeal as Deal), ...(data as any) })}
+            onCancel={() => setEditingDeal(null)}
+          />
+        </Modal>
       )}
 
       {confirmDelete && (
-          <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
-            <div className="p-6">
-              <p>Delete {selectedDeals.length} selected deals?</p>
-              <div className="mt-6 flex justify-end gap-4">
-                <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
-                <button onClick={async () => { try { await bulkDeleteDeals(selectedDeals); toastContext?.showToast('Deals deleted.', 'success'); setSelectedDeals([]); fetchData(); } catch { toastContext?.showToast('Failed to delete deals.', 'danger'); } finally { setConfirmDelete(false); } }} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
-              </div>
+        <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
+          <div className="p-6">
+            <p>Delete {selectedDeals.length} selected deals?</p>
+            <div className="mt-6 flex justify-end gap-4">
+              <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
+              <button onClick={async () => { try { await bulkDeleteDeals(selectedDeals); toastContext?.showToast('Deals deleted.', 'success'); setSelectedDeals([]); fetchData(); } catch { toastContext?.showToast('Failed to delete deals.', 'danger'); } finally { setConfirmDelete(false); } }} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
             </div>
-          </Modal>
+          </div>
+        </Modal>
       )}
 
       {detailDeal && (
@@ -498,8 +498,8 @@ function Deals() {
               <button onClick={() => setDetailDeal(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">Close</button>
             </div>
             <div className="flex items-center gap-2 mb-4">
-              <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab==='info'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
-              <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab==='timeline'?'bg-primary text-white':'bg-slate-100 dark:bg-slate-700'}`}>Timeline</button>
+              <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
+              <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Timeline</button>
             </div>
             {detailTab === 'info' && (
               <div className="space-y-2 text-sm">
@@ -543,41 +543,41 @@ function Deals() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
                     <div className="flex items-center gap-3">
-                      <button className="text-xs underline text-slate-600" onClick={()=> navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+                      <button className="text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
                       {aiLoading && <div className="text-xs text-slate-500">...</div>}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async ()=>{ if(!detailDeal) return; setAiLoading(true); try{ const text= await summarizeDeal(detailDeal, timelineItems); setAiSummary(text);} finally { setAiLoading(false);} }}>{t('aiAssistant.winStrategy')}</button>
-                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async ()=>{ if(!detailDeal) return; setAiLoading(true); try{ const tasks = await suggestDealTasks(detailDeal, timelineItems); setAiSuggested(tasks||[]);} finally { setAiLoading(false);} }}>{t('aiAssistant.suggestDealTasks')}</button>
-                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async ()=>{ if(!detailDeal) return; setAiLoading(true); try{ const f = await suggestDealFollowUp(detailDeal, timelineItems); setAiFollowUp(f? { dueDays: f.dueDays, stage: f.stage as any } : null);} finally { setAiLoading(false);} }}>{t('aiAssistant.suggestFollowUp')}</button>
-                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async ()=>{ if(!detailDeal) return; setAiLoading(true); try{ const s = await suggestDealStage(detailDeal, timelineItems); setAiStage(s || null);} finally { setAiLoading(false);} }}>{t('aiAssistant.suggestStage')}</button>
-                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async ()=>{ if(!detailDeal) return; setAiLoading(true); try{ const email = detailDeal.lead_id ? await draftLeadFollowUpEmail({ name: getLeadName(detailDeal.lead_id), company: '', country:'', source:'' as any, status:'' as any, created_at:'' } as any, timelineItems) : await draftCustomerFollowUpEmail({ name: getCustomerName(detailDeal.customer_id), company:'', country:'', status:'' as any, health_score:0, last_contact:'' } as any, timelineItems); setAiEmail(email);} finally { setAiLoading(false);} }}>{t('aiAssistant.draftEmail')}</button>
+                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async () => { if (!detailDeal) return; setAiLoading(true); try { const text = await summarizeDeal(detailDeal, timelineItems); setAiSummary(text); } finally { setAiLoading(false); } }}>{t('aiAssistant.winStrategy')}</button>
+                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async () => { if (!detailDeal) return; setAiLoading(true); try { const tasks = await suggestDealTasks(detailDeal, timelineItems); setAiSuggested(tasks || []); } finally { setAiLoading(false); } }}>{t('aiAssistant.suggestDealTasks')}</button>
+                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async () => { if (!detailDeal) return; setAiLoading(true); try { const f = await suggestDealFollowUp(detailDeal, timelineItems); setAiFollowUp(f ? { dueDays: f.dueDays, stage: f.stage as any } : null); } finally { setAiLoading(false); } }}>{t('aiAssistant.suggestFollowUp')}</button>
+                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async () => { if (!detailDeal) return; setAiLoading(true); try { const s = await suggestDealStage(detailDeal, timelineItems); setAiStage(s || null); } finally { setAiLoading(false); } }}>{t('aiAssistant.suggestStage')}</button>
+                    <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading || !detailDeal} onClick={async () => { if (!detailDeal) return; setAiLoading(true); try { const email = detailDeal.lead_id ? await draftLeadFollowUpEmail({ name: getLeadName(detailDeal.lead_id), company: '', country: '', source: '' as any, status: '' as any, created_at: '' } as any, timelineItems) : await draftCustomerFollowUpEmail({ name: getCustomerName(detailDeal.customer_id), company: '', country: '', status: '' as any, health_score: 0, last_contact: '' } as any, timelineItems); setAiEmail(email); } finally { setAiLoading(false); } }}>{t('aiAssistant.draftEmail')}</button>
                   </div>
                   {aiSummary && <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>}
                   {aiFollowUp && (
                     <div className="mb-3 flex items-center gap-2 text-sm">
-                      <span>Follow-up in <span className="font-medium">{aiFollowUp.dueDays}d</span>{aiFollowUp.stage?`, stage: ${aiFollowUp.stage}`:''}</span>
-                      <button className="px-2 py-1 text-xs bg-success text-white rounded" onClick={async ()=>{
+                      <span>Follow-up in <span className="font-medium">{aiFollowUp.dueDays}d</span>{aiFollowUp.stage ? `, stage: ${aiFollowUp.stage}` : ''}</span>
+                      <button className="px-2 py-1 text-xs bg-success text-white rounded" onClick={async () => {
                         if (!detailDeal || !user) return;
-                        const due = new Date(Date.now()+ aiFollowUp.dueDays*24*3600*1000).toISOString();
+                        const due = new Date(Date.now() + aiFollowUp.dueDays * 24 * 3600 * 1000).toISOString();
                         const target = { lead_id: detailDeal.lead_id, customer_id: detailDeal.customer_id } as any;
-                        await createTask({ user_id: user.id, ...target, type: TaskType.FOLLOW_UP_CALL, status: TaskStatus.PENDING, title: `Seguimiento de oportunidad: ${detailDeal.title}` , due_date: due });
+                        await createTask({ user_id: user.id, ...target, type: TaskType.FOLLOW_UP_CALL, status: TaskStatus.PENDING, title: `Seguimiento de oportunidad: ${detailDeal.title}`, due_date: due });
                         if (aiFollowUp.stage && aiFollowUp.stage !== detailDeal.status) {
-                          try { await updateDeal({ ...detailDeal, status: aiFollowUp.stage as any }); } catch {}
+                          try { await updateDeal({ ...detailDeal, status: aiFollowUp.stage as any }); } catch { }
                         }
                         toastContext?.showToast('Follow-up scheduled.', 'success');
                         setAiFollowUp(null);
                         fetchData();
                       }}>Apply</button>
-                      <button className="px-2 py-1 text-xs border rounded" onClick={()=> setAiFollowUp(null)}>Dismiss</button>
+                      <button className="px-2 py-1 text-xs border rounded" onClick={() => setAiFollowUp(null)}>Dismiss</button>
                     </div>
                   )}
                   {aiStage && (
                     <div className="mb-3 flex items-center gap-2">
                       <span className="text-sm">Suggested stage: <span className="font-medium">{aiStage}</span></span>
-                      <button className="px-2 py-1 text-xs bg-success text-white rounded" onClick={async ()=>{
-                        if(!detailDeal) return;
+                      <button className="px-2 py-1 text-xs bg-success text-white rounded" onClick={async () => {
+                        if (!detailDeal) return;
                         try {
                           await updateDeal({ ...detailDeal, status: aiStage as any });
                           toastContext?.showToast('Stage updated.', 'success');
@@ -587,20 +587,20 @@ function Deals() {
                           toastContext?.showToast('Failed to update stage.', 'danger');
                         }
                       }}>Apply</button>
-                      <button className="px-2 py-1 text-xs border rounded" onClick={()=> setAiStage(null)}>Dismiss</button>
+                      <button className="px-2 py-1 text-xs border rounded" onClick={() => setAiStage(null)}>Dismiss</button>
                     </div>
                   )}
-                  {aiSuggested.length>0 && (
+                  {aiSuggested.length > 0 && (
                     <div className="mb-3">
                       <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
                       <ul className="text-sm list-disc pl-5">
-                        {aiSuggested.map((s,idx)=>(<li key={idx}>{s.type} • {s.title}{typeof s.dueDays==='number'?` • in ${s.dueDays}d`:''}</li>))}
+                        {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays}d` : ''}</li>))}
                       </ul>
-                      <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async ()=>{
-                        if(!detailDeal || !user) return;
+                      <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async () => {
+                        if (!detailDeal || !user) return;
                         const target = { lead_id: detailDeal.lead_id, customer_id: detailDeal.customer_id } as any;
-                        for (const s of aiSuggested){
-                          const due = typeof s.dueDays==='number' ? new Date(Date.now()+ s.dueDays*24*3600*1000).toISOString() : undefined;
+                        for (const s of aiSuggested) {
+                          const due = typeof s.dueDays === 'number' ? new Date(Date.now() + s.dueDays * 24 * 3600 * 1000).toISOString() : undefined;
                           const map: Record<string, TaskType> = {
                             'Follow Up Call': TaskType.FOLLOW_UP_CALL,
                             'Send Information': TaskType.SEND_INFORMATION,

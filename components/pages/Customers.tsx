@@ -457,7 +457,7 @@ function Customers() {
   return (
     <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             type="text"
             placeholder="Search customers..."
@@ -472,11 +472,11 @@ function Customers() {
           ) : null}
           <ViewSwitcher />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {user?.role === 'Admin' && (
-            <button onClick={() => setIsImportModalOpen(true)} className="px-3 py-1.5 text-sm bg-success text-white rounded-md hover:bg-success-hover">Import</button>
+            <button onClick={() => setIsImportModalOpen(true)} className="px-3 py-1.5 text-sm bg-success text-white rounded-md hover:bg-success-hover hidden md:inline-block">Import</button>
           )}
-          <button onClick={handleExport} className="px-3 py-1.5 text-sm bg-slate-600 text-white rounded-md hover:bg-slate-700">Export</button>
+          <button onClick={handleExport} className="px-3 py-1.5 text-sm bg-slate-600 text-white rounded-md hover:bg-slate-700 hidden sm:inline-block">Export</button>
           <button onClick={() => setIsCreateModalOpen(true)} className="px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary-hover whitespace-nowrap">
             Create New
           </button>
