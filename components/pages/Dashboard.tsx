@@ -44,7 +44,7 @@ type Activity = {
 
 interface DashboardStats {
   kpis: { newLeads: string; winRate: string; revenue: string; activeCustomers: string; openPipeline: string; leadConversionRate: string; };
-  revenueByMonth: { name: string; revenue: number }[];
+  revenueByMonth: { month: string;[key: string]: number | string }[];
   leadSourceData: { name: string; value: number }[];
   dealValueByStage: { name: string; value: number; displayLabel?: string }[];
   teamPerformance: { name: string; won: number; lost: number }[];
@@ -319,13 +319,34 @@ function Dashboard() {
       const wonLeadsInYear = leadsInYear.filter(l => l.status === LeadStatus.Won);
       const leadConversionRate = leadsInYear.length > 0 ? (wonLeadsInYear.length / leadsInYear.length) * 100 : 0;
 
-      // Chart: Revenue by Month (based on deals won in range)
-      const revenueByMonthData = wonDeals.reduce((acc: { [key: string]: number }, deal) => {
-        const month = new Date(deal.updated_at).toLocaleString('default', { month: 'short', year: '2-digit' });
-        acc[month] = (acc[month] || 0) + Number(deal.value);
-        return acc;
-      }, {} as Record<string, number>);
-      const revenueByMonth = Object.entries(revenueByMonthData).map(([name, revenue]) => ({ name, revenue }));
+      // Chart: Revenue by Month (multi-year comparison: current year, year-1, year-2)
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const years = [currentYear - 2, currentYear - 1, currentYear];
+
+      // Initialize data structure with all 12 months and 3 years
+      const revenueByMonth = months.map(month => {
+        const monthData: { month: string;[key: string]: number | string } = { month };
+        years.forEach(year => {
+          monthData[`year${year}`] = 0;
+        });
+        return monthData;
+      });
+
+      // Populate with actual data from wonDeals (all won deals, not filtered by date range)
+      const allWonDeals = safeDeals.filter(d => d.status === DealStage.CLOSED_WON);
+      allWonDeals.forEach(deal => {
+        const dealDate = new Date(deal.updated_at);
+        const dealYear = dealDate.getFullYear();
+        const dealMonth = dealDate.toLocaleString('default', { month: 'short' });
+
+        if (years.includes(dealYear)) {
+          const monthIndex = months.indexOf(dealMonth);
+          if (monthIndex !== -1) {
+            revenueByMonth[monthIndex][`year${dealYear}`] =
+              (revenueByMonth[monthIndex][`year${dealYear}`] as number) + Number(deal.value);
+          }
+        }
+      });
 
       // Chart: Lead Sources (based on leads created in range)
       const sourceCounts = leadsInYear.reduce((acc: Record<string, number>, lead) => {
@@ -924,20 +945,35 @@ function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <h3 className="font-semibold text-base mb-3" title="Ingresos por mes a partir de oportunidades Closed Won en el periodo/añ o seleccionado.">{t('dashboard.revenueByMonth')}</h3>
+          <h3 className="font-semibold text-base mb-3" title="Comparativa de ingresos mensuales de los últimos 3 años (basado en oportunidades Closed Won).">{t('dashboard.revenueByMonth')}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
-              <XAxis dataKey="name" stroke="rgb(100 116 139)" />
+              <XAxis dataKey="month" stroke="rgb(100 116 139)" />
               <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
                 labelStyle={{ color: 'rgb(241 245 249)' }}
-                formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
+                formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
-              <Line type="monotone" dataKey="revenue" stroke={SERIES_ACCENT} strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }}>
-                <LabelList content={renderLineTopEuroLabel} />
-              </Line>
+              <Legend />
+              {(() => {
+                const currentYear = new Date().getFullYear();
+                const years = [currentYear - 2, currentYear - 1, currentYear];
+                const colors = ['#93c5fd', '#60a5fa', '#2563eb']; // Light to dark blue
+                return years.map((year, index) => (
+                  <Line
+                    key={year}
+                    type="monotone"
+                    dataKey={`year${year}`}
+                    name={String(year)}
+                    stroke={colors[index]}
+                    strokeWidth={index === 2 ? 3 : 2}
+                    dot={{ r: index === 2 ? 4 : 3 }}
+                    activeDot={{ r: 6 }}
+                  />
+                ));
+              })()}
             </LineChart>
           </ResponsiveContainer>
         </div>
