@@ -94,10 +94,13 @@ function Dashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [budgetYear, setBudgetYear] = useState<number>(2025);
-  const budgetYears = [2023, 2024, 2025];
-  const [chartYear, setChartYear] = useState<number | 'All'>(2025);
-  const chartYears: Array<number | 'All'> = [2023, 2024, 2025];
+
+  // Dynamic year calculation: current year, year-1, year-2
+  const currentYear = new Date().getFullYear();
+  const [budgetYear, setBudgetYear] = useState<number>(currentYear);
+  const budgetYears = [currentYear - 2, currentYear - 1, currentYear];
+  const [chartYear, setChartYear] = useState<number | 'All'>(currentYear);
+  const chartYears: Array<number | 'All'> = [currentYear - 2, currentYear - 1, currentYear];
 
   const BLUE_SHADES = ['#1e3a8a', '#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
   const COLORS = ['#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
