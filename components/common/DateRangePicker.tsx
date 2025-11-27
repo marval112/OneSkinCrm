@@ -10,6 +10,7 @@ const presets = [
     { label: 'Today', value: 'today' },
     { label: 'This Week', value: 'week' },
     { label: 'This Month', value: 'month' },
+    { label: 'This Quarter', value: 'quarter' },
 ];
 
 const getRangeFromPreset = (preset: string | null) => {
@@ -44,6 +45,15 @@ const getRangeFromPreset = (preset: string | null) => {
             from.setHours(0, 0, 0, 0);
             to.setHours(23, 59, 59, 999);
             break;
+        case 'quarter': {
+            // This Quarter: from first day of current quarter to today
+            const month = now.getMonth();
+            const quarterStartMonth = Math.floor(month / 3) * 3; // 0, 3, 6, or 9
+            from = new Date(now.getFullYear(), quarterStartMonth, 1);
+            from.setHours(0, 0, 0, 0);
+            to.setHours(23, 59, 59, 999);
+            break;
+        }
         default:
             return null;
     }
@@ -82,8 +92,8 @@ function DateRangePicker({ value, onChange, rightSlot }: DateRangePickerProps) {
                             key={p.label}
                             onClick={() => handlePresetClick(p.value)}
                             className={`px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm font-medium rounded-md transition-colors ${isPresetActive(p.value)
-                                    ? 'bg-primary text-white'
-                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                ? 'bg-primary text-white'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
                                 }`}
                         >
                             {p.label}
