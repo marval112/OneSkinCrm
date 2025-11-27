@@ -94,10 +94,10 @@ function Dashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [budgetYear, setBudgetYear] = useState<number>(2026);
-  const budgetYears = [2026, 2027, 2028];
-  const [chartYear, setChartYear] = useState<number | 'All'>('All');
-  const chartYears: Array<number | 'All'> = ['All', 2026, 2027, 2028];
+  const [budgetYear, setBudgetYear] = useState<number>(2025);
+  const budgetYears = [2023, 2024, 2025];
+  const [chartYear, setChartYear] = useState<number | 'All'>(2025);
+  const chartYears: Array<number | 'All'> = [2023, 2024, 2025];
 
   const BLUE_SHADES = ['#1e3a8a', '#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
   const COLORS = ['#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
