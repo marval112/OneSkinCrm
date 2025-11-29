@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useContext, useRef } 
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads } from '../../services/crmService';
 import { scanBusinessCard } from '../../services/geminiService';
-import { calculateLeadScore } from '../../services/leadScoring';
+import { calculateLeadScore } from '../../services/leadScoringService';
 import { exportToExcel } from '../../services/exportService';
 import type { Lead, Country } from '../../types';
 import { LeadStatus, LeadSource, Segment, DealStage } from '../../types';
@@ -23,6 +23,7 @@ import { createDeal } from '../../services/crmService';
 import { createTask, listTasksForLead, completeTask, updateTask } from '../../services/tasksService';
 import { TaskType, TaskStatus, Task } from '../../types';
 import type { ActivityLog } from '../../types';
+import ScoreBadge from '../common/ScoreBadge';
 
 const statusColors: Record<LeadStatus, string> = {
   [LeadStatus.New]: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
@@ -424,12 +425,24 @@ function Leads() {
     fetchLeads();
   }, [fetchLeads]);
 
+  // Calculate scores for all leads with breakdown
+  const leadsWithScores = useMemo(() => {
+    return leads.map(lead => {
+      const scoreBreakdown = calculateLeadScore(lead);
+      return {
+        ...lead,
+        calculatedScore: scoreBreakdown.total,
+        scoreBreakdown
+      };
+    });
+  }, [leads]);
+
   const filteredLeads = useMemo(() => {
     const qsStatus = searchParams.get('status');
     const qsSegment = searchParams.get('segment');
     const qsCountry = searchParams.get('country');
     const qsUserId = searchParams.get('userId');
-    let sortableLeads = [...leads].filter(lead => {
+    let sortableLeads = [...leadsWithScores].filter(lead => {
       const searchMatch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -471,7 +484,7 @@ function Leads() {
     }
 
     return sortableLeads;
-  }, [leads, searchTerm, filterSource, sortConfig, searchParams]);
+  }, [leadsWithScores, searchTerm, filterSource, sortConfig, searchParams]);
 
   const requestSort = (key: SortableLeadKeys) => {
     let direction: SortDirection = 'ascending';
@@ -734,10 +747,11 @@ function Leads() {
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap"><span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[lead.status]}`}>{lead.status}</span></td>
                   <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-primary h-2 rounded-full" style={{ width: `${lead.score}%` }}></div></div>
-                      <span className="text-xs font-semibold">{lead.score}</span>
-                    </div>
+                    <ScoreBadge
+                      score={lead.calculatedScore || 0}
+                      breakdown={lead.scoreBreakdown}
+                      size="sm"
+                    />
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
                     {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
