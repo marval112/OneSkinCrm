@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
-import { 
+import {
   getProducts, createProduct, updateProduct, deleteProduct,
   getProductCategories, createProductCategory, updateProductCategory, deleteProductCategory
 } from '../../services/productService';
@@ -28,32 +28,32 @@ const CategoryFamilyForm = ({
   onSave: (data: Omit<ProductCategory, 'id'>) => void,
   onCancel: () => void,
 }) => {
-    const [formData, setFormData] = useState({ name: initialData.name || '', description: initialData.description || '' });
+  const [formData, setFormData] = useState({ name: initialData.name || '', description: initialData.description || '' });
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.name.trim()) return;
-        onSave({ ...formData, parent_id: initialData.parent_id || null });
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) return;
+    onSave({ ...formData, parent_id: initialData.parent_id || null });
+  };
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <div className="p-6 space-y-4">
-                <div>
-                    <label className="block text-sm font-medium">Name</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 w-full border rounded-md px-3 py-2" required />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Description</label>
-                    <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows={3} className="mt-1 w-full border rounded-md px-3 py-2" />
-                </div>
-            </div>
-            <div className="bg-slate-50 px-4 py-3 sm:px-6 flex flex-row-reverse">
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md ml-3">Save</button>
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-white border rounded-md">Cancel</button>
-            </div>
-        </form>
-    );
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-medium">Name</label>
+          <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="mt-1 w-full border rounded-md px-3 py-2" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Description</label>
+          <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="mt-1 w-full border rounded-md px-3 py-2" />
+        </div>
+      </div>
+      <div className="bg-slate-50 px-4 py-3 sm:px-6 flex flex-row-reverse">
+        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md ml-3">Save</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 bg-white border rounded-md">Cancel</button>
+      </div>
+    </form>
+  );
 };
 
 const ProductForm = ({
@@ -63,51 +63,51 @@ const ProductForm = ({
   onSave: (data: Omit<Product, 'id'>) => void,
   onCancel: () => void,
 }) => {
-    const { t } = useTranslation();
-    const [formData, setFormData] = useState({
-        name: initialData.name || '',
-        sku: initialData.sku || '',
-        description: initialData.description || '',
-        price: initialData.price || 0,
-        active: initialData.active !== undefined ? initialData.active : true,
-    });
+  const { t } = useTranslation();
+  const [formData, setFormData] = useState({
+    name: initialData.name || '',
+    sku: initialData.sku || '',
+    description: initialData.description || '',
+    price: initialData.price || 0,
+    active: initialData.active !== undefined ? initialData.active : true,
+  });
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.name.trim() || !formData.sku.trim() || formData.price <= 0) return;
-        onSave({ ...formData, category_id: initialData.category_id! });
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.sku.trim() || formData.price <= 0) return;
+    onSave({ ...formData, category_id: initialData.category_id! });
+  };
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <div className="p-6 space-y-4">
-                <div>
-                    <label className="block text-sm font-medium">Product Name</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 w-full border rounded-md px-3 py-2" required />
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium">SKU</label>
-                    <input type="text" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} className="mt-1 w-full border rounded-md px-3 py-2" required />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Description</label>
-                    <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows={3} className="mt-1 w-full border rounded-md px-3 py-2" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Price (€)</label>
-                    <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="mt-1 w-full border rounded-md px-3 py-2" required />
-                </div>
-                <div className="flex items-center">
-                    <input type="checkbox" id="active" checked={formData.active} onChange={e => setFormData({...formData, active: e.target.checked})} className="h-4 w-4 text-primary border-slate-300 rounded" />
-                    <label htmlFor="active" className="ml-2 block text-sm">{t('products.active')}</label>
-                </div>
-            </div>
-            <div className="bg-slate-50 px-4 py-3 sm:px-6 flex flex-row-reverse">
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md ml-3">Save</button>
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-white border rounded-md">Cancel</button>
-            </div>
-        </form>
-    );
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-medium">Product Name</label>
+          <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="mt-1 w-full border rounded-md px-3 py-2" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">SKU</label>
+          <input type="text" value={formData.sku} onChange={e => setFormData({ ...formData, sku: e.target.value })} className="mt-1 w-full border rounded-md px-3 py-2" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Description</label>
+          <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="mt-1 w-full border rounded-md px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Price (€)</label>
+          <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })} className="mt-1 w-full border rounded-md px-3 py-2" required />
+        </div>
+        <div className="flex items-center">
+          <input type="checkbox" id="active" checked={formData.active} onChange={e => setFormData({ ...formData, active: e.target.checked })} className="h-4 w-4 text-primary border-slate-300 rounded" />
+          <label htmlFor="active" className="ml-2 block text-sm">{t('products.active')}</label>
+        </div>
+      </div>
+      <div className="bg-slate-50 px-4 py-3 sm:px-6 flex flex-row-reverse">
+        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md ml-3">Save</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 bg-white border rounded-md">Cancel</button>
+      </div>
+    </form>
+  );
 };
 
 
@@ -124,13 +124,13 @@ function Products() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-        const [categoriesData, productsData] = await Promise.all([getProductCategories(), getProducts()]);
-        setAllCategories(categoriesData);
-        setProducts(productsData);
-    } catch(e) {
-        toastContext?.showToast('Failed to load catalog data.', 'danger');
+      const [categoriesData, productsData] = await Promise.all([getProductCategories(), getProducts()]);
+      setAllCategories(categoriesData);
+      setProducts(productsData);
+    } catch (e) {
+      toastContext?.showToast('Failed to load catalog data.', 'danger');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }, [toastContext]);
 
@@ -154,65 +154,65 @@ function Products() {
   const handleSave = async (formData: any) => {
     const { type, mode, data: originalData } = modalState!;
     try {
-        if (type === 'category' || type === 'family') {
-            const dataToSave: Omit<ProductCategory, 'id'> = {
-                name: formData.name,
-                description: formData.description,
-                parent_id: formData.parent_id
-            };
-            if (mode === 'create') {
-                await createProductCategory(dataToSave);
-            } else {
-                await updateProductCategory({ ...originalData, ...dataToSave });
-            }
-        } else if (type === 'product') {
-             const dataToSave: Omit<Product, 'id'> = {
-                name: formData.name,
-                sku: formData.sku,
-                description: formData.description,
-                price: formData.price,
-                active: formData.active,
-                category_id: formData.category_id,
-            };
-            if (mode === 'create') {
-                await createProduct(dataToSave);
-            } else {
-                await updateProduct({ ...originalData, ...dataToSave });
-            }
+      if (type === 'category' || type === 'family') {
+        const dataToSave: Omit<ProductCategory, 'id'> = {
+          name: formData.name,
+          description: formData.description,
+          parent_id: formData.parent_id
+        };
+        if (mode === 'create') {
+          await createProductCategory(dataToSave);
+        } else {
+          await updateProductCategory({ ...originalData, ...dataToSave });
         }
-        toastContext?.showToast(`${type} saved successfully!`, 'success');
-        setModalState(null);
-        fetchData();
+      } else if (type === 'product') {
+        const dataToSave: Omit<Product, 'id'> = {
+          name: formData.name,
+          sku: formData.sku,
+          description: formData.description,
+          price: formData.price,
+          active: formData.active,
+          category_id: formData.category_id,
+        };
+        if (mode === 'create') {
+          await createProduct(dataToSave);
+        } else {
+          await updateProduct({ ...originalData, ...dataToSave });
+        }
+      }
+      toastContext?.showToast(`${type} saved successfully!`, 'success');
+      setModalState(null);
+      fetchData();
     } catch (e) {
-        toastContext?.showToast(`Failed to save ${type}.`, 'danger');
+      toastContext?.showToast(`Failed to save ${type}.`, 'danger');
     }
   };
-  
+
   const handleDelete = async (type: 'category' | 'family' | 'product', id: number) => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
 
     try {
-        if (type === 'category') {
-            if (families.length > 0) {
-                toastContext?.showToast('Cannot delete a category that has families.', 'warning');
-                return;
-            }
-            await deleteProductCategory(id);
-            setSelectedCategoryId(null);
-        } else if (type === 'family') {
-             if (filteredProducts.length > 0) {
-                toastContext?.showToast('Cannot delete a family that has products.', 'warning');
-                return;
-            }
-            await deleteProductCategory(id);
-            setSelectedFamilyId(null);
-        } else if (type === 'product') {
-            await deleteProduct(id);
+      if (type === 'category') {
+        if (families.length > 0) {
+          toastContext?.showToast('Cannot delete a category that has families.', 'warning');
+          return;
         }
-        toastContext?.showToast(`${type} deleted.`, 'success');
-        fetchData();
-    } catch(e) {
-        toastContext?.showToast(`Failed to delete ${type}.`, 'danger');
+        await deleteProductCategory(id);
+        setSelectedCategoryId(null);
+      } else if (type === 'family') {
+        if (filteredProducts.length > 0) {
+          toastContext?.showToast('Cannot delete a family that has products.', 'warning');
+          return;
+        }
+        await deleteProductCategory(id);
+        setSelectedFamilyId(null);
+      } else if (type === 'product') {
+        await deleteProduct(id);
+      }
+      toastContext?.showToast(`${type} deleted.`, 'success');
+      fetchData();
+    } catch (e) {
+      toastContext?.showToast(`Failed to delete ${type}.`, 'danger');
     }
   };
 
@@ -266,22 +266,22 @@ function Products() {
     const title = `${mode === 'create' ? 'New' : 'Edit'} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
 
     return (
-        <Modal title={title} onClose={() => setModalState(null)}>
-            {(type === 'category' || type === 'family') &&
-                <CategoryFamilyForm
-                    initialData={data}
-                    onSave={handleSave}
-                    onCancel={() => setModalState(null)}
-                />
-            }
-            {type === 'product' &&
-                <ProductForm
-                    initialData={data}
-                    onSave={handleSave}
-                    onCancel={() => setModalState(null)}
-                />
-            }
-        </Modal>
+      <Modal title={title} onClose={() => setModalState(null)}>
+        {(type === 'category' || type === 'family') &&
+          <CategoryFamilyForm
+            initialData={data}
+            onSave={handleSave}
+            onCancel={() => setModalState(null)}
+          />
+        }
+        {type === 'product' &&
+          <ProductForm
+            initialData={data}
+            onSave={handleSave}
+            onCancel={() => setModalState(null)}
+          />
+        }
+      </Modal>
     );
   };
 
@@ -300,8 +300,8 @@ function Products() {
                 <div className="flex justify-between items-center">
                   <span className="font-medium">{cat.name}</span>
                   <div>
-                    <button onClick={e => { e.stopPropagation(); setModalState({ type: 'category', mode: 'edit', data: cat })}} className="p-1 hover:text-primary"><EditIcon className="h-4 w-4" /></button>
-                    <button onClick={e => { e.stopPropagation(); handleDelete('category', cat.id)}} className="p-1 hover:text-danger"><TrashIcon className="h-4 w-4" /></button>
+                    <button onClick={e => { e.stopPropagation(); setModalState({ type: 'category', mode: 'edit', data: cat }) }} className="p-1 hover:text-primary"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={e => { e.stopPropagation(); handleDelete('category', cat.id) }} className="p-1 hover:text-danger"><TrashIcon className="h-4 w-4" /></button>
                   </div>
                 </div>
               </div>
@@ -318,19 +318,19 @@ function Products() {
           <div className="overflow-y-auto">
             {selectedCategoryId ? families.map(fam => (
               <div key={fam.id} onClick={() => handleSelectFamily(fam.id)} className={`p-3 cursor-pointer border-l-4 ${selectedFamilyId === fam.id ? 'bg-primary/10 border-primary' : 'border-transparent hover:bg-slate-50'}`}>
-                 <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center">
                   <span className="font-medium">{fam.name}</span>
                   <div>
-                    <button onClick={e => { e.stopPropagation(); setModalState({ type: 'family', mode: 'edit', data: fam })}} className="p-1 hover:text-primary" title="Edit family"><EditIcon className="h-4 w-4" /></button>
+                    <button onClick={e => { e.stopPropagation(); setModalState({ type: 'family', mode: 'edit', data: fam }) }} className="p-1 hover:text-primary" title="Edit family"><EditIcon className="h-4 w-4" /></button>
                     <button onClick={e => { e.stopPropagation(); handleCloneFamily(fam); }} className="p-1 hover:text-primary" title="Clone family"><CloneIcon className="h-4 w-4" /></button>
-                    <button onClick={e => { e.stopPropagation(); handleDelete('family', fam.id)}} className="p-1 hover:text-danger"><TrashIcon className="h-4 w-4" /></button>
+                    <button onClick={e => { e.stopPropagation(); handleDelete('family', fam.id) }} className="p-1 hover:text-danger"><TrashIcon className="h-4 w-4" /></button>
                   </div>
                 </div>
               </div>
             )) : <p className="p-4 text-sm text-slate-500">Select a category to see its families.</p>}
           </div>
         </div>
-        
+
         {/* Products Column */}
         <div className={`w-1/3 flex flex-col ${!selectedFamilyId ? 'bg-slate-50' : ''}`}>
           <div className="p-4 border-b flex justify-between items-center">
@@ -338,26 +338,26 @@ function Products() {
             {selectedFamilyId && <button onClick={() => setModalState({ type: 'product', mode: 'create', data: { category_id: selectedFamilyId } })} className="p-1 text-primary hover:bg-primary/10 rounded-full"><PlusIcon className="h-6 w-6" /></button>}
           </div>
           <div className="overflow-y-auto">
-             {selectedFamilyId ? (
-                <table className="min-w-full">
-                    <tbody className="divide-y">
-                        {filteredProducts.map(prod => (
-                            <tr key={prod.id} className="hover:bg-slate-50">
-                                <td className="p-3">
-                                    <p className="font-medium text-slate-900 dark:text-slate-100">{prod.name}</p>
-                                    <p className="text-xs text-slate-400 font-mono">{prod.sku}</p>
-                                    <p className="text-sm text-slate-500">€{prod.price.toFixed(2)}</p>
-                                </td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => setModalState({ type: 'product', mode: 'edit', data: prod })} className="p-1 hover:text-primary" title="Edit"><EditIcon className="h-4 w-4" /></button>
-                                    <button onClick={() => handleCloneProduct(prod)} className="p-1 hover:text-primary" title="Clone"><CloneIcon className="h-4 w-4" /></button>
-                                    <button onClick={() => handleDelete('product', prod.id)} className="p-1 hover:text-danger" title="Delete"><TrashIcon className="h-4 w-4" /></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-             ) : <p className="p-4 text-sm text-slate-500">Select a family to see its products.</p>}
+            {selectedFamilyId ? (
+              <table className="min-w-full">
+                <tbody className="divide-y">
+                  {filteredProducts.map(prod => (
+                    <tr key={prod.id} className="hover:bg-slate-50">
+                      <td className="p-3">
+                        <p className="text-xs font-medium text-slate-900 dark:text-slate-100">{prod.name}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">{prod.sku}</p>
+                        <p className="text-xs text-slate-500">€{prod.price.toFixed(2)}</p>
+                      </td>
+                      <td className="p-3 text-right">
+                        <button onClick={() => setModalState({ type: 'product', mode: 'edit', data: prod })} className="p-1 hover:text-primary" title="Edit"><EditIcon className="h-4 w-4" /></button>
+                        <button onClick={() => handleCloneProduct(prod)} className="p-1 hover:text-primary" title="Clone"><CloneIcon className="h-4 w-4" /></button>
+                        <button onClick={() => handleDelete('product', prod.id)} className="p-1 hover:text-danger" title="Delete"><TrashIcon className="h-4 w-4" /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : <p className="p-4 text-sm text-slate-500">Select a family to see its products.</p>}
           </div>
         </div>
       </div>

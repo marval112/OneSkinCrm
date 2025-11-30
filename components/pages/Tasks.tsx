@@ -249,9 +249,9 @@ function Tasks() {
                       const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
                       return (
                         <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <td className="px-6 py-3 text-sm w-2/3">{task.title || type} {task.lead_id || task.customer_id ? `• ${renderLeadCustomer(task)}` : ''}</td>
-                          <td className="px-6 py-3 text-sm w-1/3 text-right">{task.due_date ? (<span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>) : '-'}</td>
-                          <td className="px-6 py-3 text-right text-sm">
+                          <td className="px-6 py-3 text-xs w-2/3">{task.title || type} {task.lead_id || task.customer_id ? `• ${renderLeadCustomer(task)}` : ''}</td>
+                          <td className="px-6 py-3 text-xs w-1/3 text-right">{task.due_date ? (<span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>) : '-'}</td>
+                          <td className="px-6 py-3 text-right text-xs">
                             {task.status !== 'Completed' ? (
                               <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
                             ) : (
@@ -271,23 +271,23 @@ function Tasks() {
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.type')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.type')}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
+              <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
             {filtered.length === 0 && (
-              <tr><td className="px-6 py-4 text-slate-500" colSpan={4}>{t('tasks.ui.noTasks')}</td></tr>
+              <tr><td className="px-3 py-2 text-slate-500" colSpan={4}>{t('tasks.ui.noTasks')}</td></tr>
             )}
             {filtered.map(task => {
               const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
               return (
                 <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-6 py-3 text-sm">
+                  <td className="px-3 py-2 text-xs">
                     {
                       task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
                         task.type === 'Send Information' ? t('tasks.types.sendInformation') :
@@ -299,14 +299,14 @@ function Tasks() {
                       <div className="text-xs text-slate-500 mt-0.5">{task.rule_title}</div>
                     )}
                   </td>
-                  <td className="px-6 py-3 text-sm">{task.title || '-'}</td>
-                  <td className="px-6 py-3 text-sm">{renderLeadCustomer(task)}</td>
-                  <td className="px-6 py-3 text-sm">
+                  <td className="px-3 py-2 text-xs">{task.title || '-'}</td>
+                  <td className="px-3 py-2 text-xs">{renderLeadCustomer(task)}</td>
+                  <td className="px-3 py-2 text-xs">
                     {task.due_date ? (
                       <span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>
                     ) : '-'}
                   </td>
-                  <td className="px-6 py-3 text-sm">
+                  <td className="px-3 py-2 text-xs">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleToggleTimer(task)}
@@ -323,12 +323,12 @@ function Tasks() {
                           </svg>
                         )}
                       </button>
-                      <span className={`text-sm font-mono ${task.timer_start ? 'text-green-600 font-semibold' : 'text-slate-600'}`}>
+                      <span className={`text-xs font-mono ${task.timer_start ? 'text-green-600 font-semibold' : 'text-slate-600'}`}>
                         {formatDuration(getTaskDuration(task))}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-3 text-right text-sm">
+                  <td className="px-3 py-2 text-right text-xs">
                     <div className="flex gap-2 justify-end items-center">
                       {task.status !== 'Completed' ? (
                         <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>

@@ -169,14 +169,14 @@ export default function Budget() {
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('common.customer')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">Company</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2026') || 'Budget 2026'}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2027') || 'Budget 2027'}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2028') || 'Budget 2028'}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.closedWon2026') || 'Closed Won 2026'}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.delta2026') || 'Delta 2026'}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.percentClosedWon2026') || '% Closed Won 2026'}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('common.customer')}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">Company</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2026') || 'Budget 2026'}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2027') || 'Budget 2027'}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2028') || 'Budget 2028'}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.closedWon2026') || 'Closed Won 2026'}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.delta2026') || 'Delta 2026'}</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.percentClosedWon2026') || '% Closed Won 2026'}</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -184,12 +184,12 @@ export default function Budget() {
               <TableSkeleton columns={7} rows={5} />
             ) : filteredRows.map(r => (
               <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                <td className="px-6 py-3">
-                  <div className="text-sm font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate('/customers')}>{r.name}</div>
-                  <div className="text-xs text-slate-500">{r.email}</div>
+                <td className="px-3 py-2">
+                  <div className="text-xs font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate('/customers')}>{r.name}</div>
+                  <div className="text-[11px] text-slate-500">{r.email}</div>
                 </td>
-                <td className="px-6 py-3 hidden md:table-cell text-sm">{r.company}{r.country ? `, ${r.country}` : ''}</td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-2 hidden md:table-cell text-xs">{r.company}{r.country ? `, ${r.country}` : ''}</td>
+                <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -201,7 +201,7 @@ export default function Budget() {
                     {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
                   </div>
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -213,7 +213,7 @@ export default function Budget() {
                     {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
                   </div>
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -225,21 +225,21 @@ export default function Budget() {
                     {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
                   </div>
                 </td>
-                <td className="px-6 py-3">
-                  <span className="text-sm">{formatEuro(Number(r.achieved2026 || 0))}</span>
+                <td className="px-3 py-2">
+                  <span className="text-xs">{formatEuro(Number(r.achieved2026 || 0))}</span>
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-2">
                   {(() => {
                     const delta = (Number(r.budget2026 || 0)) - (Number(r.achieved2026 || 0));
-                    return <span className={`text-sm ${delta >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{formatEuro(delta)}</span>;
+                    return <span className={`text-xs ${delta >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{formatEuro(delta)}</span>;
                   })()}
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-3 py-2">
                   {(() => {
                     const budget = Number(r.budget2026 || 0);
                     const achieved = Number(r.achieved2026 || 0);
                     const pct = budget > 0 ? Math.round((achieved / budget) * 100) : 0;
-                    return <span className="text-sm">{pct}%</span>;
+                    return <span className="text-xs">{pct}%</span>;
                   })()}
                 </td>
               </tr>
