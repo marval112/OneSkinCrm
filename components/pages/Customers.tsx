@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
+import SavedSearchControls from '../common/SavedSearchControls';
 import { useSearchParams } from 'react-router-dom';
-import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getCountries, createDeal } from '../../services/crmService';
+import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getCountries, createDeal, getDealsByCustomer } from '../../services/crmService';
 import { exportToExcel } from '../../services/exportService';
 import type { Customer, Country } from '../../types';
 import { DealStage } from '../../types';
@@ -132,7 +134,7 @@ const CustomerForm = ({
       const payload: any = { customer: isEdit ? formData as Customer : { ...formData, last_contact: new Date().toISOString() } };
       if (!isEdit && createDealFlag) {
         payload.deal = {
-          title: dealTitle || `${formData.name} • ${formData.company || 'Deal'}`,
+          title: dealTitle || `${formData.name} • ${formData.company || 'Deal'} `,
           value: Number(dealValue) || 0,
           status: dealStatus,
           expected_close_date: new Date(dealExpectedClose).toISOString(),
@@ -263,7 +265,7 @@ function Customers() {
   const [timelineNote, setTimelineNote] = useState('');
   const [timelineSaving, setTimelineSaving] = useState(false);
   const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
-  const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'email'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'email' | 'deals'>('info');
   const navigate = useNavigate();
   // Quick create deal
   const [dealForCustomer, setDealForCustomer] = useState<Customer | null>(null);
@@ -276,14 +278,27 @@ function Customers() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [aiEmail, setAiEmail] = useState<{ subject: string; body: string } | null>(null);
+  const [customerDeals, setCustomerDeals] = useState<Deal[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
 
   const openTimeline = async (customer: Customer) => {
     setTimelineCustomer(customer);
-    setTimelineLoading(true);
-    try { setTimelineItems(await listActivitiesForCustomer(customer.id, 50)); } catch (e) { console.warn('Activities table missing?', e); }
-    setTimelineLoading(false);
+    fetchTimeline(customer.id);
   };
+
+  useEffect(() => {
+    if (detailTab === 'deals' && detailCustomer) {
+      setDealsLoading(true);
+      getDealsByCustomer(detailCustomer.id)
+        .then(setCustomerDeals)
+        .catch(err => {
+          console.error('Failed to fetch deals', err);
+          toastContext?.showToast('Failed to load deals', 'danger');
+        })
+        .finally(() => setDealsLoading(false));
+    }
+  }, [detailTab, detailCustomer]);
 
   const addTimelineNote = async () => {
     if (!timelineCustomer || !timelineNote.trim()) return;
@@ -378,7 +393,7 @@ function Customers() {
   const handleDelete = async () => {
     try {
       await bulkDeleteCustomers(selectedCustomers);
-      toastContext?.showToast(`${selectedCustomers.length} ${t('customers.deleteSuccess')}`, 'success');
+      toastContext?.showToast(`${selectedCustomers.length} ${t('customers.deleteSuccess')} `, 'success');
       setSelectedCustomers([]);
       setConfirmDelete(false);
       fetchCustomers();
@@ -431,23 +446,28 @@ function Customers() {
     }
   };
 
+  const handleApplySavedSearch = (filters: any) => {
+    if (filters.search !== undefined) setSearchTerm(filters.search);
+    // Add other filters if Customers page has more filters in the future
+  };
+
   const ViewSwitcher = () => (
     <div className="flex items-center p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
       <button
         onClick={() => setView('table')}
-        className={`px-3 py-1 text-sm font-medium rounded-md ${view === 'table' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'}`}
+        className={`px - 3 py - 1 text - sm font - medium rounded - md ${view === 'table' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'} `}
       >
         {t('common.table')}
       </button>
       <button
         onClick={() => setView('kanban')}
-        className={`px-3 py-1 text-sm font-medium rounded-md ${view === 'kanban' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'}`}
+        className={`px - 3 py - 1 text - sm font - medium rounded - md ${view === 'kanban' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'} `}
       >
         {t('common.kanban')}
       </button>
       <button
         onClick={() => setView('segment')}
-        className={`px-3 py-1 text-sm font-medium rounded-md ${view === 'segment' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'}`}
+        className={`px - 3 py - 1 text - sm font - medium rounded - md ${view === 'segment' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'} `}
       >
         Segment
       </button>
@@ -464,6 +484,13 @@ function Customers() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 dark:text-white"
+          />
+          <SavedSearchControls
+            type="customers"
+            currentFilters={{
+              search: searchTerm
+            }}
+            onApplySearch={handleApplySavedSearch}
           />
           {selectedCustomers.length > 0 && view === 'table' ? (
             <button onClick={() => setConfirmDelete(true)} className="px-3 py-1.5 text-sm bg-danger text-white rounded-md hover:bg-danger-hover">
@@ -521,17 +548,17 @@ function Customers() {
                     </div>
                   </td>
                   <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                    <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{customer.company}{customer.country && `, ${customer.country}`}</div>
+                    <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{customer.company}{customer.country && `, ${customer.country} `}</div>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
                     {customer.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{customer.segment}</span>}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[customer.status]}`}>{customer.status}</span>
+                    <span className={`px - 1.5 py - 0.5 inline - flex text - [10px] leading - 4 font - semibold rounded - full ${statusColors[customer.status]} `}>{customer.status}</span>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-success h-2 rounded-full" style={{ width: `${customer.health_score}%` }}></div></div>
+                      <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-success h-2 rounded-full" style={{ width: `${customer.health_score}% ` }}></div></div>
                       <span className="text-xs font-semibold">{customer.health_score}</span>
                     </div>
                   </td>
@@ -539,7 +566,7 @@ function Customers() {
                     {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
-                    <button onClick={() => { setDealForCustomer(customer); setQDealTitle(`${customer.name} • ${customer.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-0.5" title={t('deals.actions.createDeal')}>
+                    <button onClick={() => { setDealForCustomer(customer); setQDealTitle(`${customer.name} • ${customer.company || 'Deal'} `); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-0.5" title={t('deals.actions.createDeal')}>
                       <PlusIcon className="h-4 w-4" />
                     </button>
                     <button onClick={() => setEmailingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-0.5" title="Send Email">
@@ -576,11 +603,11 @@ function Customers() {
                           <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{customer.company}</div>
                           <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{customer.email}</div>
                         </div>
-                        <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${statusColors[customer.status]}`}>{customer.status}</span>
+                        <span className={`px - 1.5 py - 0.5 text - [10px] font - semibold rounded - full flex - shrink - 0 ${statusColors[customer.status]} `}>{customer.status}</span>
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-1">
-                          <div className="w-12 bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div className="bg-success h-1.5 rounded-full" style={{ width: `${customer.health_score}%` }}></div></div>
+                          <div className="w-12 bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div className="bg-success h-1.5 rounded-full" style={{ width: `${customer.health_score}% ` }}></div></div>
                           <span className="text-[10px] text-slate-600 dark:text-slate-400">{customer.health_score}</span>
                         </div>
                         <div className="flex gap-1">
@@ -605,7 +632,7 @@ function Customers() {
       )}
 
       {dealForCustomer && (
-        <Modal title={`${t('deals.actions.createDeal')} • ${dealForCustomer.name}`} onClose={() => setDealForCustomer(null)}>
+        <Modal title={`${t('deals.actions.createDeal')} • ${dealForCustomer.name} `} onClose={() => setDealForCustomer(null)}>
           <div className="p-6 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2">
@@ -640,7 +667,7 @@ function Customers() {
                 if (!user || !dealForCustomer) return;
                 try {
                   await createDeal({
-                    title: qDealTitle || `${dealForCustomer.name} • ${dealForCustomer.company || 'Deal'}`,
+                    title: qDealTitle || `${dealForCustomer.name} • ${dealForCustomer.company || 'Deal'} `,
                     value: Number(qDealValue) || 0,
                     status: qDealStage,
                     expected_close_date: new Date(qDealExpectedClose).toISOString(),
@@ -665,7 +692,7 @@ function Customers() {
       )}
 
       {editingCustomer && (
-        <Modal title={`${t('common.edit')} ${editingCustomer.name}`} onClose={() => setEditingCustomer(null)}>
+        <Modal title={`${t('common.edit')} ${editingCustomer.name} `} onClose={() => setEditingCustomer(null)}>
           <CustomerForm isEdit customer={editingCustomer} onSave={(payload) => handleUpdateCustomer(payload.customer as any)} onCancel={() => setEditingCustomer(null)} />
         </Modal>
       )}
@@ -674,7 +701,7 @@ function Customers() {
         <EmailComposer
           recipient={{ name: emailingCustomer.name, email: emailingCustomer.email }}
           onClose={() => setEmailingCustomer(null)}
-          onSent={() => toastContext?.showToast(`Email sent to ${emailingCustomer.name}`, 'success')}
+          onSent={() => toastContext?.showToast(`Email sent to ${emailingCustomer.name} `, 'success')}
         />
       )}
 
@@ -687,8 +714,9 @@ function Customers() {
               <button onClick={() => setDetailCustomer(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">{t('common.cancel')}</button>
             </div>
             <div className="flex items-center gap-2 mb-4">
-              <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
+              <button onClick={() => setDetailTab('info')} className={`px - 3 py - 1.5 rounded - md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'} `}>Info</button>
               <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>{t('customers.timeline.title')}</button>
+              <button onClick={() => setDetailTab('deals')} className={`px-3 py-1.5 rounded-md ${detailTab === 'deals' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Deals</button>
               <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab === 'email' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
             </div>
             {detailTab === 'info' && (
@@ -699,7 +727,7 @@ function Customers() {
                 <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailCustomer.country}</span></div>
                 <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailCustomer.segment}</span></div>
                 <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailCustomer.status}</span></div>
-                <div className="flex items-center gap-2"><span className="text-slate-500">Health:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-success h-2.5 rounded-full" style={{ width: `${detailCustomer.health_score}%` }}></div></div> <span className="font-semibold">{detailCustomer.health_score}</span></div>
+                <div className="flex items-center gap-2"><span className="text-slate-500">Health:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-success h-2.5 rounded-full" style={{ width: `${detailCustomer.health_score}% ` }}></div></div> <span className="font-semibold">{detailCustomer.health_score}</span></div>
               </div>
             )}
             {detailTab === 'timeline' && (
@@ -742,7 +770,7 @@ function Customers() {
                     <div className="mb-3">
                       <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
                       <ul className="text-sm list-disc pl-5">
-                        {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays}d` : ''}</li>))}
+                        {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays} d` : ''}</li>))}
                       </ul>
                       <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async () => {
                         if (!timelineCustomer || !user) return;
@@ -782,15 +810,60 @@ function Customers() {
                 </div>
               </div>
             )}
+            {detailTab === 'deals' && (
+              <div className="space-y-4">
+                {dealsLoading ? (
+                  <div className="py-8 text-center text-slate-500">Loading deals...</div>
+                ) : customerDeals.length === 0 ? (
+                  <div className="py-8 text-center text-slate-500">No deals found for this customer.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {customerDeals.map(deal => (
+                      <div key={deal.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                        <div>
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{deal.title}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Created: {new Date(deal.created_at).toLocaleDateString()} • Close: {new Date(deal.expected_close_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-slate-900 dark:text-slate-100">€{deal.value.toLocaleString()}</div>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${deal.status === 'Closed Won' ? 'bg-green-100 text-green-800' :
+                            deal.status === 'Closed Lost' ? 'bg-red-100 text-red-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                            {deal.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => {
+                      // Pre-fill deal creation with this customer
+                      setDetailCustomer(null);
+                      // Logic to open deal modal would go here, or navigate to deals page
+                      // For now, we can just close the detail view or maybe trigger a create deal action if available
+                      // But the requirement was just to view history.
+                    }}
+                    className="w-full py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 text-sm"
+                  >
+                    View in Deals Pipeline
+                  </button>
+                </div>
+              </div>
+            )}
             {detailTab === 'email' && (
-              <EmailComposer recipient={{ name: detailCustomer.name, email: detailCustomer.email }} onClose={() => setDetailTab('timeline')} onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name}`, 'success'); setDetailTab('timeline'); }} />
+              <EmailComposer recipient={{ name: detailCustomer.name, email: detailCustomer.email }} onClose={() => setDetailTab('timeline')} onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name} `, 'success'); setDetailTab('timeline'); }} />
             )}
           </div>
         </div>
       )}
 
       {timelineCustomer && (
-        <Modal title={`${t('customers.timeline.title')} • ${timelineCustomer.name}`} onClose={() => setTimelineCustomer(null)}>
+        <Modal title={`${t('customers.timeline.title')} • ${timelineCustomer.name} `} onClose={() => setTimelineCustomer(null)}>
           <div className="p-6 space-y-4">
             {timelineLoading ? (
               <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
@@ -805,7 +878,7 @@ function Customers() {
                     {item.attachments && item.attachments.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {item.attachments.map((att, idx) => (
-                          <a key={idx} href={att.base64 ? `data:${att.content_type};base64,${att.base64}` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
+                          <a key={idx} href={att.base64 ? `data:${att.content_type}; base64, ${att.base64} ` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
                             {att.filename}
                           </a>
                         ))}

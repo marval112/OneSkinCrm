@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { processCommand, Command, CommandResponse } from '../../services/aiCommandService';
 import { useChat } from '../../contexts/ChatContext';
+import useVoiceInput from '../../hooks/useVoiceInput';
 
 interface Message {
   id: number;
@@ -31,6 +32,12 @@ const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const MicrophoneIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+  </svg>
+);
+
 function AIChatPanel({ onClose }: AIChatPanelProps) {
   const location = useLocation();
   const { initialMessage } = useChat();
@@ -40,6 +47,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { isListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
 
   useEffect(() => {
     if (initialMessage) {
@@ -48,6 +56,13 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       // handleSendMessage(initialMessage); 
     }
   }, [initialMessage]);
+
+  // Update input with voice transcript
+  useEffect(() => {
+    if (transcript) {
+      setInputValue(transcript);
+    }
+  }, [transcript]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -106,6 +121,14 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     handleSendMessage(suggestion);
   };
 
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   const suggestedCommands = [
     "Show me new leads from the website",
     "Create a task for Juan to follow up on the Archviz deal",
@@ -156,6 +179,11 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
               <button key={cmd} onClick={() => handleSuggestionClick(cmd)} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">{cmd}</button>
             ))}
           </div>
+          {voiceError && (
+            <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-xs text-red-600 dark:text-red-400">
+              {voiceError}
+            </div>
+          )}
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputValue); }} className="flex items-center gap-2">
             <input
               type="text"
@@ -166,6 +194,20 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
               disabled={isLoading}
               aria-label="Chat input"
             />
+            {isSupported && (
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                className={`p-2 rounded-md transition-all ${isListening
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                  }`}
+                disabled={isLoading}
+                title={isListening ? 'Stop recording' : 'Start voice input'}
+              >
+                <MicrophoneIcon className="w-5 h-5" />
+              </button>
+            )}
             <button type="submit" className="p-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:bg-slate-400 dark:disabled:bg-slate-500" disabled={isLoading}>
               <PaperAirplaneIcon className="w-5 h-5" />
             </button>

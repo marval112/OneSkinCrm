@@ -15,6 +15,7 @@ import { summarizeDeal, suggestDealTasks, draftLeadFollowUpEmail, draftCustomerF
 import { createTask } from '../../services/tasksService';
 import type { ActivityLog } from '../../types';
 import { TaskStatus, TaskType } from '../../types';
+import DealKanbanBoard from '../deals/DealKanbanBoard';
 
 const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -221,6 +222,7 @@ function Deals() {
   const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
   const [aiStage, setAiStage] = useState<string | null>(null);
   const [aiFollowUp, setAiFollowUp] = useState<{ dueDays: number; stage?: string } | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
 
   const openTimeline = async (deal: Deal) => {
     setTimelineLoading(true);
@@ -401,6 +403,32 @@ function Deals() {
           )}
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-700 rounded-md p-1">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${viewMode === 'table'
+                ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${viewMode === 'kanban'
+                ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            </button>
+          </div>
+
           <button onClick={handleExport} className="px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 hidden sm:inline-block">{t('deals.exportExcel')}</button>
           <button onClick={() => setIsCreateModalOpen(true)} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
             New Deal
@@ -411,52 +439,84 @@ function Deals() {
         </div>
       </div>
 
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => requestSort('title')} className="flex items-center">Deal Title {getSortIcon('title')}</button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
-                <button onClick={() => requestSort('partyName')} className="flex items-center">Contact {getSortIcon('partyName')}</button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
-                <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200">
-            {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
-              <tr key={deal.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-slate-600">{(deal as any).partyName || ''}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell text-slate-600">{deal.probability}%</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
-                  {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
-                    <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
-                  )}
-                </td>
+      {/* Kanban View */}
+      {viewMode === 'kanban' ? (
+        <DealKanbanBoard
+          deals={processedDeals}
+          onStageChange={async (dealId, newStage) => {
+            try {
+              const deal = deals.find(d => d.id === dealId);
+              if (deal) {
+                await updateDeal({ ...deal, status: newStage });
+                toastContext?.showToast('Deal stage updated', 'success');
+                fetchData();
+              }
+            } catch (error) {
+              toastContext?.showToast('Failed to update deal stage', 'danger');
+            }
+          }}
+          onDealClick={(deal) => {
+            setDetailDeal(deal);
+            setDetailTab('info');
+            openTimeline(deal);
+          }}
+          getCustomerName={(customerId) => {
+            const customer = customers.find(c => c.id === customerId);
+            return customer ? customer.name : 'Unknown';
+          }}
+          getLeadName={(leadId) => {
+            const lead = leads.find(l => l.id === leadId);
+            return lead ? lead.name : 'Unknown';
+          }}
+        />
+      ) : (
+        /* Table View */
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => requestSort('title')} className="flex items-center">Deal Title {getSortIcon('title')}</button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
+                  <button onClick={() => requestSort('partyName')} className="flex items-center">Contact {getSortIcon('partyName')}</button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
+                  <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
+                <tr key={deal.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell text-slate-600">{(deal as any).partyName || ''}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell text-slate-600">{deal.probability}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
+                    {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+                      <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {isCreateModalOpen && (
         <Modal title={t('deals.form.createTitle')} onClose={() => setIsCreateModalOpen(false)}>

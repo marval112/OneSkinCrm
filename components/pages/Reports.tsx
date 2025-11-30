@@ -9,6 +9,8 @@ import DateRangePicker from '../common/DateRangePicker';
 import TableSkeleton from '../common/TableSkeleton';
 import { exportToExcel } from '../../services/exportService';
 import { ToastContext } from '../../contexts/ToastContext';
+import CustomReportBuilder from '../common/CustomReportBuilder';
+import { getCustomReports, deleteCustomReport, CustomReport } from '../../services/customReportService';
 
 type ReportKey =
   | 'closedWonDeals'
@@ -19,7 +21,8 @@ type ReportKey =
   | 'sellersPerformance'
   | 'dealsAgingOpen'
   | 'staleDealsOpen'
-  | 'customersCreated';
+  | 'customersCreated'
+  | string; // Allow custom report IDs
 
 function Reports() {
   const { user } = useAuth();
@@ -38,6 +41,9 @@ function Reports() {
   const [ownerId, setOwnerId] = useState<number | 'All'>('All');
   const [inactiveDays, setInactiveDays] = useState<number>(60);
   const [report, setReport] = useState<ReportKey>('closedWonDeals');
+  const [customReports, setCustomReports] = useState<CustomReport[]>([]);
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [selectedCustomReport, setSelectedCustomReport] = useState<CustomReport | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -54,7 +60,7 @@ function Reports() {
       try {
         const users = await getUsers();
         setAllUsers(users.map(u => ({ id: u.id, email: u.email })));
-      } catch {}
+      } catch { }
     } catch {
       toastContext?.showToast('Failed to load data for reports.', 'danger');
     } finally {
@@ -63,6 +69,11 @@ function Reports() {
   }, [user, toastContext]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Load custom reports
+  useEffect(() => {
+    setCustomReports(getCustomReports());
+  }, []);
 
   const dateWithin = (iso: string) => {
     if (!dateRange) return true;
@@ -174,7 +185,7 @@ function Reports() {
         status: c.status,
         owner_email: ownerEmail(c.user_id as any),
         last_contact: c.last_contact || '',
-        days_since_contact: c.last_contact ? Math.floor((Date.now() - new Date(c.last_contact).getTime()) / (24*3600*1000)) : null,
+        days_since_contact: c.last_contact ? Math.floor((Date.now() - new Date(c.last_contact).getTime()) / (24 * 3600 * 1000)) : null,
       }));
 
     // Sellers Performance (by owner)
@@ -205,7 +216,7 @@ function Reports() {
         stage: d.status,
         value: d.value,
         updated_at: d.updated_at,
-        days_in_stage: Math.floor((Date.now() - new Date(d.updated_at).getTime()) / (24*3600*1000)),
+        days_in_stage: Math.floor((Date.now() - new Date(d.updated_at).getTime()) / (24 * 3600 * 1000)),
       }));
 
     // Stale Deals (open and older than N days since update)
@@ -232,6 +243,58 @@ function Reports() {
     return { closedWonDeals, openPipeline, leadsCreated, customersByStatusRows, inactiveCustomers, sellersPerformance, dealsAgingOpen, staleDealsOpen, customersCreated };
   }, [allDeals, allCustomers, allLeads, allUsers, dateRange, segment, customerStatus, ownerId, inactiveDays]);
 
+  // Execute custom report
+  const executeCustomReport = useMemo(() => {
+    if (!selectedCustomReport) return [];
+
+    const { dataSource, fields, groupBy } = selectedCustomReport;
+    let sourceData: any[] = [];
+
+    if (dataSource === 'leads') sourceData = allLeads;
+    else if (dataSource === 'customers') sourceData = allCustomers;
+    else if (dataSource === 'deals') sourceData = allDeals;
+
+    // Apply date range filter if set
+    if (dateRange) {
+      sourceData = sourceData.filter(item => {
+        const dateField = item.created_at || item.updated_at;
+        return dateField && dateField >= dateRange.from && dateField <= dateRange.to;
+      });
+    }
+
+    // If grouping, aggregate data
+    if (groupBy) {
+      const grouped = sourceData.reduce((acc: Record<string, any[]>, item) => {
+        const key = item[groupBy] || 'Unknown';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {});
+
+      return Object.entries(grouped).map(([key, items]) => ({
+        [groupBy]: key,
+        count: items.length,
+        ...fields.reduce((obj, field) => {
+          if (field !== groupBy && field !== 'count') {
+            // For numeric fields, calculate sum
+            const numericValues = items.map(i => Number(i[field]) || 0);
+            obj[field] = numericValues.reduce((sum, val) => sum + val, 0);
+          }
+          return obj;
+        }, {} as Record<string, any>)
+      }));
+    }
+
+    // No grouping, just select fields
+    return sourceData.map(item => {
+      const row: Record<string, any> = {};
+      fields.forEach(field => {
+        row[field] = item[field] ?? '';
+      });
+      return row;
+    });
+  }, [selectedCustomReport, allLeads, allCustomers, allDeals, dateRange]);
+
   const columns = useMemo(() => {
     switch (report) {
       case 'closedWonDeals':
@@ -257,6 +320,13 @@ function Reports() {
     }
   }, [report]);
 
+  const customColumns = useMemo(() => {
+    if (!selectedCustomReport) return [];
+    return selectedCustomReport.groupBy
+      ? [selectedCustomReport.groupBy, 'count', ...selectedCustomReport.fields.filter(f => f !== selectedCustomReport.groupBy)]
+      : selectedCustomReport.fields;
+  }, [selectedCustomReport]);
+
   const rows = useMemo(() => {
     const { closedWonDeals, openPipeline, leadsCreated, customersByStatusRows, inactiveCustomers, sellersPerformance, dealsAgingOpen, staleDealsOpen, customersCreated } = filtered;
     switch (report) {
@@ -272,10 +342,43 @@ function Reports() {
     }
   }, [filtered, report]);
 
+  const handleReportChange = (newReport: string) => {
+    setReport(newReport);
+    if (newReport.startsWith('custom_')) {
+      const customReport = customReports.find(r => r.id === newReport);
+      setSelectedCustomReport(customReport || null);
+    } else {
+      setSelectedCustomReport(null);
+    }
+  };
+
+  const handleSaveCustomReport = (newReport: CustomReport) => {
+    setCustomReports(prev => [...prev, newReport]);
+    setReport(newReport.id);
+    setSelectedCustomReport(newReport);
+    toastContext?.showToast('Custom report saved successfully', 'success');
+  };
+
+  const handleDeleteCustomReport = (id: string) => {
+    if (confirm('Are you sure you want to delete this custom report?')) {
+      deleteCustomReport(id);
+      setCustomReports(prev => prev.filter(r => r.id !== id));
+      if (report === id) {
+        setReport('closedWonDeals');
+        setSelectedCustomReport(null);
+      }
+      toastContext?.showToast('Custom report deleted', 'success');
+    }
+  };
+
   const handleExport = () => {
-    exportToExcel(rows as any[], `report_${report}`);
+    const dataToExport = selectedCustomReport ? executeCustomReport : rows;
+    exportToExcel(dataToExport as any[], `report_${report}`);
     toastContext?.showToast('Report exported.', 'success');
   };
+
+  const displayColumns = selectedCustomReport ? customColumns : columns;
+  const displayRows = selectedCustomReport ? executeCustomReport : rows;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -288,17 +391,43 @@ function Reports() {
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">Report</label>
-          <select value={report} onChange={e => setReport(e.target.value as ReportKey)} className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm min-w-[200px]">
-            <option value="closedWonDeals">Closed Won Deals</option>
-            <option value="openPipeline">Open Pipeline (Running Deals)</option>
-            <option value="leadsCreated">Leads Created</option>
-            <option value="customersByStatus">Customers by Status/Segment</option>
-            <option value="inactiveCustomers">Inactive Customers</option>
-            <option value="sellersPerformance">Sellers Performance (Won/Lost/Open)</option>
-            <option value="dealsAgingOpen">Open Deals Aging (days in stage)</option>
-            <option value="staleDealsOpen">Stale Deals (open, inactive N days)</option>
-            <option value="customersCreated">Customers Created</option>
-          </select>
+          <div className="flex gap-2">
+            <select value={report} onChange={e => handleReportChange(e.target.value)} className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm min-w-[200px]">
+              <optgroup label="Standard Reports">
+                <option value="closedWonDeals">Closed Won Deals</option>
+                <option value="openPipeline">Open Pipeline (Running Deals)</option>
+                <option value="leadsCreated">Leads Created</option>
+                <option value="customersByStatus">Customers by Status/Segment</option>
+                <option value="inactiveCustomers">Inactive Customers</option>
+                <option value="sellersPerformance">Sellers Performance (Won/Lost/Open)</option>
+                <option value="dealsAgingOpen">Open Deals Aging (days in stage)</option>
+                <option value="staleDealsOpen">Stale Deals (open, inactive N days)</option>
+                <option value="customersCreated">Customers Created</option>
+              </optgroup>
+              {customReports.length > 0 && (
+                <optgroup label="Custom Reports">
+                  {customReports.map(cr => (
+                    <option key={cr.id} value={cr.id}>{cr.name}</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <button
+              onClick={() => setIsBuilderOpen(true)}
+              className="px-3 py-2 rounded-md bg-primary text-white text-sm hover:bg-primary-hover whitespace-nowrap"
+            >
+              + Create Custom
+            </button>
+            {selectedCustomReport && (
+              <button
+                onClick={() => handleDeleteCustomReport(selectedCustomReport.id)}
+                className="px-3 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
+                title="Delete this custom report"
+              >
+                Delete
+              </button>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">Segment</label>
@@ -340,21 +469,21 @@ function Reports() {
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-              {columns.map(col => (
+              {displayColumns.map(col => (
                 <th key={col} className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase">{col}</th>
               ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-100">
             {loading ? (
-              <TableSkeleton columns={columns.length || 5} rows={6} />
+              <TableSkeleton columns={displayColumns.length || 5} rows={6} />
             ) : (
-              (rows as any[]).length === 0 ? (
-                <tr><td colSpan={columns.length} className="px-4 py-6 text-center text-slate-500 text-sm">No data.</td></tr>
+              (displayRows as any[]).length === 0 ? (
+                <tr><td colSpan={displayColumns.length} className="px-4 py-6 text-center text-slate-500 text-sm">No data.</td></tr>
               ) : (
-                (rows as any[]).map((r, idx) => (
+                (displayRows as any[]).map((r, idx) => (
                   <tr key={idx} className="hover:bg-slate-50">
-                    {columns.map(c => (
+                    {displayColumns.map(c => (
                       <td key={c} className="px-4 py-2 text-sm text-slate-800">{(r as any)[c] ?? ''}</td>
                     ))}
                   </tr>
@@ -364,6 +493,14 @@ function Reports() {
           </tbody>
         </table>
       </div>
+
+      {/* Custom Report Builder Modal */}
+      {isBuilderOpen && (
+        <CustomReportBuilder
+          onClose={() => setIsBuilderOpen(false)}
+          onSave={handleSaveCustomReport}
+        />
+      )}
     </div>
   );
 }

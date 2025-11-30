@@ -10,6 +10,7 @@ import { generateAlertRecommendations } from '../../services/predictiveAlerts';
 import { getAutomationAlerts } from '../../services/alertsService';
 import { getBrandName, getSidebarLogoUrl, BRANDING_UPDATED_EVENT } from '../../services/brandingService';
 import { applyTheme, getActiveTheme, getThemeMode, toggleThemeMode } from '../../services/themeService';
+import useSwipe from '../../hooks/useSwipe';
 
 const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -80,6 +81,8 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const [leadsCount, setLeadsCount] = useState<number>(0);
   const [customersCount, setCustomersCount] = useState<number>(0);
   const [currentMode, setCurrentMode] = useState<'light' | 'dark'>(getThemeMode());
+
+  const swipeHandlers = useSwipe({ onSwipedLeft: () => setIsOpen(false) });
 
   useEffect(() => {
     const update = () => {
@@ -300,6 +303,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       {/* Sidebar for Mobile (Drawer) */}
       <div className={`fixed inset-0 z-40 flex ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:hidden`}>
         <div
+          {...swipeHandlers}
           className="w-64 h-full text-white shadow-lg flex flex-col"
           style={{
             background: `linear-gradient(180deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 85%, black) 100%)`

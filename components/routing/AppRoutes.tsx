@@ -30,7 +30,9 @@ const Documentation = lazy(() => import('../pages/Documentation'));
 const Settings = lazy(() => import('../pages/Settings'));
 const SettingsLayout = lazy(() => import('../pages/SettingsLayout'));
 const AISettings = lazy(() => import('../pages/AISettings'));
+const AlertSettings = lazy(() => import('../settings/AlertSettings'));
 const Prospecting = lazy(() => import('../pages/Prospecting'));
+const Workflows = lazy(() => import('../pages/Workflows'));
 
 const LoadingFallback = () => (
     <div className="flex justify-center items-center h-64">
@@ -64,6 +66,7 @@ const AppRoutes = () => {
                         <Route path="integrations" element={<Integrations />} />
                         <Route path="webhooks" element={<WebhooksManager />} />
                         <Route path="ai" element={<AISettings />} />
+                        <Route path="alerts" element={<AlertSettings />} />
                         <Route path="documentation" element={<Documentation />} />
                     </Route>
                     <Route path="/users" element={<Users />} />
@@ -72,7 +75,7 @@ const AppRoutes = () => {
                     <Route path="/theme" element={<Navigate to="/settings/theme" replace />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
-                    <Route path="/workflows" element={<WorkflowBuilder />} />
+                    <Route path="/workflows" element={<Workflows />} />
                     <Route path="/webhooks" element={<Navigate to="/settings/webhooks" replace />} />
                     <Route path="/bi-dashboards" element={<BIDashboard />} />
                     <Route path="/omnichannel" element={<OmnichannelHub />} />

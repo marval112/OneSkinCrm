@@ -35,7 +35,7 @@ export const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'upd
     // Run user-defined automations for lead creation only (no direct task creation here)
     try { await runLeadCreatedAutomations(lead); } catch (e) { console.warn('[automation] lead-created automations failed', e); }
     // Notify Telegram (best-effort)
-    try { await sendTelegramMessage(`🆕 New Lead: ${lead.name} (${lead.email})`); } catch {}
+    try { await sendTelegramMessage(`🆕 New Lead: ${lead.name} (${lead.email})`); } catch { }
     return lead;
 };
 
@@ -45,7 +45,7 @@ export const updateLead = async (updatedLead: Omit<Lead, 'created_at'>): Promise
     try {
         const { data } = await supabase.from('leads').select('*').eq('id', (updatedLead as any).id).maybeSingle();
         prev = (data as Lead) || null;
-    } catch {}
+    } catch { }
     const leadWithTimestamp = {
         ...updatedLead,
         updated_at: new Date().toISOString(),
@@ -55,7 +55,7 @@ export const updateLead = async (updatedLead: Omit<Lead, 'created_at'>): Promise
         if (prev && prev.status !== saved.status) {
             await sendTelegramMessage(`🔄 Lead status changed: ${saved.name} • ${prev.status} → ${saved.status}`);
         }
-    } catch {}
+    } catch { }
     return saved;
 };
 
@@ -113,7 +113,7 @@ export const createCustomer = async (customerData: Omit<Customer, 'id' | 'create
         created_at: new Date().toISOString()
     };
     const saved = await db.create<Customer>('customers', newCustomer as Omit<Customer, 'id'>);
-    try { await sendTelegramMessage(`🧑‍💼 New Customer: ${saved.name} (${saved.email})`); } catch {}
+    try { await sendTelegramMessage(`🧑‍💼 New Customer: ${saved.name} (${saved.email})`); } catch { }
     return saved;
 };
 
@@ -128,6 +128,16 @@ export const bulkDeleteCustomers = async (ids: number[]): Promise<void> => {
 // --- Deals ---
 export const getDeals = async (user: User): Promise<Deal[]> => {
     const { data, error } = await getFilteredQuery('deals', user);
+    if (error) throw error;
+    return data as Deal[];
+};
+
+export const getDealsByCustomer = async (customerId: number): Promise<Deal[]> => {
+    const { data, error } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
     if (error) throw error;
     return data as Deal[];
 };
@@ -162,7 +172,7 @@ export const createDeal = async (dealData: NewDealInput, userId: number): Promis
     try {
         const assoc = saved.customer_id ? `Customer #${saved.customer_id}` : saved.lead_id ? `Lead #${saved.lead_id}` : '';
         await sendTelegramMessage(`💼 New Deal: ${saved.title} • €${Number(saved.value).toLocaleString()} • ${assoc}`);
-    } catch {}
+    } catch { }
     return saved;
 };
 
@@ -173,7 +183,7 @@ export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise
     try {
         const { data } = await supabase.from('deals').select('*').eq('id', (updatedDeal as any).id).maybeSingle();
         prev = (data as Deal) || null;
-    } catch {}
+    } catch { }
     // Prevent edits when already closed
     if (prev && (prev.status === 'Closed Won' || prev.status === 'Closed Lost')) {
         throw new Error('This deal is closed and cannot be modified.');
@@ -191,7 +201,7 @@ export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise
         if (prev && prev.status !== saved.status) {
             await sendTelegramMessage(`🔁 Deal stage changed: ${saved.title} • ${prev.status} → ${saved.status}`);
         }
-    } catch {}
+    } catch { }
     return saved;
 };
 

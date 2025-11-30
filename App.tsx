@@ -21,6 +21,7 @@ import { applyBrandFavicon } from './services/brandingService';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import Login from './components/pages/Login.tsx';
 import AppRoutes from './components/routing/AppRoutes';
+import useSwipe from './hooks/useSwipe';
 
 
 import { ChatProvider, useChat } from './contexts/ChatContext';
@@ -72,6 +73,26 @@ function AppContent() {
     return () => { if (id) window.clearInterval(id); };
   }, [isDbInitialized, loading, user]);
 
+  // Swipe to open sidebar (only from left edge)
+  const swipeHandlers = useSwipe({
+    onSwipedRight: () => {
+      // Only open if swipe started near the left edge (e.g., < 30px)
+      // Note: useSwipe hook provides coordinates in onTouchStart, but we need to access them here.
+      // Since our simple hook doesn't expose start coords in the callback, we'll rely on a small modification or
+      // just check if we can access the event. 
+      // Actually, let's just allow it for now or rely on the hook's logic.
+      // To properly implement edge detection, we might need to check the start position.
+      // For now, let's assume the user wants to open it easily. 
+      // But to avoid conflict with horizontal scrolling, let's wrap the edge area.
+      setIsSidebarOpen(true);
+    }
+  });
+
+  // We need a specific edge detection zone because swiping right in the middle of the screen
+  // might be for other purposes (like Kanban).
+  // So we will NOT attach swipeHandlers to the main div globally.
+  // Instead, we'll add a invisible div on the left edge.
+
   const showToast = useCallback((message: string, type: 'success' | 'danger' | 'warning' | 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
@@ -100,6 +121,12 @@ function AppContent() {
           </Routes>
         ) : (
           <div className="flex h-screen bg-slate-100 dark:bg-dark text-slate-800 dark:text-slate-200">
+            {/* Edge swipe zone for mobile */}
+            <div
+              {...swipeHandlers}
+              className="fixed top-0 left-0 bottom-0 w-8 z-30 lg:hidden"
+              style={{ touchAction: 'none' }} // Prevent browser back navigation if possible, though hard on iOS
+            />
             <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             <div className="flex-1 flex flex-col w-full">
               <Header

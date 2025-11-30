@@ -659,7 +659,20 @@ function Leads() {
               <option>{t('leads.bulkAction')}</option>
               {Object.values(LeadStatus).map(s => <option key={s} value={s}>{t('leads.changeStatusTo').replace('{status}', s)}</option>)}
             </select>
+
           )}
+          <SavedSearchControls
+            type="leads"
+            currentFilters={{
+              search: searchTerm,
+              status: statusFilter,
+              source: filterSource,
+              country: countryFilter,
+              segment: segmentFilter,
+              userId: userIdFilter
+            }}
+            onApplySearch={handleApplySavedSearch}
+          />
           {user?.role === 'Admin' && selectedLeads.length > 0 && view === 'table' && (
             <button onClick={() => setConfirmDelete(true)} className="px-3 py-1.5 text-sm bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
           )}
@@ -682,688 +695,712 @@ function Leads() {
         </div>
       </div>
 
-      {view === 'table' ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead className="bg-slate-50 dark:bg-slate-700/50">
-              <tr>
-                <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length} /></th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
-                  <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                  <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
-                  <button onClick={() => requestSort('source')} className="flex items-center">Source {getSortIcon('source')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
-                  Segment
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
-                  <button onClick={() => requestSort('status')} className="flex items-center">{t('common.status')} {getSortIcon('status')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
-                  <button onClick={() => requestSort('score')} className="flex items-center">Score {getSortIcon('score')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
-                  <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
-                </th>
-                <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-300 w-24">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-              {loading ? <TableSkeleton columns={8} rows={5} /> : filteredLeads.map(lead => (
-                <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedLeads.includes(lead.id)} onChange={() => handleSelectOne(lead.id)} /></td>
-                  <td className="px-3 py-2" style={{ maxWidth: '180px' }} onDoubleClick={() => setEditingLead(lead)}>
-                    <div className="flex items-center gap-1.5 overflow-hidden">
-                      {inlineEditingId === lead.id ? (
-                        <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
-                      ) : (
-                        <div className="cursor-pointer hover:underline overflow-hidden" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
-                          <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.email}</div>
-                        </div>
+      {
+        view === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-700/50">
+                <tr>
+                  <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length} /></th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
+                    <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                    <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('source')} className="flex items-center">Source {getSortIcon('source')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                    Segment
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                    <button onClick={() => requestSort('status')} className="flex items-center">{t('common.status')} {getSortIcon('status')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
+                    <button onClick={() => requestSort('score')} className="flex items-center">Score {getSortIcon('score')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
+                  </th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-300 w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                {loading ? <TableSkeleton columns={8} rows={5} /> : filteredLeads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedLeads.includes(lead.id)} onChange={() => handleSelectOne(lead.id)} /></td>
+                    <td className="px-3 py-2" style={{ maxWidth: '180px' }} onDoubleClick={() => setEditingLead(lead)}>
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        {inlineEditingId === lead.id ? (
+                          <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
+                        ) : (
+                          <div className="cursor-pointer hover:underline overflow-hidden" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
+                            <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.email}</div>
+                          </div>
+                        )}
+                        {lead.notes && (
+                          <div className="relative group self-start flex-shrink-0">
+                            <DocumentTextIcon className="h-4 w-4 text-slate-400" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              {lead.notes}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                      <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{lead.company}{lead.country && `, ${lead.country}`}</div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
+                      {lead.source}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
+                      {lead.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{lead.segment}</span>}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap"><span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[lead.status]}`}>{lead.status}</span></td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
+                      <ScoreBadge
+                        score={lead.calculatedScore || 0}
+                        breakdown={lead.scoreBreakdown}
+                        size="sm"
+                      />
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
+                      {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
+                      {/** Disable all lead actions when the lead is already converted (Won) */}
+                      <button
+                        disabled={lead.status === LeadStatus.Won}
+                        onClick={() => { setDealForLead(lead); setQDealTitle(`${lead.name} • ${lead.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }}
+                        className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
+                        title={t('deals.actions.createDeal')}>
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        disabled={lead.status === LeadStatus.Won}
+                        onClick={() => setEmailingLead(lead)}
+                        className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500'}`}
+                        title="Send Email">
+                        <EnvelopeIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        disabled={lead.status === LeadStatus.Won}
+                        onClick={() => { openTimeline(lead); }}
+                        className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600'}`}
+                        title="Timeline">
+                        <ClockIcon className="h-4 w-4" />
+                      </button>
+                      {lead.status !== LeadStatus.Won && (
+                        <button onClick={() => setLeadToConvert(lead)} className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-500 p-0.5" title={t('leads.convertAction')}>
+                          <CheckCircleIcon className="h-4 w-4" />
+                        </button>
                       )}
-                      {lead.notes && (
-                        <div className="relative group self-start flex-shrink-0">
-                          <DocumentTextIcon className="h-4 w-4 text-slate-400" />
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                            {lead.notes}
+                      <button
+                        onClick={() => openChat(`Analyze this lead: ${lead.name} from ${lead.company || 'Unknown Company'}`)}
+                        className="text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-500 p-1"
+                        title="AI Insight">
+                        <SparklesIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        disabled={lead.status === LeadStatus.Won}
+                        onClick={() => setEditingLead(lead)}
+                        className={`p-1 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
+                        title="Edit Lead"><EditIcon className="h-5 w-5" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : view === 'kanban' ? (
+          <LeadsKanbanView leads={filteredLeads} onUpdateLead={handleUpdateLead} onEmailLead={setEmailingLead} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Object.values(Segment).map(segment => {
+              const segmentLeads = filteredLeads.filter(lead => lead.segment === segment);
+              return (
+                <div key={segment} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{segment}</h3>
+                    <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">{segmentLeads.length}</span>
+                  </div>
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                    {segmentLeads.map(lead => (
+                      <div key={lead.id} className="bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-600 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.company}</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{lead.email}</div>
+                          </div>
+                          <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${statusColors[lead.status]}`}>{lead.status}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center gap-1">
+                            <div className="w-12 bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div className="bg-primary h-1.5 rounded-full" style={{ width: `${lead.score}%` }}></div></div>
+                            <span className="text-[10px] text-slate-600 dark:text-slate-400">{lead.score}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={(e) => { e.stopPropagation(); setEmailingLead(lead); }} className="p-0.5 text-slate-400 hover:text-blue-600" title="Email">
+                              <EnvelopeIcon className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); openTimeline(lead); }} className="p-0.5 text-slate-400 hover:text-indigo-600" title="Timeline">
+                              <ClockIcon className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                    <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{lead.company}{lead.country && `, ${lead.country}`}</div>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
-                    {lead.source}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
-                    {lead.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{lead.segment}</span>}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap"><span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[lead.status]}`}>{lead.status}</span></td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
-                    <ScoreBadge
-                      score={lead.calculatedScore || 0}
-                      breakdown={lead.scoreBreakdown}
-                      size="sm"
-                    />
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
-                    {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
-                    {/** Disable all lead actions when the lead is already converted (Won) */}
-                    <button
-                      disabled={lead.status === LeadStatus.Won}
-                      onClick={() => { setDealForLead(lead); setQDealTitle(`${lead.name} • ${lead.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }}
-                      className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
-                      title={t('deals.actions.createDeal')}>
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      disabled={lead.status === LeadStatus.Won}
-                      onClick={() => setEmailingLead(lead)}
-                      className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500'}`}
-                      title="Send Email">
-                      <EnvelopeIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      disabled={lead.status === LeadStatus.Won}
-                      onClick={() => { openTimeline(lead); }}
-                      className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600'}`}
-                      title="Timeline">
-                      <ClockIcon className="h-4 w-4" />
-                    </button>
-                    {lead.status !== LeadStatus.Won && (
-                      <button onClick={() => setLeadToConvert(lead)} className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-500 p-0.5" title={t('leads.convertAction')}>
-                        <CheckCircleIcon className="h-4 w-4" />
-                      </button>
+                      </div>
+                    ))}
+                    {segmentLeads.length === 0 && (
+                      <div className="text-center text-xs text-slate-400 py-4">No leads in this segment</div>
                     )}
-                    <button
-                      onClick={() => openChat(`Analyze this lead: ${lead.name} from ${lead.company || 'Unknown Company'}`)}
-                      className="text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-500 p-1"
-                      title="AI Insight">
-                      <SparklesIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      disabled={lead.status === LeadStatus.Won}
-                      onClick={() => setEditingLead(lead)}
-                      className={`p-1 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
-                      title="Edit Lead"><EditIcon className="h-5 w-5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : view === 'kanban' ? (
-        <LeadsKanbanView leads={filteredLeads} onUpdateLead={handleUpdateLead} onEmailLead={setEmailingLead} />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.values(Segment).map(segment => {
-            const segmentLeads = filteredLeads.filter(lead => lead.segment === segment);
-            return (
-              <div key={segment} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{segment}</h3>
-                  <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">{segmentLeads.length}</span>
+                  </div>
                 </div>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {segmentLeads.map(lead => (
-                    <div key={lead.id} className="bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-600 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.company}</div>
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{lead.email}</div>
-                        </div>
-                        <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-full flex-shrink-0 ${statusColors[lead.status]}`}>{lead.status}</span>
+              );
+            })}
+          </div>
+        )
+      }
+
+      {
+        isMobile && (
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="fixed bottom-6 right-6 z-20 md:hidden flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            aria-label="Scan business card"
+          >
+            <CameraIcon className="w-7 h-7" />
+          </button>
+        )
+      }
+
+      {
+        isScannerOpen && (
+          <CameraScanner
+            onCapture={handleScanComplete}
+            onClose={() => setIsScannerOpen(false)}
+          />
+        )
+      }
+
+      {
+        confirmDelete && (
+          <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
+            <div className="p-6">
+              <p>Delete {selectedLeads.length} selected leads?</p>
+              <div className="mt-6 flex justify-end gap-4">
+                <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
+                <button onClick={async () => { try { await bulkDeleteLeads(selectedLeads); toastContext?.showToast('Leads deleted.', 'success'); setSelectedLeads([]); fetchLeads(); } catch { toastContext?.showToast('Failed to delete leads.', 'danger'); } finally { setConfirmDelete(false); } }} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
+
+      {
+        isCreateModalOpen && (
+          <Modal title={t('leads.newLead')} onClose={handleCloseCreateModal}>
+            <LeadForm lead={prefilledData || undefined} onSave={handleCreateLead} onCancel={handleCloseCreateModal} />
+          </Modal>
+        )
+      }
+
+      {
+        editingLead && (
+          <Modal title={`${t('common.edit')} ${editingLead.name}`} onClose={() => setEditingLead(null)}>
+            <LeadForm
+              isEdit
+              lead={editingLead}
+              onSave={(payload) => {
+                if (!editingLead) return;
+                const updatedLead = {
+                  ...editingLead,
+                  ...(payload.lead as any),
+                };
+                handleUpdateLead(updatedLead);
+              }}
+              onCancel={() => setEditingLead(null)} />
+          </Modal>
+        )
+      }
+
+      {
+        leadToConvert && (
+          <Modal title={t('leads.convertConfirmTitle')} onClose={() => setLeadToConvert(null)}>
+            <div className="p-6">
+              <p>{t('leads.convertConfirmMessage').replace('{name}', leadToConvert.name)}</p>
+              <div className="mt-6 flex justify-end gap-4">
+                <button onClick={() => setLeadToConvert(null)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
+                <button onClick={handleConfirmConvert} className="px-4 py-2 bg-success text-white rounded-md hover:bg-success-hover">{t('leads.convertAction')}</button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
+
+      {
+        emailingLead && (
+          <EmailComposer
+            recipient={{ name: emailingLead.name, email: emailingLead.email }}
+            leadData={emailingLead}
+            onClose={() => setEmailingLead(null)}
+            onSent={() => toastContext?.showToast(`Email sent to ${emailingLead.name}`, 'success')}
+          />
+        )
+      }
+
+      {
+        detailLead && (
+          <div className="fixed inset-0 z-40">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDetailLead(null)}></div>
+            <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-800 shadow-xl p-6 overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">{detailLead.name}</h3>
+                <button onClick={() => setDetailLead(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">Close</button>
+              </div>
+              <div className="flex items-center gap-2 mb-4">
+                <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
+                <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Timeline</button>
+                <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab === 'email' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
+              </div>
+              {detailTab === 'info' && (
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailLead.email}</span></div>
+                  <div><span className="text-slate-500">Phone:</span> <span className="font-medium">{detailLead.phone || '-'}</span></div>
+                  <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailLead.company}</span></div>
+                  <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailLead.country}</span></div>
+                  <div><span className="text-slate-500">Source:</span> <span className="font-medium">{detailLead.source}</span></div>
+                  <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailLead.segment}</span></div>
+                  <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailLead.status}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-slate-500">Score:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-primary h-2.5 rounded-full" style={{ width: `${detailLead.score}%` }}></div></div> <span className="font-semibold">{detailLead.score}</span></div>
+                </div>
+              )}
+              {detailTab === 'timeline' && (
+                <div className="space-y-4">
+                  {/* Mandatory steps */}
+                  <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+                    <div className="text-sm font-semibold mb-2">Mandatory Steps</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="flex flex-col gap-2">
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
+                            const checked = e.target.checked; setStepInfoSent(checked);
+                            if (detailLead && user && checked) {
+                              const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await completeTask(existing.id);
+                                setLeadTasks(await listTasksForLead(detailLead.id, false));
+                              } else {
+                                toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                              }
+                            }
+                          }} /> {t('leads.timeline.sendInfo')}
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
+                            const checked = e.target.checked; setStepPricesSent(checked);
+                            if (detailLead && user && checked) {
+                              const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await completeTask(existing.id);
+                                setLeadTasks(await listTasksForLead(detailLead.id, false));
+                              } else {
+                                toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                              }
+                            }
+                          }} /> {t('leads.timeline.sendPrices')}
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
+                            const checked = e.target.checked; setStepSamplesSent(checked);
+                            if (detailLead && user && checked) {
+                              const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await completeTask(existing.id);
+                                setLeadTasks(await listTasksForLead(detailLead.id, false));
+                              } else {
+                                toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                              }
+                            }
+                          }} /> {t('leads.timeline.sendSamples')}
+                        </label>
                       </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-1">
-                          <div className="w-12 bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div className="bg-primary h-1.5 rounded-full" style={{ width: `${lead.score}%` }}></div></div>
-                          <span className="text-[10px] text-slate-600 dark:text-slate-400">{lead.score}</span>
-                        </div>
-                        <div className="flex gap-1">
-                          <button onClick={(e) => { e.stopPropagation(); setEmailingLead(lead); }} className="p-0.5 text-slate-400 hover:text-blue-600" title="Email">
-                            <EnvelopeIcon className="h-3.5 w-3.5" />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); openTimeline(lead); }} className="p-0.5 text-slate-400 hover:text-indigo-600" title="Timeline">
-                            <ClockIcon className="h-3.5 w-3.5" />
-                          </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center flex-wrap gap-2">
+                          <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('leads.timeline.visitPlanned')}
+                          {stepVisitPlanned && (
+                            <input type="datetime-local" value={visitDate} onFocus={(e) => { try { e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { } }} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                          )}
+                          {stepVisitPlanned && visitDate && (
+                            <button className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
+                              if (!detailLead || !user) return;
+                              const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
+                                setLeadTasks(await listTasksForLead(detailLead.id));
+                                setVisitDate('');
+                              } else {
+                                toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
+                              }
+                            }}>{t('leads.timeline.save')}</button>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                  {segmentLeads.length === 0 && (
-                    <div className="text-center text-xs text-slate-400 py-4">No leads in this segment</div>
+                  </div>
+
+                  {/* Pending tasks list */}
+                  <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
+                    <div className="text-sm font-semibold mb-2">{t('leads.timeline.pendingTasks')}</div>
+                    <ul className="text-sm list-disc pl-5">
+                      {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
+                      {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
+                        <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  {timelineLoading ? (
+                    <div className="py-8 text-center">{t('leads.timeline.loading')}</div>
+                  ) : (
+                    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {timelineItems.length === 0 && <li className="py-4 text-slate-500">No activity yet.</li>}
+                      {timelineItems.map(item => (
+                        <li key={item.id} className="py-3">
+                          <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                          {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                          {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                        </li>
+                      ))}
+                    </ul>
                   )}
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('leads.timeline.addNote')}</label>
+                    <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                    <div className="text-right mt-2">
+                      <button disabled={timelineSaving} onClick={async () => { await addTimelineNote(); setDetailTab('timeline'); }} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {detailTab === 'email' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+                    <div className="text-sm font-semibold mb-2">AI Email Assistant</div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        value={aiEmailLanguage}
+                        onChange={(e) => setAiEmailLanguage(e.target.value)}
+                        className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                      >
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Portuguese">Portuguese</option>
+                        <option value="Italian">Italian</option>
+                      </select>
+                      <button
+                        className="px-3 py-1 text-sm bg-primary text-white rounded-md disabled:bg-slate-400"
+                        disabled={aiLoading}
+                        onClick={async () => {
+                          if (!detailLead) return;
+                          setAiLoading(true);
+                          try {
+                            const { draftCommercialEmail } = await import('../../services/geminiService');
+                            const draft = await draftCommercialEmail(detailLead.name, detailLead.company, aiEmailLanguage);
+                            setAiEmailDraft(draft);
+                            toastContext?.showToast('Email draft generated! Scroll down to see it in the composer.', 'success');
+                          } catch (error) {
+                            console.error('AI email draft error:', error);
+                            toastContext?.showToast('Failed to generate email draft', 'danger');
+                          } finally {
+                            setAiLoading(false);
+                          }
+                        }}
+                      >
+                        {aiLoading ? 'Generating...' : 'Draft with AI'}
+                      </button>
+                    </div>
+                    {aiEmailDraft && (
+                      <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600">
+                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Generated Draft:</div>
+                        <div className="text-xs text-slate-700 dark:text-slate-300 space-y-2">
+                          <div><strong>Subject:</strong> {aiEmailDraft.subject}</div>
+                          <div className="mt-2">
+                            <strong>Body:</strong>
+                            <div className="mt-1 text-[11px] max-h-60 overflow-y-auto whitespace-pre-wrap p-2 bg-slate-50 dark:bg-slate-700/50 rounded border border-slate-200 dark:border-slate-600">
+                              {aiEmailDraft.body}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                    <EmailComposer
+                      recipient={{ name: detailLead.name, email: detailLead.email }}
+                      initialSubject={aiEmailDraft?.subject}
+                      initialBody={aiEmailDraft?.body}
+                      inline={true}
+                      onClose={() => { setDetailTab('timeline'); setAiEmailDraft(null); }}
+                      onSent={() => { toastContext?.showToast(`Email sent to ${detailLead.name}`, 'success'); setDetailTab('timeline'); setAiEmailDraft(null); }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      }
+
+      {
+        dealForLead && (
+          <Modal title={`${t('deals.actions.createDeal')} • ${dealForLead.name}`} onClose={() => setDealForLead(null)}>
+            <div className="p-6 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+                  <input type="text" value={qDealTitle} onChange={(e) => setQDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+                  <input type="number" min="0" value={qDealValue} onChange={(e) => setQDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+                  <select value={qDealStage} onChange={(e) => setQDealStage(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+                    {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+                  <input type="datetime-local" value={qDealExpectedClose} onChange={(e) => setQDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
+                  <input type="number" min="0" max="100" value={qDealProbability} onChange={(e) => setQDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+                  <textarea rows={2} value={qDealNotes} onChange={(e) => setQDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {isMobile && (
-        <button
-          onClick={() => setIsScannerOpen(true)}
-          className="fixed bottom-6 right-6 z-20 md:hidden flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          aria-label="Scan business card"
-        >
-          <CameraIcon className="w-7 h-7" />
-        </button>
-      )}
-
-      {isScannerOpen && (
-        <CameraScanner
-          onCapture={handleScanComplete}
-          onClose={() => setIsScannerOpen(false)}
-        />
-      )}
-
-      {confirmDelete && (
-        <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
-          <div className="p-6">
-            <p>Delete {selectedLeads.length} selected leads?</p>
-            <div className="mt-6 flex justify-end gap-4">
-              <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
-              <button onClick={async () => { try { await bulkDeleteLeads(selectedLeads); toastContext?.showToast('Leads deleted.', 'success'); setSelectedLeads([]); fetchLeads(); } catch { toastContext?.showToast('Failed to delete leads.', 'danger'); } finally { setConfirmDelete(false); } }} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {isCreateModalOpen && (
-        <Modal title={t('leads.newLead')} onClose={handleCloseCreateModal}>
-          <LeadForm lead={prefilledData || undefined} onSave={handleCreateLead} onCancel={handleCloseCreateModal} />
-        </Modal>
-      )}
-
-      {editingLead && (
-        <Modal title={`${t('common.edit')} ${editingLead.name}`} onClose={() => setEditingLead(null)}>
-          <LeadForm
-            isEdit
-            lead={editingLead}
-            onSave={(payload) => {
-              if (!editingLead) return;
-              const updatedLead = {
-                ...editingLead,
-                ...(payload.lead as any),
-              };
-              handleUpdateLead(updatedLead);
-            }}
-            onCancel={() => setEditingLead(null)} />
-        </Modal>
-      )}
-
-      {leadToConvert && (
-        <Modal title={t('leads.convertConfirmTitle')} onClose={() => setLeadToConvert(null)}>
-          <div className="p-6">
-            <p>{t('leads.convertConfirmMessage').replace('{name}', leadToConvert.name)}</p>
-            <div className="mt-6 flex justify-end gap-4">
-              <button onClick={() => setLeadToConvert(null)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
-              <button onClick={handleConfirmConvert} className="px-4 py-2 bg-success text-white rounded-md hover:bg-success-hover">{t('leads.convertAction')}</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {emailingLead && (
-        <EmailComposer
-          recipient={{ name: emailingLead.name, email: emailingLead.email }}
-          leadData={emailingLead}
-          onClose={() => setEmailingLead(null)}
-          onSent={() => toastContext?.showToast(`Email sent to ${emailingLead.name}`, 'success')}
-        />
-      )}
-
-      {detailLead && (
-        <div className="fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDetailLead(null)}></div>
-          <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-800 shadow-xl p-6 overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{detailLead.name}</h3>
-              <button onClick={() => setDetailLead(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">Close</button>
-            </div>
-            <div className="flex items-center gap-2 mb-4">
-              <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
-              <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Timeline</button>
-              <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab === 'email' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
-            </div>
-            {detailTab === 'info' && (
-              <div className="space-y-2 text-sm">
-                <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailLead.email}</span></div>
-                <div><span className="text-slate-500">Phone:</span> <span className="font-medium">{detailLead.phone || '-'}</span></div>
-                <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailLead.company}</span></div>
-                <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailLead.country}</span></div>
-                <div><span className="text-slate-500">Source:</span> <span className="font-medium">{detailLead.source}</span></div>
-                <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailLead.segment}</span></div>
-                <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailLead.status}</span></div>
-                <div className="flex items-center gap-2"><span className="text-slate-500">Score:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-primary h-2.5 rounded-full" style={{ width: `${detailLead.score}%` }}></div></div> <span className="font-semibold">{detailLead.score}</span></div>
+              <div className="text-right">
+                <button className="px-4 py-2 bg-primary text-white rounded-md" onClick={async () => {
+                  if (!user || !dealForLead) return;
+                  try {
+                    await createDeal({
+                      title: qDealTitle || `${dealForLead.name} • ${dealForLead.company || 'Deal'}`,
+                      value: Number(qDealValue) || 0,
+                      status: qDealStage,
+                      expected_close_date: new Date(qDealExpectedClose).toISOString(),
+                      probability: Number(qDealProbability) || 0,
+                      notes: qDealNotes || undefined,
+                      lead_id: dealForLead.id,
+                    }, user.id);
+                    toastContext?.showToast('Deal created.', 'success');
+                    setDealForLead(null);
+                  } catch (e) {
+                    toastContext?.showToast('Failed to create deal.', 'danger');
+                  }
+                }}>{t('deals.form.saveDeal')}</button>
               </div>
-            )}
-            {detailTab === 'timeline' && (
-              <div className="space-y-4">
-                {/* Mandatory steps */}
-                <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
-                  <div className="text-sm font-semibold mb-2">Mandatory Steps</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="flex flex-col gap-2">
-                      <label className="inline-flex items-center gap-2">
-                        <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
-                          const checked = e.target.checked; setStepInfoSent(checked);
-                          if (detailLead && user && checked) {
-                            const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
-                            if (existing) {
-                              await completeTask(existing.id);
-                              setLeadTasks(await listTasksForLead(detailLead.id, false));
-                            } else {
-                              toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
-                            }
+            </div>
+          </Modal>
+        )
+      }
+      {
+        timelineLead && (
+          <Modal title={`Timeline • ${timelineLead.name}`} onClose={() => setTimelineLead(null)}>
+            <div className="p-6 space-y-4">
+              {/* Mandatory steps */}
+              <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+                <div className="text-sm font-semibold mb-2">{t('leads.timeline.mandatorySteps')}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="flex flex-col gap-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
+                        const checked = e.target.checked; setStepInfoSent(checked);
+                        if (timelineLead && user && checked) {
+                          const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                          if (existing) {
+                            await completeTask(existing.id);
+                            setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                          } else {
+                            toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
                           }
-                        }} /> {t('leads.timeline.sendInfo')}
-                      </label>
-                      <label className="inline-flex items-center gap-2">
-                        <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
-                          const checked = e.target.checked; setStepPricesSent(checked);
-                          if (detailLead && user && checked) {
-                            const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
-                            if (existing) {
-                              await completeTask(existing.id);
-                              setLeadTasks(await listTasksForLead(detailLead.id, false));
-                            } else {
-                              toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
-                            }
+                        }
+                      }} /> {t('leads.timeline.sendInfo')}
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
+                        const checked = e.target.checked; setStepPricesSent(checked);
+                        if (timelineLead && user && checked) {
+                          const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                          if (existing) {
+                            await completeTask(existing.id);
+                            setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                          } else {
+                            toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
                           }
-                        }} /> {t('leads.timeline.sendPrices')}
-                      </label>
-                      <label className="inline-flex items-center gap-2">
-                        <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
-                          const checked = e.target.checked; setStepSamplesSent(checked);
-                          if (detailLead && user && checked) {
-                            const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
-                            if (existing) {
-                              await completeTask(existing.id);
-                              setLeadTasks(await listTasksForLead(detailLead.id, false));
-                            } else {
-                              toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
-                            }
+                        }
+                      }} /> {t('leads.timeline.sendPrices')}
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
+                        const checked = e.target.checked; setStepSamplesSent(checked);
+                        if (timelineLead && user && checked) {
+                          const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                          if (existing) {
+                            await completeTask(existing.id);
+                            setLeadTasks(await listTasksForLead(timelineLead.id, false));
+                          } else {
+                            toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
                           }
-                        }} /> {t('leads.timeline.sendSamples')}
-                      </label>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center flex-wrap gap-2">
-                        <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('leads.timeline.visitPlanned')}
-                        {stepVisitPlanned && (
-                          <input type="datetime-local" value={visitDate} onFocus={(e) => { try { e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { } }} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
-                        )}
-                        {stepVisitPlanned && visitDate && (
-                          <button className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
-                            if (!detailLead || !user) return;
+                        }
+                      }} /> {t('leads.timeline.sendSamples')}
+                    </label>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center flex-wrap gap-2">
+                      <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('leads.timeline.visitPlanned')}
+                      {stepVisitPlanned && (
+                        <input aria-label={t('leads.timeline.pickDate')} type="datetime-local" value={visitDate} onFocus={(e) => { try { e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { } }} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                      )}
+                      {stepVisitPlanned && visitDate && (
+                        <button type="button" className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
+                          if (!timelineLead || !user) return;
+                          try {
                             const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
                             if (existing) {
                               await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
-                              setLeadTasks(await listTasksForLead(detailLead.id));
+                              setLeadTasks(await listTasksForLead(timelineLead.id));
                               setVisitDate('');
+                              setStepVisitPlanned(false);
+                              toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
                             } else {
                               toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
                             }
-                          }}>{t('leads.timeline.save')}</button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pending tasks list */}
-                <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
-                  <div className="text-sm font-semibold mb-2">{t('leads.timeline.pendingTasks')}</div>
-                  <ul className="text-sm list-disc pl-5">
-                    {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
-                    {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
-                      <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
-                    ))}
-                  </ul>
-                </div>
-                {timelineLoading ? (
-                  <div className="py-8 text-center">{t('leads.timeline.loading')}</div>
-                ) : (
-                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {timelineItems.length === 0 && <li className="py-4 text-slate-500">No activity yet.</li>}
-                    {timelineItems.map(item => (
-                      <li key={item.id} className="py-3">
-                        <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
-                        {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
-                        {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('leads.timeline.addNote')}</label>
-                  <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
-                  <div className="text-right mt-2">
-                    <button disabled={timelineSaving} onClick={async () => { await addTimelineNote(); setDetailTab('timeline'); }} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {detailTab === 'email' && (
-              <div className="space-y-4">
-                <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
-                  <div className="text-sm font-semibold mb-2">AI Email Assistant</div>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <select
-                      value={aiEmailLanguage}
-                      onChange={(e) => setAiEmailLanguage(e.target.value)}
-                      className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
-                    >
-                      <option value="English">English</option>
-                      <option value="Spanish">Spanish</option>
-                      <option value="French">French</option>
-                      <option value="German">German</option>
-                      <option value="Portuguese">Portuguese</option>
-                      <option value="Italian">Italian</option>
-                    </select>
-                    <button
-                      className="px-3 py-1 text-sm bg-primary text-white rounded-md disabled:bg-slate-400"
-                      disabled={aiLoading}
-                      onClick={async () => {
-                        if (!detailLead) return;
-                        setAiLoading(true);
-                        try {
-                          const { draftCommercialEmail } = await import('../../services/geminiService');
-                          const draft = await draftCommercialEmail(detailLead.name, detailLead.company, aiEmailLanguage);
-                          setAiEmailDraft(draft);
-                          toastContext?.showToast('Email draft generated! Scroll down to see it in the composer.', 'success');
-                        } catch (error) {
-                          console.error('AI email draft error:', error);
-                          toastContext?.showToast('Failed to generate email draft', 'danger');
-                        } finally {
-                          setAiLoading(false);
-                        }
-                      }}
-                    >
-                      {aiLoading ? 'Generating...' : 'Draft with AI'}
-                    </button>
-                  </div>
-                  {aiEmailDraft && (
-                    <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600">
-                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Generated Draft:</div>
-                      <div className="text-xs text-slate-700 dark:text-slate-300 space-y-2">
-                        <div><strong>Subject:</strong> {aiEmailDraft.subject}</div>
-                        <div className="mt-2">
-                          <strong>Body:</strong>
-                          <div className="mt-1 text-[11px] max-h-60 overflow-y-auto whitespace-pre-wrap p-2 bg-slate-50 dark:bg-slate-700/50 rounded border border-slate-200 dark:border-slate-600">
-                            {aiEmailDraft.body}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <EmailComposer
-                    recipient={{ name: detailLead.name, email: detailLead.email }}
-                    initialSubject={aiEmailDraft?.subject}
-                    initialBody={aiEmailDraft?.body}
-                    inline={true}
-                    onClose={() => { setDetailTab('timeline'); setAiEmailDraft(null); }}
-                    onSent={() => { toastContext?.showToast(`Email sent to ${detailLead.name}`, 'success'); setDetailTab('timeline'); setAiEmailDraft(null); }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {dealForLead && (
-        <Modal title={`${t('deals.actions.createDeal')} • ${dealForLead.name}`} onClose={() => setDealForLead(null)}>
-          <div className="p-6 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
-                <input type="text" value={qDealTitle} onChange={(e) => setQDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
-                <input type="number" min="0" value={qDealValue} onChange={(e) => setQDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
-                <select value={qDealStage} onChange={(e) => setQDealStage(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
-                  {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
-                <input type="datetime-local" value={qDealExpectedClose} onChange={(e) => setQDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
-                <input type="number" min="0" max="100" value={qDealProbability} onChange={(e) => setQDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
-                <textarea rows={2} value={qDealNotes} onChange={(e) => setQDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-              </div>
-            </div>
-            <div className="text-right">
-              <button className="px-4 py-2 bg-primary text-white rounded-md" onClick={async () => {
-                if (!user || !dealForLead) return;
-                try {
-                  await createDeal({
-                    title: qDealTitle || `${dealForLead.name} • ${dealForLead.company || 'Deal'}`,
-                    value: Number(qDealValue) || 0,
-                    status: qDealStage,
-                    expected_close_date: new Date(qDealExpectedClose).toISOString(),
-                    probability: Number(qDealProbability) || 0,
-                    notes: qDealNotes || undefined,
-                    lead_id: dealForLead.id,
-                  }, user.id);
-                  toastContext?.showToast('Deal created.', 'success');
-                  setDealForLead(null);
-                } catch (e) {
-                  toastContext?.showToast('Failed to create deal.', 'danger');
-                }
-              }}>{t('deals.form.saveDeal')}</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-      {timelineLead && (
-        <Modal title={`Timeline • ${timelineLead.name}`} onClose={() => setTimelineLead(null)}>
-          <div className="p-6 space-y-4">
-            {/* Mandatory steps */}
-            <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
-              <div className="text-sm font-semibold mb-2">{t('leads.timeline.mandatorySteps')}</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="flex flex-col gap-2">
-                  <label className="inline-flex items-center gap-2">
-                    <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
-                      const checked = e.target.checked; setStepInfoSent(checked);
-                      if (timelineLead && user && checked) {
-                        const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
-                        if (existing) {
-                          await completeTask(existing.id);
-                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
-                        } else {
-                          toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
-                        }
-                      }
-                    }} /> {t('leads.timeline.sendInfo')}
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
-                      const checked = e.target.checked; setStepPricesSent(checked);
-                      if (timelineLead && user && checked) {
-                        const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
-                        if (existing) {
-                          await completeTask(existing.id);
-                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
-                        } else {
-                          toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
-                        }
-                      }
-                    }} /> {t('leads.timeline.sendPrices')}
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
-                      const checked = e.target.checked; setStepSamplesSent(checked);
-                      if (timelineLead && user && checked) {
-                        const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
-                        if (existing) {
-                          await completeTask(existing.id);
-                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
-                        } else {
-                          toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
-                        }
-                      }
-                    }} /> {t('leads.timeline.sendSamples')}
-                  </label>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center flex-wrap gap-2">
-                    <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('leads.timeline.visitPlanned')}
-                    {stepVisitPlanned && (
-                      <input aria-label={t('leads.timeline.pickDate')} type="datetime-local" value={visitDate} onFocus={(e) => { try { e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { } }} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
-                    )}
-                    {stepVisitPlanned && visitDate && (
-                      <button type="button" className="px-2 py-1 bg-primary text-white rounded-md" onClick={async () => {
-                        if (!timelineLead || !user) return;
-                        try {
-                          const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
-                          if (existing) {
-                            await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
-                            setLeadTasks(await listTasksForLead(timelineLead.id));
-                            setVisitDate('');
-                            setStepVisitPlanned(false);
-                            toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
-                          } else {
-                            toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
+                          } catch (e) {
+                            toastContext?.showToast(t('leads.timeline.scheduleError'), 'danger');
                           }
-                        } catch (e) {
-                          toastContext?.showToast(t('leads.timeline.scheduleError'), 'danger');
-                        }
-                      }}>{t('leads.timeline.save')}</button>
-                    )}
+                        }}>{t('leads.timeline.save')}</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Pending tasks list */}
-            <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
-              <div className="text-sm font-semibold mb-2">{t('leads.timeline.pendingTasks')}</div>
-              <ul className="text-sm list-disc pl-5">
-                {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
-                {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
-                  <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
-                ))}
-              </ul>
-            </div>
+              {/* Pending tasks list */}
+              <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600">
+                <div className="text-sm font-semibold mb-2">{t('leads.timeline.pendingTasks')}</div>
+                <ul className="text-sm list-disc pl-5">
+                  {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
+                  {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
+                    <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
+                  ))}
+                </ul>
+              </div>
 
-            {/* AI Assistant */}
-            <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
-                <button className="text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
-                {aiLoading && <div className="text-xs text-slate-500">...</div>}
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
-                  if (!timelineLead) return; setAiLoading(true); try { const text = await summarizeLead(timelineLead, timelineItems); setAiSummary(text); } finally { setAiLoading(false); }
-                }}>{t('aiAssistant.summarizeLead')}</button>
-                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
-                  if (!timelineLead) return; setAiLoading(true); try { const tasks = await suggestLeadTasks(timelineLead, timelineItems); setAiSuggested(tasks || []); } finally { setAiLoading(false); }
-                }}>{t('aiAssistant.suggestTasks')}</button>
-                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
-                  if (!timelineLead) return; setAiLoading(true); try { const email = await draftLeadFollowUpEmail(timelineLead, timelineItems); setAiEmail(email); } finally { setAiLoading(false); }
-                }}>{t('aiAssistant.draftFollowUpEmail')}</button>
-              </div>
-              {aiSummary && (
-                <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>
-              )}
-              {aiSuggested.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
-                  <ul className="text-sm list-disc pl-5">
-                    {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays}d` : ''}</li>))}
-                  </ul>
-                  <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async () => {
-                    if (!timelineLead || !user) return;
-                    for (const s of aiSuggested) {
-                      const due = typeof s.dueDays === 'number' ? new Date(Date.now() + s.dueDays * 24 * 3600 * 1000).toISOString() : undefined;
-                      const map: Record<string, TaskType> = {
-                        'Follow Up Call': TaskType.FOLLOW_UP_CALL,
-                        'Send Information': TaskType.SEND_INFORMATION,
-                        'Send Samples': TaskType.SEND_SAMPLES,
-                        'Send Quotation': TaskType.SEND_QUOTATION,
-                        'Schedule Visit': TaskType.SCHEDULE_VISIT,
-                      };
-                      const ttype = map[s.type] || TaskType.FOLLOW_UP_CALL;
-                      await createTask({ user_id: user.id, lead_id: timelineLead.id, type: ttype, status: TaskStatus.PENDING, title: s.title, due_date: due } as any);
-                    }
-                    setLeadTasks(await listTasksForLead(timelineLead.id));
-                    toastContext?.showToast('Suggested tasks added.', 'success');
-                  }}>{t('aiAssistant.addSuggestedTasks')}</button>
+              {/* AI Assistant */}
+              <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
+                  <button className="text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+                  {aiLoading && <div className="text-xs text-slate-500">...</div>}
                 </div>
-              )}
-              {aiEmail && (
-                <div className="mb-1 text-sm">
-                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.draftEmail')}</div>
-                  <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">
-                    <div className="font-medium">Asunto: {aiEmail.subject}</div>
-                    <pre className="whitespace-pre-wrap text-sm mt-1">{aiEmail.body}</pre>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
+                    if (!timelineLead) return; setAiLoading(true); try { const text = await summarizeLead(timelineLead, timelineItems); setAiSummary(text); } finally { setAiLoading(false); }
+                  }}>{t('aiAssistant.summarizeLead')}</button>
+                  <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
+                    if (!timelineLead) return; setAiLoading(true); try { const tasks = await suggestLeadTasks(timelineLead, timelineItems); setAiSuggested(tasks || []); } finally { setAiLoading(false); }
+                  }}>{t('aiAssistant.suggestTasks')}</button>
+                  <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
+                    if (!timelineLead) return; setAiLoading(true); try { const email = await draftLeadFollowUpEmail(timelineLead, timelineItems); setAiEmail(email); } finally { setAiLoading(false); }
+                  }}>{t('aiAssistant.draftFollowUpEmail')}</button>
+                </div>
+                {aiSummary && (
+                  <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>
+                )}
+                {aiSuggested.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
+                    <ul className="text-sm list-disc pl-5">
+                      {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays}d` : ''}</li>))}
+                    </ul>
+                    <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async () => {
+                      if (!timelineLead || !user) return;
+                      for (const s of aiSuggested) {
+                        const due = typeof s.dueDays === 'number' ? new Date(Date.now() + s.dueDays * 24 * 3600 * 1000).toISOString() : undefined;
+                        const map: Record<string, TaskType> = {
+                          'Follow Up Call': TaskType.FOLLOW_UP_CALL,
+                          'Send Information': TaskType.SEND_INFORMATION,
+                          'Send Samples': TaskType.SEND_SAMPLES,
+                          'Send Quotation': TaskType.SEND_QUOTATION,
+                          'Schedule Visit': TaskType.SCHEDULE_VISIT,
+                        };
+                        const ttype = map[s.type] || TaskType.FOLLOW_UP_CALL;
+                        await createTask({ user_id: user.id, lead_id: timelineLead.id, type: ttype, status: TaskStatus.PENDING, title: s.title, due_date: due } as any);
+                      }
+                      setLeadTasks(await listTasksForLead(timelineLead.id));
+                      toastContext?.showToast('Suggested tasks added.', 'success');
+                    }}>{t('aiAssistant.addSuggestedTasks')}</button>
                   </div>
-                  <button className="mt-2 px-2 py-1 text-sm bg-slate-600 text-white rounded" onClick={() => { setDetailLead(timelineLead); setDetailTab('email'); setTimelineLead(null); setAiEmail(null); }}>{t('aiAssistant.openInEmailComposer')}</button>
-                </div>
-              )}
-            </div>
+                )}
+                {aiEmail && (
+                  <div className="mb-1 text-sm">
+                    <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.draftEmail')}</div>
+                    <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">
+                      <div className="font-medium">Asunto: {aiEmail.subject}</div>
+                      <pre className="whitespace-pre-wrap text-sm mt-1">{aiEmail.body}</pre>
+                    </div>
+                    <button className="mt-2 px-2 py-1 text-sm bg-slate-600 text-white rounded" onClick={() => { setDetailLead(timelineLead); setDetailTab('email'); setTimelineLead(null); setAiEmail(null); }}>{t('aiAssistant.openInEmailComposer')}</button>
+                  </div>
+                )}
+              </div>
 
-            {timelineLoading ? (
-              <div className="py-8 text-center">{t('leads.timeline.loading')}</div>
-            ) : (
-              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('leads.timeline.noActivity')}</li>}
-                {timelineItems.map(item => (
-                  <li key={item.id} className="py-3">
-                    <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
-                    {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
-                    {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('leads.timeline.addNote')}</label>
-              <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
-              <div className="text-right mt-2">
-                <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
+              {timelineLoading ? (
+                <div className="py-8 text-center">{t('leads.timeline.loading')}</div>
+              ) : (
+                <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('leads.timeline.noActivity')}</li>}
+                  {timelineItems.map(item => (
+                    <li key={item.id} className="py-3">
+                      <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                      {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                      {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('leads.timeline.addNote')}</label>
+                <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                <div className="text-right mt-2">
+                  <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
+                </div>
               </div>
             </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        )
+      }
 
-      {isImportModalOpen && (
-        <ImportModal
-          title="Import Leads from CSV"
-          requiredHeaders={['name', 'email']}
-          optionalHeaders={['id', 'company', 'phone', 'country', 'segment', 'source', 'status', 'score', 'notes', 'user_id']}
-          onClose={() => setIsImportModalOpen(false)}
-          onImport={handleImport}
-        />
-      )}
-    </div>
+      {
+        isImportModalOpen && (
+          <ImportModal
+            title="Import Leads from CSV"
+            requiredHeaders={['name', 'email']}
+            optionalHeaders={['id', 'company', 'phone', 'country', 'segment', 'source', 'status', 'score', 'notes', 'user_id']}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={handleImport}
+          />
+        )
+      }
+    </div >
   );
 }
 

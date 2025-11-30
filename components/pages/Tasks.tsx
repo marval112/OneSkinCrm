@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { listTasksForUser, completeTask, createTask, updateTask, deleteTask } from '../../services/tasksService';
+import { listTasksForUser, completeTask, createTask, updateTask, deleteTask, toggleTaskTimer } from '../../services/tasksService';
 import type { Task, Lead, Customer } from '../../types';
 import { TaskType, TaskStatus } from '../../types';
 import { useTranslation } from '../../services/i18nService';
 import { prioritizeTasks } from '../../services/geminiService';
 import { getLeads, getCustomers } from '../../services/crmService';
 import Modal from '../common/Modal';
+import TaskCalendar from '../common/TaskCalendar';
 
 function Tasks() {
   const { user } = useAuth();
@@ -19,7 +20,8 @@ function Tasks() {
   const [aiOrdering, setAiOrdering] = useState<number[] | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [groupByType, setGroupByType] = useState(false);
-  const [agenda, setAgenda] = useState<{ id:number; start:string }[] | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [agenda, setAgenda] = useState<{ id: number; start: string }[] | null>(null);
   const [leadNames, setLeadNames] = useState<Record<number, string>>({});
   const [customerNames, setCustomerNames] = useState<Record<number, string>>({});
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
@@ -30,6 +32,7 @@ function Tasks() {
   const [builder, setBuilder] = useState<{ entityType: 'lead' | 'customer'; entityId: number | null; type: TaskType; title: string; notes: string; due: string }>(
     { entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }
   );
+  const [, setTick] = useState(0); // Force re-render for live timer
 
   const refresh = async () => {
     if (!user) return;
@@ -38,6 +41,16 @@ function Tasks() {
   };
 
   useEffect(() => { refresh(); }, [showCompleted, user]);
+
+  // Live timer update
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (tasks.some(t => t.timer_start)) {
+        setTick(prev => prev + 1);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   const openBuilder = useCallback(async () => {
     if (!user) return;
@@ -63,7 +76,7 @@ function Tasks() {
       type: task.type as TaskType,
       title: task.title || '',
       notes: task.notes || '',
-      due: task.due_date ? task.due_date.substring(0,16) : '',
+      due: task.due_date ? task.due_date.substring(0, 16) : '',
     });
   }, []);
 
@@ -96,7 +109,7 @@ function Tasks() {
   useEffect(() => {
     if (!('Notification' in window)) return; // not supported
     if (Notification.permission === 'default') {
-      try { Notification.requestPermission(); } catch {}
+      try { Notification.requestPermission(); } catch { }
     }
   }, []);
 
@@ -146,7 +159,7 @@ function Tasks() {
       .filter(passRange);
     if (aiOrdering && aiOrdering.length > 0) {
       const orderMap = new Map(aiOrdering.map((id, idx) => [id, idx]));
-      return [...base].sort((a,b)=> (orderMap.get(a.id) ?? 9999) - (orderMap.get(b.id) ?? 9999));
+      return [...base].sort((a, b) => (orderMap.get(a.id) ?? 9999) - (orderMap.get(b.id) ?? 9999));
     }
     return base;
   }, [tasks, typeFilter, rangeFilter, aiOrdering]);
@@ -157,6 +170,31 @@ function Tasks() {
     return '';
   };
 
+  const formatDuration = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getTaskDuration = (task: Task) => {
+    let total = task.time_spent || 0;
+    if (task.timer_start) {
+      const elapsed = Math.floor((Date.now() - new Date(task.timer_start).getTime()) / 1000);
+      total += elapsed;
+    }
+    return total;
+  };
+
+  const handleToggleTimer = async (task: Task) => {
+    try {
+      await toggleTaskTimer(task.id, !!task.timer_start);
+      refresh();
+    } catch (e) {
+      console.error('Failed to toggle timer', e);
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -164,16 +202,20 @@ function Tasks() {
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
         <h2 className="text-xl font-semibold">{t('tasks.title')}</h2>
         <div className="flex items-center gap-2">
+          <div className="flex rounded-md overflow-hidden border border-slate-300 dark:border-slate-600 mr-2">
+            <button onClick={() => setViewMode('list')} className={`px-3 py-1 text-sm ${viewMode === 'list' ? 'bg-slate-200 dark:bg-slate-600 font-medium' : 'bg-white dark:bg-slate-800'}`}>List</button>
+            <button onClick={() => setViewMode('calendar')} className={`px-3 py-1 text-sm ${viewMode === 'calendar' ? 'bg-slate-200 dark:bg-slate-600 font-medium' : 'bg-white dark:bg-slate-800'}`}>Calendar</button>
+          </div>
           <button onClick={openBuilder} className="px-3 py-1 text-sm bg-primary text-white rounded-md">New Task</button>
-          <button disabled={aiLoading || !user} onClick={async ()=>{ setAiLoading(true); try { const ids = await prioritizeTasks(tasks.map(t=>({ id:t.id, type:t.type, due_date:t.due_date as any, title:t.title as any }))); setAiOrdering(ids); } finally { setAiLoading(false);} }} className="px-3 py-1 text-sm bg-primary text-white rounded-md">
+          <button disabled={aiLoading || !user} onClick={async () => { setAiLoading(true); try { const ids = await prioritizeTasks(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); setAiOrdering(ids); } finally { setAiLoading(false); } }} className="px-3 py-1 text-sm bg-primary text-white rounded-md">
             {aiLoading ? '...' : t('tasks.ui.prioritizeWithAi')}
           </button>
-          {aiOrdering && (<button onClick={()=> setAiOrdering(null)} className="px-3 py-1 text-sm border rounded-md">{t('tasks.ui.resetOrder')}</button>)}
+          {aiOrdering && (<button onClick={() => setAiOrdering(null)} className="px-3 py-1 text-sm border rounded-md">{t('tasks.ui.resetOrder')}</button>)}
           <div className="flex rounded-md overflow-hidden border border-slate-300 dark:border-slate-600">
-            <button onClick={() => setRangeFilter('all')} className={`px-3 py-1 text-sm ${rangeFilter==='all'?'bg-primary text-white':'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.all')}</button>
-            <button onClick={() => setRangeFilter('overdue')} className={`px-3 py-1 text-sm ${rangeFilter==='overdue'?'bg-primary text-white':'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.overdue')}</button>
-            <button onClick={() => setRangeFilter('today')} className={`px-3 py-1 text-sm ${rangeFilter==='today'?'bg-primary text-white':'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.today')}</button>
-            <button onClick={() => setRangeFilter('upcoming')} className={`px-3 py-1 text-sm ${rangeFilter==='upcoming'?'bg-primary text-white':'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.upcoming')}</button>
+            <button onClick={() => setRangeFilter('all')} className={`px-3 py-1 text-sm ${rangeFilter === 'all' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.all')}</button>
+            <button onClick={() => setRangeFilter('overdue')} className={`px-3 py-1 text-sm ${rangeFilter === 'overdue' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.overdue')}</button>
+            <button onClick={() => setRangeFilter('today')} className={`px-3 py-1 text-sm ${rangeFilter === 'today' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.today')}</button>
+            <button onClick={() => setRangeFilter('upcoming')} className={`px-3 py-1 text-sm ${rangeFilter === 'upcoming' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.upcoming')}</button>
           </div>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
             <option value="all">{t('tasks.ui.allTypes')}</option>
@@ -191,9 +233,11 @@ function Tasks() {
 
       {loading ? (
         <div className="py-8 text-center">Loading...</div>
+      ) : viewMode === 'calendar' ? (
+        <TaskCalendar tasks={filtered} onEditTask={openEdit} />
       ) : groupByType ? (
         <div className="space-y-6">
-          {['Follow Up Call','Send Information','Send Samples','Send Quotation','Schedule Visit'].map(type => {
+          {['Follow Up Call', 'Send Information', 'Send Samples', 'Send Quotation', 'Schedule Visit'].map(type => {
             const items = filtered.filter(task => task.type === type);
             if (items.length === 0) return null;
             return (
@@ -231,6 +275,7 @@ function Tasks() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
             </tr>
           </thead>
@@ -245,10 +290,10 @@ function Tasks() {
                   <td className="px-6 py-3 text-sm">
                     {
                       task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
-                      task.type === 'Send Information' ? t('tasks.types.sendInformation') :
-                      task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
-                      task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
-                      t('tasks.types.scheduleVisit')
+                        task.type === 'Send Information' ? t('tasks.types.sendInformation') :
+                          task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
+                            task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
+                              t('tasks.types.scheduleVisit')
                     }
                     {task.rule_title && (
                       <div className="text-xs text-slate-500 mt-0.5">{task.rule_title}</div>
@@ -261,6 +306,28 @@ function Tasks() {
                       <span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>
                     ) : '-'}
                   </td>
+                  <td className="px-6 py-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleTimer(task)}
+                        className={`p-1.5 rounded-md ${task.timer_start ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                        title={task.timer_start ? 'Stop timer' : 'Start timer'}
+                      >
+                        {task.timer_start ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                      <span className={`text-sm font-mono ${task.timer_start ? 'text-green-600 font-semibold' : 'text-slate-600'}`}>
+                        {formatDuration(getTaskDuration(task))}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-6 py-3 text-right text-sm">
                     <div className="flex gap-2 justify-end items-center">
                       {task.status !== 'Completed' ? (
@@ -269,7 +336,7 @@ function Tasks() {
                         <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
                       )}
                       <button onClick={() => openEdit(task)} className="px-2 py-1 border rounded-md">Edit</button>
-                      <button onClick={async () => { if (!user) return; const payload:any = { user_id: user.id, lead_id: task.lead_id, customer_id: task.customer_id, type: task.type, status: TaskStatus.PENDING, title: task.title, notes: task.notes, due_date: task.due_date, rule_title: 'Cloned manually' }; await createTask(payload); refresh(); }} className="px-2 py-1 border rounded-md">Clone</button>
+                      <button onClick={async () => { if (!user) return; const payload: any = { user_id: user.id, lead_id: task.lead_id, customer_id: task.customer_id, type: task.type, status: TaskStatus.PENDING, title: task.title, notes: task.notes, due_date: task.due_date, rule_title: 'Cloned manually' }; await createTask(payload); refresh(); }} className="px-2 py-1 border rounded-md">Clone</button>
                       <button onClick={async () => { await deleteTask(task.id); refresh(); }} className="px-2 py-1 border rounded-md text-danger">Delete</button>
                     </div>
                   </td>
@@ -282,20 +349,20 @@ function Tasks() {
       {/* Controls row */}
       <div className="mt-4 flex items-center gap-2">
         <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={groupByType} onChange={e=> setGroupByType(e.target.checked)} /> {t('tasks.ui.groupByType')}
+          <input type="checkbox" checked={groupByType} onChange={e => setGroupByType(e.target.checked)} /> {t('tasks.ui.groupByType')}
         </label>
-        <button disabled={aiLoading || !user} onClick={async ()=>{ setAiLoading(true); try{ const items = await prioritizeTasks(tasks.map(t=>({ id:t.id, type:t.type, due_date:t.due_date as any, title:t.title as any }))); const agendaResp = await (await import('../../services/geminiService')).proposeAgenda(tasks.map(t=>({ id:t.id, type:t.type, due_date:t.due_date as any, title:t.title as any }))); setAiOrdering(items); setAgenda(agendaResp); } finally { setAiLoading(false);} }} className="px-3 py-1 text-sm bg-slate-700 text-white rounded-md">
+        <button disabled={aiLoading || !user} onClick={async () => { setAiLoading(true); try { const items = await prioritizeTasks(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); const agendaResp = await (await import('../../services/geminiService')).proposeAgenda(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); setAiOrdering(items); setAgenda(agendaResp); } finally { setAiLoading(false); } }} className="px-3 py-1 text-sm bg-slate-700 text-white rounded-md">
           {aiLoading ? '...' : t('tasks.ui.proposeAgenda')}
         </button>
       </div>
-      {agenda && agenda.length>0 && (
+      {agenda && agenda.length > 0 && (
         <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-700/40 rounded border border-slate-200 dark:border-slate-600">
           <div className="text-sm font-semibold mb-2">{t('tasks.ui.proposedAgenda')}</div>
           <ul className="text-sm list-disc pl-5">
             {agenda.map(a => {
-              const task = tasks.find(t=> t.id === a.id);
+              const task = tasks.find(t => t.id === a.id);
               if (!task) return null;
-              return <li key={a.id}>{a.start} • {task.type}{task.title?`: ${task.title}`:''}</li>;
+              return <li key={a.id}>{a.start} • {task.type}{task.title ? `: ${task.title}` : ''}</li>;
             })}
           </ul>
         </div>
@@ -307,7 +374,7 @@ function Tasks() {
             {builderLoading ? (
               <div className="py-6 text-center">...</div>
             ) : (
-              <form onSubmit={async (e)=>{ e.preventDefault(); if (!user || !builder.entityId) return; if (editingTask) { const updated = { ...editingTask, type: builder.type, title: builder.title || undefined, notes: builder.notes || undefined, due_date: builder.due || undefined, lead_id: builder.entityType==='lead' ? builder.entityId : null, customer_id: builder.entityType==='customer' ? builder.entityId : null }; await updateTask(updated as any); } else { const payload: any = { user_id: user.id, type: builder.type, status: TaskStatus.PENDING, title: builder.title || undefined, notes: builder.notes || undefined, due_date: builder.due || undefined, rule_title: 'Created manually' }; if (builder.entityType==='lead') payload.lead_id = builder.entityId; else payload.customer_id = builder.entityId; await createTask(payload); } setIsBuilderOpen(false); setEditingTask(null); setBuilder({ entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }); refresh(); }}>
+              <form onSubmit={async (e) => { e.preventDefault(); if (!user || !builder.entityId) return; if (editingTask) { const updated = { ...editingTask, type: builder.type, title: builder.title || undefined, notes: builder.notes || undefined, due_date: builder.due || undefined, lead_id: builder.entityType === 'lead' ? builder.entityId : null, customer_id: builder.entityType === 'customer' ? builder.entityId : null }; await updateTask(updated as any); } else { const payload: any = { user_id: user.id, type: builder.type, status: TaskStatus.PENDING, title: builder.title || undefined, notes: builder.notes || undefined, due_date: builder.due || undefined, rule_title: 'Created manually' }; if (builder.entityType === 'lead') payload.lead_id = builder.entityId; else payload.customer_id = builder.entityId; await createTask(payload); } setIsBuilderOpen(false); setEditingTask(null); setBuilder({ entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }); refresh(); }}>
                 <div>
                   <label className="block text-sm font-medium mb-1">Assign to</label>
                   <div className="grid grid-cols-2 gap-2">

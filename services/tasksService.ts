@@ -76,6 +76,48 @@ export async function getTaskCounts(userId: number): Promise<{ pending: number; 
   };
 }
 
+export async function toggleTaskTimer(taskId: number, isRunning: boolean): Promise<Task> {
+  if (isRunning) {
+    // Stop the timer: calculate elapsed time and add to time_spent
+    const { data: task, error: fetchError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!task || !task.timer_start) {
+      throw new Error('Timer is not running for this task');
+    }
+
+    const startTime = new Date(task.timer_start).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+    const newTimeSpent = (task.time_spent || 0) + elapsedSeconds;
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ timer_start: null, time_spent: newTimeSpent })
+      .eq('id', taskId)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data as Task;
+  } else {
+    // Start the timer
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ timer_start: new Date().toISOString() })
+      .eq('id', taskId)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data as Task;
+  }
+}
+
 export { TaskStatus, TaskType };
 
 

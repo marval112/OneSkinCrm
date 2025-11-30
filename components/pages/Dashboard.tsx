@@ -6,6 +6,7 @@ import { DealStage, LeadStatus, Segment, CustomerStatus } from '../../types';
 import { supabase } from '../../services/supabaseClient';
 import { getBudgetsForCustomers } from '../../services/budgetService';
 import DateRangePicker from '../common/DateRangePicker';
+import CustomTooltip from '../common/CustomTooltip';
 import TopLeadsWidget from '../dashboard/TopLeadsWidget';
 import { useTranslation } from '../../services/i18nService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -927,7 +928,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `€${Math.round(Number(v) / 1000)}k`} />
                 <YAxis type="category" dataKey="name" stroke="rgb(100 116 139)" />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`€${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `€${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 {/* Put Closed Won on the left, Remaining on the right */}
                 <Bar dataKey="closed" stackId="g" fill="#1e3a8a" radius={[8, 0, 0, 8]}>
                   <LabelList dataKey="closed" content={FillLabel as any} />
@@ -951,9 +954,7 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis dataKey="month" stroke="rgb(100 116 139)" />
               <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                labelStyle={{ color: 'rgb(241 245 249)' }}
+              <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
               <Legend />
@@ -984,10 +985,8 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
               <YAxis dataKey="name" type="category" width={105} stroke="rgb(100 116 139)" />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                labelStyle={{ color: 'rgb(241 245 249)' }}
-                formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
+              <CustomTooltip
+                formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
               <Bar dataKey="value" name="Value in Stage" onDoubleClick={(data) => navigate(`/deals?status=${encodeURIComponent(data.name)}`)} className="cursor-pointer" radius={[4, 4, 4, 4]}>
                 {stats.dealValueByStage.map((entry, index) => {
@@ -1010,7 +1009,9 @@ function Dashboard() {
           <h3 className="font-semibold text-base mb-3" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <FunnelChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-              <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]} />
+              <CustomTooltip
+                formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
+              />
               <Funnel data={stats.dealValueByStage} dataKey="value" nameKey="name" isAnimationActive>
                 {stats.dealValueByStage.map((entry, index) => {
                   const color = entry.name === DealStage.CLOSED_WON
@@ -1065,9 +1066,9 @@ function Dashboard() {
               <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={80} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
                 {stats.leadSourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="cursor-pointer" />)}
               </Pie>
-              <Tooltip
-                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                formatter={(value: number, name: string) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`, name]} />
+              <CustomTooltip
+                formatter={(value: number, name: string) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`, name]}
+              />
               <Legend wrapperStyle={{ color: 'rgb(100 116 139)' }} />
             </PieChart>
           </ResponsiveContainer>
@@ -1080,10 +1081,8 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis dataKey="name" stroke="rgb(100 116 139)" />
               <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }}
-                labelStyle={{ color: 'rgb(241 245 249)' }}
-                formatter={(value: number) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]}
+              <CustomTooltip
+                formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
               <Legend wrapperStyle={{ color: 'rgb(100 116 139)' }} />
               <Bar dataKey="won" name={t('dashboard.won') || 'Won'} fill="#1e3a8a" className="cursor-pointer" radius={[4, 4, 0, 0]} onDoubleClick={(data) => {
@@ -1114,7 +1113,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                 <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 <Bar dataKey="value" name="Leads" radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/leads?status=${encodeURIComponent((d as any).name)}`)}>
                   {stats.leadsByStatus.map((_, i) => <Cell key={`l-s-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
@@ -1129,7 +1130,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                 <YAxis dataKey="label" type="category" width={130} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 <Bar dataKey="value" name="Leads" radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/leads?segment=${encodeURIComponent((d as any).name)}`)}>
                   {stats.leadsBySegment.map((_, i) => <Cell key={`l-seg-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
@@ -1144,7 +1147,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                 <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 <Bar dataKey="value" name={t('leads.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const n = (d as any).name; if (!n || n === (t('common.others') || 'Others')) return; navigate(`/leads?country=${encodeURIComponent(n)}`) }}>
                   {stats.leadsByCountry.map((_, i) => <Cell key={`l-ctry-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
@@ -1160,7 +1165,9 @@ function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                   <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                   <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                  <CustomTooltip
+                    formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                  />
                   <Bar dataKey="value" name={t('leads.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const email = (d as any).name; const u = stats.users.find(x => x.email === email); if (u) navigate(`/leads?userId=${u.id}`) }}>
                     {stats.leadsByOwner.map((_, i) => <Cell key={`l-own-${i}`} fill={COLORS[i % COLORS.length]} />)}
                     <LabelList content={renderHorizontalCountLabel} />
@@ -1179,7 +1186,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                 <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/customers?status=${encodeURIComponent((d as any).name)}`)}>
                   {stats.customersByStatus.map((_, i) => <Cell key={`c-st-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
@@ -1194,7 +1203,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                 <YAxis dataKey="label" type="category" width={150} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => navigate(`/customers?segment=${encodeURIComponent((d as any).name)}`)}>
                   {stats.customersBySegment.map((_, i) => <Cell key={`c-seg-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
@@ -1209,7 +1220,9 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                 <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                 <YAxis dataKey="name" type="category" width={160} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                <CustomTooltip
+                  formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                />
                 <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const n = (d as any).name; if (!n || n === (t('common.others') || 'Others')) return; navigate(`/customers?country=${encodeURIComponent(n)}`) }}>
                   {stats.customersByCountry.map((_, i) => <Cell key={`c-ctry-${i}`} fill={COLORS[i % COLORS.length]} />)}
                   <LabelList content={renderHorizontalCountLabel} />
@@ -1225,7 +1238,9 @@ function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                   <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(v) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} style={{ fontSize: '11px' }} />
                   <YAxis dataKey="name" type="category" width={190} stroke="rgb(100 116 139)" style={{ fontSize: '11px' }} />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgb(51 65 85)', color: '#e2e8f0' }} labelStyle={{ color: 'rgb(241 245 249)' }} formatter={(v: number) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, null]} />
+                  <CustomTooltip
+                    formatter={(v: number) => `${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                  />
                   <Bar dataKey="value" name={t('customers.title')} radius={[4, 4, 4, 4]} onDoubleClick={(d) => { const email = (d as any).name; const u = stats.users.find(x => x.email === email); if (u) navigate(`/customers?userId=${u.id}`) }}>
                     {stats.customersByOwner.map((_, i) => <Cell key={`c-own-${i}`} fill={COLORS[i % COLORS.length]} />)}
                     <LabelList content={renderHorizontalCountLabel} />

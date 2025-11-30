@@ -137,6 +137,8 @@ export interface Task {
   due_date?: string | null;
   created_at: string;
   completed_at?: string | null;
+  timer_start?: string | null;
+  time_spent?: number; // in seconds
 }
 
 // --- ENTERPRISE & SHARED TYPES ---

@@ -85,4 +85,62 @@ export async function listAchievedByCustomerForYear(user: User, year: number): P
   return totals;
 }
 
+export interface SalespersonBudgetSummary {
+  userId: number;
+  userName: string;
+  totalBudget: number;
+  totalAchieved: number;
+  customerCount: number;
+  delta: number;
+  percentage: number;
+}
+
+export async function getBudgetBySalesperson(user: User, year: number): Promise<SalespersonBudgetSummary[]> {
+  // Get all customers with budgets
+  const customers = await getCustomers(user);
+  const budgets = await getBudgetsForCustomers(year, customers.map(c => c.id));
+  const achieved = await listAchievedByCustomerForYear(user, year);
+
+  // Get all users (salespeople)
+  const { data: users, error } = await supabase.from('users').select('*');
+  if (error) throw error;
+
+  // Group by user_id
+  const summaryMap = new Map<number, { totalBudget: number; totalAchieved: number; customerCount: number; userName: string }>();
+
+  customers.forEach(customer => {
+    const userId = customer.user_id;
+    if (!summaryMap.has(userId)) {
+      const userRecord = (users || []).find((u: any) => u.id === userId);
+      summaryMap.set(userId, {
+        totalBudget: 0,
+        totalAchieved: 0,
+        customerCount: 0,
+        userName: userRecord?.email || `User ${userId}`
+      });
+    }
+
+    const summary = summaryMap.get(userId)!;
+    summary.customerCount++;
+
+    const budget = budgets.find(b => b.customer_id === customer.id);
+    if (budget) {
+      summary.totalBudget += Number(budget.amount || 0);
+    }
+
+    const achievedAmount = achieved[customer.id] || 0;
+    summary.totalAchieved += achievedAmount;
+  });
+
+  // Convert to array
+  return Array.from(summaryMap.entries()).map(([userId, data]) => ({
+    userId,
+    userName: data.userName,
+    totalBudget: data.totalBudget,
+    totalAchieved: data.totalAchieved,
+    customerCount: data.customerCount,
+    delta: data.totalBudget - data.totalAchieved,
+    percentage: data.totalBudget > 0 ? Math.round((data.totalAchieved / data.totalBudget) * 100) : 0
+  }));
+}
 
