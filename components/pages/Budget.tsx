@@ -124,129 +124,129 @@ export default function Budget() {
           </button>
         </div>
       </div>
-    </div>
-      
-      {/* Salesperson Summary Cards */ }
-  {
-    viewMode === 'by-salesperson' && (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {salespersonSummaries.map(sp => (
-          <div
-            key={sp.userId}
-            onClick={() => setSelectedSalesperson(sp.userId === selectedSalesperson ? null : sp.userId)}
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedSalesperson === sp.userId
-              ? 'border-primary bg-primary/5'
-              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-          >
-            <div className="font-semibold text-slate-800 dark:text-slate-100 mb-2">{sp.userName}</div>
-            <div className="text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Budget:</span>
-                <span className="font-medium">{formatEuro(sp.totalBudget)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Achieved:</span>
-                <span className="font-medium">{formatEuro(sp.totalAchieved)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Delta:</span>
-                <span className={`font-medium ${sp.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatEuro(sp.delta)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">%:</span>
-                <span className="font-medium">{sp.percentage}%</span>
-              </div>
-              <div className="text-xs text-slate-400 mt-2">{sp.customerCount} customers</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
 
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-      <thead className="bg-slate-50 dark:bg-slate-700/50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('common.customer')}</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">Company</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2026') || 'Budget 2026'}</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2027') || 'Budget 2027'}</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2028') || 'Budget 2028'}</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.closedWon2026') || 'Closed Won 2026'}</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.delta2026') || 'Delta 2026'}</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.percentClosedWon2026') || '% Closed Won 2026'}</th>
-        </tr>
-      </thead>
-      <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-        {loading ? (
-          <TableSkeleton columns={7} rows={5} />
-        ) : filteredRows.map(r => (
-          <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-            <td className="px-6 py-3">
-              <div className="text-sm font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate('/customers')}>{r.name}</div>
-              <div className="text-xs text-slate-500">{r.email}</div>
-            </td>
-            <td className="px-6 py-3 hidden md:table-cell text-sm">{r.company}{r.country ? `, ${r.country}` : ''}</td>
-            <td className="px-6 py-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
-                  defaultValue={Number(r.budget2026 || 0)}
-                  onBlur={(e) => handleSave(r.id, 2026, e.target.value)}
-                />
-                {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
+
+      {/* Salesperson Summary Cards */}
+      {
+        viewMode === 'by-salesperson' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {salespersonSummaries.map(sp => (
+              <div
+                key={sp.userId}
+                onClick={() => setSelectedSalesperson(sp.userId === selectedSalesperson ? null : sp.userId)}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedSalesperson === sp.userId
+                  ? 'border-primary bg-primary/5'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                  }`}
+              >
+                <div className="font-semibold text-slate-800 dark:text-slate-100 mb-2">{sp.userName}</div>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Budget:</span>
+                    <span className="font-medium">{formatEuro(sp.totalBudget)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Achieved:</span>
+                    <span className="font-medium">{formatEuro(sp.totalAchieved)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Delta:</span>
+                    <span className={`font-medium ${sp.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatEuro(sp.delta)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">%:</span>
+                    <span className="font-medium">{sp.percentage}%</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-2">{sp.customerCount} customers</div>
+                </div>
               </div>
-            </td>
-            <td className="px-6 py-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
-                  defaultValue={Number(r.budget2027 || 0)}
-                  onBlur={(e) => handleSave(r.id, 2027, e.target.value)}
-                />
-                {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
-              </div>
-            </td>
-            <td className="px-6 py-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
-                  defaultValue={Number(r.budget2028 || 0)}
-                  onBlur={(e) => handleSave(r.id, 2028, e.target.value)}
-                />
-                {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
-              </div>
-            </td>
-            <td className="px-6 py-3">
-              <span className="text-sm">{formatEuro(Number(r.achieved2026 || 0))}</span>
-            </td>
-            <td className="px-6 py-3">
-              {(() => {
-                const delta = (Number(r.budget2026 || 0)) - (Number(r.achieved2026 || 0));
-                return <span className={`text-sm ${delta >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{formatEuro(delta)}</span>;
-              })()}
-            </td>
-            <td className="px-6 py-3">
-              {(() => {
-                const budget = Number(r.budget2026 || 0);
-                const achieved = Number(r.achieved2026 || 0);
-                const pct = budget > 0 ? Math.round((achieved / budget) * 100) : 0;
-                return <span className="text-sm">{pct}%</span>;
-              })()}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
+            ))}
+          </div>
+        )
+      }
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+          <thead className="bg-slate-50 dark:bg-slate-700/50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('common.customer')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">Company</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2026') || 'Budget 2026'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2027') || 'Budget 2027'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.amount2028') || 'Budget 2028'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.closedWon2026') || 'Closed Won 2026'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.delta2026') || 'Delta 2026'}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">{t('budget.percentClosedWon2026') || '% Closed Won 2026'}</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+            {loading ? (
+              <TableSkeleton columns={7} rows={5} />
+            ) : filteredRows.map(r => (
+              <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <td className="px-6 py-3">
+                  <div className="text-sm font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate('/customers')}>{r.name}</div>
+                  <div className="text-xs text-slate-500">{r.email}</div>
+                </td>
+                <td className="px-6 py-3 hidden md:table-cell text-sm">{r.company}{r.country ? `, ${r.country}` : ''}</td>
+                <td className="px-6 py-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
+                      defaultValue={Number(r.budget2026 || 0)}
+                      onBlur={(e) => handleSave(r.id, 2026, e.target.value)}
+                    />
+                    {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
+                  </div>
+                </td>
+                <td className="px-6 py-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
+                      defaultValue={Number(r.budget2027 || 0)}
+                      onBlur={(e) => handleSave(r.id, 2027, e.target.value)}
+                    />
+                    {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
+                  </div>
+                </td>
+                <td className="px-6 py-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
+                      defaultValue={Number(r.budget2028 || 0)}
+                      onBlur={(e) => handleSave(r.id, 2028, e.target.value)}
+                    />
+                    {savingId === r.id && <span className="text-xs text-slate-400">...</span>}
+                  </div>
+                </td>
+                <td className="px-6 py-3">
+                  <span className="text-sm">{formatEuro(Number(r.achieved2026 || 0))}</span>
+                </td>
+                <td className="px-6 py-3">
+                  {(() => {
+                    const delta = (Number(r.budget2026 || 0)) - (Number(r.achieved2026 || 0));
+                    return <span className={`text-sm ${delta >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{formatEuro(delta)}</span>;
+                  })()}
+                </td>
+                <td className="px-6 py-3">
+                  {(() => {
+                    const budget = Number(r.budget2026 || 0);
+                    const achieved = Number(r.achieved2026 || 0);
+                    const pct = budget > 0 ? Math.round((achieved / budget) * 100) : 0;
+                    return <span className="text-sm">{pct}%</span>;
+                  })()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div >
   );
 }
