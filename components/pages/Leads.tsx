@@ -520,8 +520,8 @@ function Leads() {
   const handleCreateLead = async (payload: { lead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>, deal?: { title: string; value: number; status: DealStage; expected_close_date: string; probability: number; notes?: string } }) => {
     if (!user) return;
     try {
-      const score = calculateLeadScore(payload.lead as Lead);
-      const created = await createLead({ ...payload.lead, score }, user.id);
+      const scoreBreakdown = calculateLeadScore(payload.lead as Lead);
+      const created = await createLead({ ...payload.lead, score: scoreBreakdown.total }, user.id);
       if (payload.deal) {
         await createDeal({ ...payload.deal, lead_id: created.id }, user.id);
       }
@@ -535,8 +535,8 @@ function Leads() {
 
   const handleUpdateLead = async (leadData: Lead) => {
     try {
-      const score = calculateLeadScore(leadData);
-      await updateLead({ ...leadData, score });
+      const scoreBreakdown = calculateLeadScore(leadData);
+      await updateLead({ ...leadData, score: scoreBreakdown.total });
       toastContext?.showToast(t('leads.updateSuccess'), 'success');
       setEditingLead(null);
       setInlineEditingId(null);
@@ -661,18 +661,6 @@ function Leads() {
             </select>
 
           )}
-          <SavedSearchControls
-            type="leads"
-            currentFilters={{
-              search: searchTerm,
-              status: statusFilter,
-              source: filterSource,
-              country: countryFilter,
-              segment: segmentFilter,
-              userId: userIdFilter
-            }}
-            onApplySearch={handleApplySavedSearch}
-          />
           {user?.role === 'Admin' && selectedLeads.length > 0 && view === 'table' && (
             <button onClick={() => setConfirmDelete(true)} className="px-3 py-1.5 text-sm bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
           )}
