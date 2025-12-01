@@ -9,18 +9,16 @@ import Modal from '../common/Modal';
 const ToggleSwitch = ({ enabled, onChange }: { enabled: boolean; onChange: () => void }) => (
   <button
     type="button"
-    className={`${
-      enabled ? 'bg-primary' : 'bg-slate-300'
-    } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2`}
+    className={`${enabled ? 'bg-primary' : 'bg-slate-300'
+      } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2`}
     role="switch"
     aria-checked={enabled}
     onClick={onChange}
   >
     <span
       aria-hidden="true"
-      className={`${
-        enabled ? 'translate-x-5' : 'translate-x-0'
-      } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+      className={`${enabled ? 'translate-x-5' : 'translate-x-0'
+        } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
     />
   </button>
 );
@@ -63,18 +61,18 @@ function WebhooksManager() {
         setInboundKey(s.key || '');
         setBucket(s.bucket || 'activities');
       }
-    } catch {}
+    } catch { }
   }, [fetchWebhooks]);
 
   const handleDelete = async () => {
     if (!hookToDelete) return;
     try {
-        await deleteWebhook(hookToDelete.id);
-        toastContext?.showToast('Webhook deleted.', 'success');
-        setHookToDelete(null);
-        fetchWebhooks();
+      await deleteWebhook(hookToDelete.id);
+      toastContext?.showToast('Webhook deleted.', 'success');
+      setHookToDelete(null);
+      fetchWebhooks();
     } catch (e) {
-        toastContext?.showToast('Failed to delete webhook.', 'danger');
+      toastContext?.showToast('Failed to delete webhook.', 'danger');
     }
   };
 
@@ -87,7 +85,7 @@ function WebhooksManager() {
       // Fix: Changed property from `isActive` to `active` for correct toast message.
       toastContext?.showToast(`Webhook ${updatedHook.active ? 'enabled' : 'disabled'}.`, 'success');
     } catch {
-       toastContext?.showToast(`Failed to update webhook.`, 'danger');
+      toastContext?.showToast(`Failed to update webhook.`, 'danger');
     }
   };
 
@@ -129,7 +127,7 @@ function WebhooksManager() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-       <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Webhooks & API Triggers</h2>
         <button className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
           Create Webhook
@@ -164,33 +162,33 @@ function WebhooksManager() {
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Endpoint URL</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">Events</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Endpoint URL</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">Events</th>
+              <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-             {loading ? (
+            {loading ? (
               <tr><td colSpan={4} className="text-center py-8">Loading...</td></tr>
-             ) : webhooks.map(hook => (
+            ) : webhooks.map(hook => (
               <tr key={hook.id}>
-                <td className="px-6 py-4">
-                    {/* Fix: Changed property from `isActive` to `active` for the ToggleSwitch component. */}
-                    <ToggleSwitch enabled={hook.active} onChange={() => handleToggle(hook)} />
+                <td className="px-3 py-2">
+                  {/* Fix: Changed property from `isActive` to `active` for the ToggleSwitch component. */}
+                  <ToggleSwitch enabled={hook.active} onChange={() => handleToggle(hook)} />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-2 whitespace-nowrap">
                   <div className="font-mono text-sm text-slate-800">{hook.url}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                        {hook.events.map(event => (
-                            <span key={event} className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded-md">{event}</span>
-                        ))}
-                    </div>
+                <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
+                  <div className="flex flex-wrap gap-1">
+                    {hook.events.map(event => (
+                      <span key={event} className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded-md">{event}</span>
+                    ))}
+                  </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => setHookToDelete(hook)} className="text-slate-500 hover:text-danger p-1" title="Delete"><TrashIcon className="h-5 w-5"/></button>
+                <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium">
+                  <button onClick={() => setHookToDelete(hook)} className="text-slate-500 hover:text-danger p-1" title="Delete"><TrashIcon className="h-5 w-5" /></button>
                 </td>
               </tr>
             ))}
@@ -198,15 +196,15 @@ function WebhooksManager() {
         </table>
       </div>
 
-       {hookToDelete && (
+      {hookToDelete && (
         <Modal title="Confirm Deletion" onClose={() => setHookToDelete(null)}>
-            <div className="p-6">
-                <p>Are you sure you want to delete the webhook for "<strong>{hookToDelete.url}</strong>"?</p>
-                <div className="mt-6 flex justify-end gap-4">
-                    <button onClick={() => setHookToDelete(null)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
-                    <button onClick={handleDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
-                </div>
+          <div className="p-6">
+            <p>Are you sure you want to delete the webhook for "<strong>{hookToDelete.url}</strong>"?</p>
+            <div className="mt-6 flex justify-end gap-4">
+              <button onClick={() => setHookToDelete(null)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
             </div>
+          </div>
         </Modal>
       )}
     </div>

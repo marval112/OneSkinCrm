@@ -189,7 +189,7 @@ function ReportsScheduler() {
       setIsModalOpen(false);
       setEditingReport(null);
       fetchReports();
-    } catch(e) {
+    } catch (e) {
       toastContext?.showToast('Failed to save report.', 'danger');
     }
   };
@@ -197,12 +197,12 @@ function ReportsScheduler() {
   const handleDelete = async () => {
     if (!reportToDelete) return;
     try {
-        await deleteScheduledReport(reportToDelete.id);
-        toastContext?.showToast('Report schedule deleted.', 'success');
-        setReportToDelete(null);
-        fetchReports();
+      await deleteScheduledReport(reportToDelete.id);
+      toastContext?.showToast('Report schedule deleted.', 'success');
+      setReportToDelete(null);
+      fetchReports();
     } catch (e) {
-        toastContext?.showToast('Failed to delete report.', 'danger');
+      toastContext?.showToast('Failed to delete report.', 'danger');
     }
   };
 
@@ -225,11 +225,11 @@ function ReportsScheduler() {
   const handleRunNow = async (reportId: number) => {
     toastContext?.showToast('Generating and sending report...', 'info');
     const result = await runReportNow(reportId);
-    if(result.success){
-        toastContext?.showToast(result.message, 'success');
-        fetchReports();
+    if (result.success) {
+      toastContext?.showToast(result.message, 'success');
+      fetchReports();
     } else {
-        toastContext?.showToast(result.message, 'danger');
+      toastContext?.showToast(result.message, 'danger');
     }
   };
 
@@ -241,7 +241,7 @@ function ReportsScheduler() {
     if (!downloadReport) return;
     try {
       const data = await getReportData(downloadReport.report_type, downloadRange || undefined);
-      const filename = `${downloadReport.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}`;
+      const filename = `${downloadReport.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
       if (downloadReport.format === ReportFormat.EXCEL) {
         exportToExcel(data, filename);
         toastContext?.showToast('Report exported as Excel.', 'success');
@@ -275,12 +275,12 @@ function ReportsScheduler() {
       toastContext?.showToast(`Send failed${res.status ? ` (${res.status})` : ''}. ${res.error || ''}`, 'danger');
     }
   };
-  
+
   const openCreateModal = () => {
     setEditingReport(null);
     setIsModalOpen(true);
   };
-  
+
   const openEditModal = (report: ScheduledReport) => {
     setEditingReport(report);
     setIsModalOpen(true);
@@ -288,9 +288,9 @@ function ReportsScheduler() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-       <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Scheduled Reports</h2>
-          <div className="flex gap-2">
+        <div className="flex gap-2">
           <button onClick={() => setIsDeliveryOpen(true)} className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-md hover:bg-slate-300 transition-colors">Delivery Settings</button>
           <button onClick={openCreateModal} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition-colors">
             New Report
@@ -321,10 +321,10 @@ function ReportsScheduler() {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Report Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">Frequency</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">Next Run</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Report Name</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">Frequency</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">Next Run</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
@@ -334,24 +334,24 @@ function ReportsScheduler() {
                 <tr><td colSpan={4} className="text-center py-8 text-slate-500">No scheduled reports found. Click "New Report" to begin.</td></tr>
               ) : reports.map(report => (
                 <tr key={report.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-2 whitespace-nowrap">
                     <div className="font-medium">{report.name}</div>
-                    <div className="text-sm text-slate-500">{report.report_type} ({report.format})</div>
+                    <div className="text-xs text-slate-500">{report.report_type} ({report.format})</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">{report.frequency}</td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">{report.frequency}</td>
+                  <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
                     <div className="flex flex-col items-end lg:items-start">
                       <span>{new Date(report.next_run).toLocaleDateString()}</span>
                       <span className="text-xs text-slate-500">{formatRelativeTime(report.next_run)}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button onClick={() => handleRunNow(report.id)} className="text-slate-500 hover:text-success p-1" title="Run Now"><PlayIcon className="h-5 w-5"/></button>
-                      <button onClick={() => handleSendNow(report)} className="text-slate-500 hover:text-indigo-600 p-1" title="Send Now"><PaperAirplaneIcon className="h-5 w-5"/></button>
-                      <button onClick={async () => { setHistoryReport(report); setHistoryLoading(true); try { const runs = await getRunsForReport(report.id, 30); setHistoryRuns(runs); } finally { setHistoryLoading(false); } }} className="text-slate-500 hover:text-slate-700 p-1" title="History">H</button>
-                      <button onClick={() => handleDownload(report)} className="text-slate-500 hover:text-slate-800 p-1" title="Download"><DownloadIcon className="h-5 w-5"/></button>
-                      <button onClick={() => openEditModal(report)} className="text-slate-500 hover:text-primary p-1" title="Edit"><EditIcon className="h-5 w-5"/></button>
-                      <button onClick={() => setReportToDelete(report)} className="text-slate-500 hover:text-danger p-1" title="Delete"><TrashIcon className="h-5 w-5"/></button>
+                  <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-medium space-x-2">
+                    <button onClick={() => handleRunNow(report.id)} className="text-slate-500 hover:text-success p-1" title="Run Now"><PlayIcon className="h-5 w-5" /></button>
+                    <button onClick={() => handleSendNow(report)} className="text-slate-500 hover:text-indigo-600 p-1" title="Send Now"><PaperAirplaneIcon className="h-5 w-5" /></button>
+                    <button onClick={async () => { setHistoryReport(report); setHistoryLoading(true); try { const runs = await getRunsForReport(report.id, 30); setHistoryRuns(runs); } finally { setHistoryLoading(false); } }} className="text-slate-500 hover:text-slate-700 p-1" title="History">H</button>
+                    <button onClick={() => handleDownload(report)} className="text-slate-500 hover:text-slate-800 p-1" title="Download"><DownloadIcon className="h-5 w-5" /></button>
+                    <button onClick={() => openEditModal(report)} className="text-slate-500 hover:text-primary p-1" title="Edit"><EditIcon className="h-5 w-5" /></button>
+                    <button onClick={() => setReportToDelete(report)} className="text-slate-500 hover:text-danger p-1" title="Delete"><TrashIcon className="h-5 w-5" /></button>
                   </td>
                 </tr>
               ))}
@@ -504,13 +504,13 @@ function ReportsScheduler() {
 
       {reportToDelete && (
         <Modal title="Confirm Deletion" onClose={() => setReportToDelete(null)}>
-            <div className="p-6">
-                <p>Are you sure you want to delete the "<strong>{reportToDelete.name}</strong>" report schedule?</p>
-                <div className="mt-6 flex justify-end gap-4">
-                    <button onClick={() => setReportToDelete(null)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
-                    <button onClick={handleDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
-                </div>
+          <div className="p-6">
+            <p>Are you sure you want to delete the "<strong>{reportToDelete.name}</strong>" report schedule?</p>
+            <div className="mt-6 flex justify-end gap-4">
+              <button onClick={() => setReportToDelete(null)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
             </div>
+          </div>
         </Modal>
       )}
     </div>
