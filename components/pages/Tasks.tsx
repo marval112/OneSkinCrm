@@ -199,8 +199,7 @@ function Tasks() {
 
   return (
     <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-        <h2 className="text-xl font-semibold">{t('tasks.title')}</h2>
+      <div className="flex flex-col sm:flex-row justify-end items-center mb-4 gap-4">
         <div className="flex items-center gap-2">
           <div className="flex rounded-md overflow-hidden border border-slate-300 dark:border-slate-600 mr-2">
             <button onClick={() => setViewMode('list')} className={`px-3 py-1 text-sm ${viewMode === 'list' ? 'bg-slate-200 dark:bg-slate-600 font-medium' : 'bg-white dark:bg-slate-800'}`}>List</button>
