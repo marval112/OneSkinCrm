@@ -455,19 +455,19 @@ function Customers() {
     <div className="flex items-center p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
       <button
         onClick={() => setView('table')}
-        className={`px - 3 py - 1 text - sm font - medium rounded - md ${view === 'table' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'} `}
+        className={`px-3 py-1 text-sm font-medium rounded-md ${view === 'table' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'}`}
       >
         {t('common.table')}
       </button>
       <button
         onClick={() => setView('kanban')}
-        className={`px - 3 py - 1 text - sm font - medium rounded - md ${view === 'kanban' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'} `}
+        className={`px-3 py-1 text-sm font-medium rounded-md ${view === 'kanban' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'}`}
       >
         {t('common.kanban')}
       </button>
       <button
         onClick={() => setView('segment')}
-        className={`px - 3 py - 1 text - sm font - medium rounded - md ${view === 'segment' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'} `}
+        className={`px-3 py-1 text-sm font-medium rounded-md ${view === 'segment' ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow' : 'text-slate-600 dark:text-slate-300'}`}
       >
         Segment
       </button>
