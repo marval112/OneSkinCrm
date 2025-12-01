@@ -273,11 +273,11 @@ function Reports() {
 
       return Object.entries(grouped).map(([key, items]) => ({
         [groupBy]: key,
-        count: items.length,
+        count: (items as any[]).length,
         ...fields.reduce((obj, field) => {
           if (field !== groupBy && field !== 'count') {
             // For numeric fields, calculate sum
-            const numericValues = items.map(i => Number(i[field]) || 0);
+            const numericValues = (items as any[]).map(i => Number(i[field]) || 0);
             obj[field] = numericValues.reduce((sum, val) => sum + val, 0);
           }
           return obj;
