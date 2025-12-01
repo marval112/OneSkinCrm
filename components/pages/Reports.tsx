@@ -414,7 +414,7 @@ function Reports() {
             </select>
             <button
               onClick={() => setIsBuilderOpen(true)}
-              className="px-3 py-2 rounded-md bg-primary text-white text-sm hover:bg-primary-hover whitespace-nowrap"
+              className="px-2 py-1 rounded-md bg-primary text-white text-xs hover:bg-primary-hover whitespace-nowrap"
             >
               + Create Custom
             </button>
@@ -460,7 +460,7 @@ function Reports() {
           </div>
         )}
         <div className="ml-auto">
-          <button onClick={handleExport} className="px-3 py-2 rounded-md bg-slate-600 text-white text-sm hover:bg-slate-700">Export to Excel</button>
+          <button onClick={handleExport} className="px-2 py-1 rounded-md bg-slate-600 text-white text-xs hover:bg-slate-700">Export to Excel</button>
         </div>
       </div>
 

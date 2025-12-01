@@ -653,7 +653,7 @@ function Leads() {
           </select>
           <ViewSwitcher />
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {selectedLeads.length > 0 && view === 'table' && (
             <select onChange={(e) => handleBulkStatusChange(e.target.value as LeadStatus)} className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 dark:text-white">
               <option>{t('leads.bulkAction')}</option>
@@ -664,18 +664,18 @@ function Leads() {
           {user?.role === 'Admin' && selectedLeads.length > 0 && view === 'table' && (
             <button onClick={() => setConfirmDelete(true)} className="px-3 py-1.5 text-sm bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
           )}
-          <button onClick={() => setIsScannerOpen(true)} className="px-3 py-1.5 text-sm bg-slate-600 text-white rounded-md hover:bg-slate-700 flex items-center gap-1.5 hidden sm:flex">
-            <CameraIcon className="h-4 w-4" /> Scan Card
+          <button onClick={() => setIsScannerOpen(true)} className="px-2 py-1 text-xs bg-slate-600 text-white rounded-md hover:bg-slate-700 flex items-center gap-1 hidden sm:flex">
+            <CameraIcon className="h-3.5 w-3.5" /> Scan
           </button>
           {user?.role === 'Admin' && (
             <>
-              <button onClick={() => setIsImportModalOpen(true)} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 hidden md:inline-block">
+              <button onClick={() => setIsImportModalOpen(true)} className="px-2 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 hidden md:inline-block">
                 Import
               </button>
-              <button onClick={handleExport} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 hidden md:inline-block">
+              <button onClick={handleExport} className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 hidden md:inline-block">
                 Export
               </button>
-              <button onClick={() => handleOpenCreateModal()} className="px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary-hover">
+              <button onClick={() => handleOpenCreateModal()} className="px-2 py-1 text-xs bg-primary text-white rounded-md hover:bg-primary-hover">
                 Create New
               </button>
             </>

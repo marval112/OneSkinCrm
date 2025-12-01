@@ -149,9 +149,9 @@ function Users() {
                 <h2 className="text-xl font-semibold">User Management</h2>
                 <div className="flex items-center gap-2">
                     {selected.length > 0 && (
-                        <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 bg-danger text-white font-semibold rounded-md hover:bg-danger-hover">Delete</button>
+                        <button onClick={() => setConfirmDelete(true)} className="px-2 py-1 text-xs bg-danger text-white font-semibold rounded-md hover:bg-danger-hover">Delete</button>
                     )}
-                    <button onClick={() => { setCloneInitial(null); setIsModalOpen(true); }} className="px-4 py-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">
+                    <button onClick={() => { setCloneInitial(null); setIsModalOpen(true); }} className="px-2 py-1 text-xs bg-primary text-white font-semibold rounded-md hover:bg-primary-hover">
                         New User
                     </button>
                 </div>
@@ -214,8 +214,8 @@ function Users() {
                     <div className="p-6">
                         <p>Delete {selected.length} selected users?</p>
                         <div className="mt-6 flex justify-end gap-4">
-                            <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
-                            <button onClick={handleBulkDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
+                            <button onClick={() => setConfirmDelete(false)} className="px-2 py-1 text-xs bg-slate-200 rounded-md hover:bg-slate-300">Cancel</button>
+                            <button onClick={handleBulkDelete} className="px-2 py-1 text-xs bg-danger text-white rounded-md hover:bg-danger-hover">Delete</button>
                         </div>
                     </div>
                 </Modal>

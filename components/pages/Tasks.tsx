@@ -206,16 +206,16 @@ function Tasks() {
             <button onClick={() => setViewMode('list')} className={`px-3 py-1 text-sm ${viewMode === 'list' ? 'bg-slate-200 dark:bg-slate-600 font-medium' : 'bg-white dark:bg-slate-800'}`}>List</button>
             <button onClick={() => setViewMode('calendar')} className={`px-3 py-1 text-sm ${viewMode === 'calendar' ? 'bg-slate-200 dark:bg-slate-600 font-medium' : 'bg-white dark:bg-slate-800'}`}>Calendar</button>
           </div>
-          <button onClick={openBuilder} className="px-3 py-1 text-sm bg-primary text-white rounded-md">New Task</button>
-          <button disabled={aiLoading || !user} onClick={async () => { setAiLoading(true); try { const ids = await prioritizeTasks(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); setAiOrdering(ids); } finally { setAiLoading(false); } }} className="px-3 py-1 text-sm bg-primary text-white rounded-md">
+          <button onClick={openBuilder} className="px-2 py-1 text-xs bg-primary text-white rounded-md">New Task</button>
+          <button disabled={aiLoading || !user} onClick={async () => { setAiLoading(true); try { const ids = await prioritizeTasks(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); setAiOrdering(ids); } finally { setAiLoading(false); } }} className="px-2 py-1 text-xs bg-primary text-white rounded-md">
             {aiLoading ? '...' : t('tasks.ui.prioritizeWithAi')}
           </button>
-          {aiOrdering && (<button onClick={() => setAiOrdering(null)} className="px-3 py-1 text-sm border rounded-md">{t('tasks.ui.resetOrder')}</button>)}
+          {aiOrdering && (<button onClick={() => setAiOrdering(null)} className="px-2 py-1 text-xs border rounded-md">{t('tasks.ui.resetOrder')}</button>)}
           <div className="flex rounded-md overflow-hidden border border-slate-300 dark:border-slate-600">
-            <button onClick={() => setRangeFilter('all')} className={`px-3 py-1 text-sm ${rangeFilter === 'all' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.all')}</button>
-            <button onClick={() => setRangeFilter('overdue')} className={`px-3 py-1 text-sm ${rangeFilter === 'overdue' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.overdue')}</button>
-            <button onClick={() => setRangeFilter('today')} className={`px-3 py-1 text-sm ${rangeFilter === 'today' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.today')}</button>
-            <button onClick={() => setRangeFilter('upcoming')} className={`px-3 py-1 text-sm ${rangeFilter === 'upcoming' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.upcoming')}</button>
+            <button onClick={() => setRangeFilter('all')} className={`px-2 py-1 text-xs ${rangeFilter === 'all' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.all')}</button>
+            <button onClick={() => setRangeFilter('overdue')} className={`px-2 py-1 text-xs ${rangeFilter === 'overdue' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.overdue')}</button>
+            <button onClick={() => setRangeFilter('today')} className={`px-2 py-1 text-xs ${rangeFilter === 'today' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.today')}</button>
+            <button onClick={() => setRangeFilter('upcoming')} className={`px-2 py-1 text-xs ${rangeFilter === 'upcoming' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.upcoming')}</button>
           </div>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
             <option value="all">{t('tasks.ui.allTypes')}</option>
@@ -253,7 +253,7 @@ function Tasks() {
                           <td className="px-6 py-3 text-xs w-1/3 text-right">{task.due_date ? (<span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>) : '-'}</td>
                           <td className="px-6 py-3 text-right text-xs">
                             {task.status !== 'Completed' ? (
-                              <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
+                              <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-2 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
                             ) : (
                               <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
                             )}
@@ -331,7 +331,7 @@ function Tasks() {
                   <td className="px-3 py-2 text-right text-xs">
                     <div className="flex gap-2 justify-end items-center">
                       {task.status !== 'Completed' ? (
-                        <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
+                        <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-2 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
                       ) : (
                         <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
                       )}
@@ -351,7 +351,7 @@ function Tasks() {
         <label className="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" checked={groupByType} onChange={e => setGroupByType(e.target.checked)} /> {t('tasks.ui.groupByType')}
         </label>
-        <button disabled={aiLoading || !user} onClick={async () => { setAiLoading(true); try { const items = await prioritizeTasks(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); const agendaResp = await (await import('../../services/geminiService')).proposeAgenda(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); setAiOrdering(items); setAgenda(agendaResp); } finally { setAiLoading(false); } }} className="px-3 py-1 text-sm bg-slate-700 text-white rounded-md">
+        <button disabled={aiLoading || !user} onClick={async () => { setAiLoading(true); try { const items = await prioritizeTasks(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); const agendaResp = await (await import('../../services/geminiService')).proposeAgenda(tasks.map(t => ({ id: t.id, type: t.type, due_date: t.due_date as any, title: t.title as any }))); setAiOrdering(items); setAgenda(agendaResp); } finally { setAiLoading(false); } }} className="px-2 py-1 text-xs bg-slate-700 text-white rounded-md">
           {aiLoading ? '...' : t('tasks.ui.proposeAgenda')}
         </button>
       </div>

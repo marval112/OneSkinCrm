@@ -493,18 +493,18 @@ function Customers() {
             onApplySearch={handleApplySavedSearch}
           />
           {selectedCustomers.length > 0 && view === 'table' ? (
-            <button onClick={() => setConfirmDelete(true)} className="px-3 py-1.5 text-sm bg-danger text-white rounded-md hover:bg-danger-hover">
+            <button onClick={() => setConfirmDelete(true)} className="px-2 py-1 text-xs bg-danger text-white rounded-md hover:bg-danger-hover">
               {t('customers.deleteSelected').replace('{count}', selectedCustomers.length.toString())}
             </button>
           ) : null}
           <ViewSwitcher />
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {user?.role === 'Admin' && (
-            <button onClick={() => setIsImportModalOpen(true)} className="px-3 py-1.5 text-sm bg-success text-white rounded-md hover:bg-success-hover hidden md:inline-block">Import</button>
+            <button onClick={() => setIsImportModalOpen(true)} className="px-2 py-1 text-xs bg-success text-white rounded-md hover:bg-success-hover hidden md:inline-block">Import</button>
           )}
-          <button onClick={handleExport} className="px-3 py-1.5 text-sm bg-slate-600 text-white rounded-md hover:bg-slate-700 hidden sm:inline-block">Export</button>
-          <button onClick={() => setIsCreateModalOpen(true)} className="px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary-hover whitespace-nowrap">
+          <button onClick={handleExport} className="px-2 py-1 text-xs bg-slate-600 text-white rounded-md hover:bg-slate-700 hidden sm:inline-block">Export</button>
+          <button onClick={() => setIsCreateModalOpen(true)} className="px-2 py-1 text-xs bg-primary text-white rounded-md hover:bg-primary-hover whitespace-nowrap">
             Create New
           </button>
         </div>
