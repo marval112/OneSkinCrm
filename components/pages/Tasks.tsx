@@ -216,7 +216,7 @@ function Tasks() {
             <button onClick={() => setRangeFilter('today')} className={`px-2 py-1 text-xs ${rangeFilter === 'today' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.today')}</button>
             <button onClick={() => setRangeFilter('upcoming')} className={`px-2 py-1 text-xs ${rangeFilter === 'upcoming' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-700 dark:text-slate-200'}`}>{t('tasks.ui.upcoming')}</button>
           </div>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="px-2 py-1 text-xs border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
             <option value="all">{t('tasks.ui.allTypes')}</option>
             <option value="Follow Up Call">{t('tasks.types.followUpCall')}</option>
             <option value="Send Information">{t('tasks.types.sendInformation')}</option>
