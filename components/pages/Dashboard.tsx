@@ -873,6 +873,22 @@ function Dashboard() {
         <KPICard title={t('dashboard.activeCustomers')} value={stats.kpis.activeCustomers} />
       </div>
 
+      {/* World Map Navigation Card */}
+      <div
+        onClick={() => navigate('/world-map')}
+        className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-xl border border-green-100 dark:border-green-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-green-800 dark:text-green-300 mb-1">🌍 Won Deals by Country</h3>
+            <p className="text-sm text-green-600 dark:text-green-400">View global distribution of closed won deals</p>
+          </div>
+          <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+
       {/* Global Year selector moved into DateRangePicker rightSlot */}
 
       {/* Budget vs Closed Won (Water Glass) */}
