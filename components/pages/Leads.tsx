@@ -46,6 +46,12 @@ const EnvelopeIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const PhoneIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+  </svg>
+);
+
 const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
@@ -687,124 +693,185 @@ function Leads() {
 
       {
         view === 'table' ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-50 dark:bg-slate-700/50">
-                <tr>
-                  <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length} /></th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
-                    <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                    <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
-                    <button onClick={() => requestSort('source')} className="flex items-center">Source {getSortIcon('source')}</button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
-                    Segment
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
-                    <button onClick={() => requestSort('status')} className="flex items-center">{t('common.status')} {getSortIcon('status')}</button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
-                    <button onClick={() => requestSort('score')} className="flex items-center">Score {getSortIcon('score')}</button>
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
-                    <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
-                  </th>
-                  <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-300 w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                {loading ? <TableSkeleton columns={8} rows={5} /> : filteredLeads.map(lead => (
-                  <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                    <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedLeads.includes(lead.id)} onChange={() => handleSelectOne(lead.id)} /></td>
-                    <td className="px-3 py-2" style={{ maxWidth: '180px' }} onDoubleClick={() => setEditingLead(lead)}>
-                      <div className="flex items-center gap-1.5 overflow-hidden">
-                        {inlineEditingId === lead.id ? (
-                          <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
-                        ) : (
-                          <div className="cursor-pointer hover:underline overflow-hidden" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
-                            <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.email}</div>
-                          </div>
-                        )}
-                        {lead.notes && (
-                          <div className="relative group self-start flex-shrink-0">
-                            <DocumentTextIcon className="h-4 w-4 text-slate-400" />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                              {lead.notes}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                      <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{lead.company}{lead.country && `, ${lead.country}`}</div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
-                      {lead.source}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
-                      {lead.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{lead.segment}</span>}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap"><span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[lead.status]}`}>{lead.status}</span></td>
-                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
-                      <ScoreBadge
-                        score={lead.calculatedScore || 0}
-                        breakdown={lead.scoreBreakdown}
-                        size="sm"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
-                      {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
-                    </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
-                      {/** Disable all lead actions when the lead is already converted (Won) */}
-                      <button
-                        disabled={lead.status === LeadStatus.Won}
-                        onClick={() => { setDealForLead(lead); setQDealTitle(`${lead.name} • ${lead.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }}
-                        className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
-                        title={t('deals.actions.createDeal')}>
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        disabled={lead.status === LeadStatus.Won}
-                        onClick={() => setEmailingLead(lead)}
-                        className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500'}`}
-                        title="Send Email">
-                        <EnvelopeIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        disabled={lead.status === LeadStatus.Won}
-                        onClick={() => { openTimeline(lead); }}
-                        className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600'}`}
-                        title="Timeline">
-                        <ClockIcon className="h-4 w-4" />
-                      </button>
-                      {lead.status !== LeadStatus.Won && (
-                        <button onClick={() => setLeadToConvert(lead)} className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-500 p-0.5" title={t('leads.convertAction')}>
-                          <CheckCircleIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => openChat(`Analyze this lead: ${lead.name} from ${lead.company || 'Unknown Company'}`)}
-                        className="text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-500 p-1"
-                        title="AI Insight">
-                        <SparklesIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        disabled={lead.status === LeadStatus.Won}
-                        onClick={() => setEditingLead(lead)}
-                        className={`p-1 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
-                        title="Edit Lead"><EditIcon className="h-5 w-5" /></button>
-                    </td>
+          <>
+            <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-700/50">
+                  <tr>
+                    <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length} /></th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
+                      <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                      <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                      <button onClick={() => requestSort('source')} className="flex items-center">Source {getSortIcon('source')}</button>
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                      Segment
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                      <button onClick={() => requestSort('status')} className="flex items-center">{t('common.status')} {getSortIcon('status')}</button>
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
+                      <button onClick={() => requestSort('score')} className="flex items-center">Score {getSortIcon('score')}</button>
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                      <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
+                    </th>
+                    <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-300 w-24">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                  {loading ? <TableSkeleton columns={8} rows={5} /> : filteredLeads.map(lead => (
+                    <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedLeads.includes(lead.id)} onChange={() => handleSelectOne(lead.id)} /></td>
+                      <td className="px-3 py-2" style={{ maxWidth: '180px' }} onDoubleClick={() => setEditingLead(lead)}>
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          {inlineEditingId === lead.id ? (
+                            <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
+                          ) : (
+                            <div className="cursor-pointer hover:underline overflow-hidden" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
+                              <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.email}</div>
+                            </div>
+                          )}
+                          {lead.notes && (
+                            <div className="relative group self-start flex-shrink-0">
+                              <DocumentTextIcon className="h-4 w-4 text-slate-400" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                                {lead.notes}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                        <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{lead.company}{lead.country && `, ${lead.country}`}</div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
+                        {lead.source}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
+                        {lead.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{lead.segment}</span>}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap"><span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[lead.status]}`}>{lead.status}</span></td>
+                      <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
+                        <ScoreBadge
+                          score={lead.calculatedScore || 0}
+                          breakdown={lead.scoreBreakdown}
+                          size="sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
+                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
+                        {/** Disable all lead actions when the lead is already converted (Won) */}
+                        <button
+                          disabled={lead.status === LeadStatus.Won}
+                          onClick={() => { setDealForLead(lead); setQDealTitle(`${lead.name} • ${lead.company || 'Deal'}`); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }}
+                          className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
+                          title={t('deals.actions.createDeal')}>
+                          <PlusIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          disabled={lead.status === LeadStatus.Won}
+                          onClick={() => setEmailingLead(lead)}
+                          className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500'}`}
+                          title="Send Email">
+                          <EnvelopeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          disabled={lead.status === LeadStatus.Won}
+                          onClick={() => { openTimeline(lead); }}
+                          className={`p-0.5 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-600'}`}
+                          title="Timeline">
+                          <ClockIcon className="h-4 w-4" />
+                        </button>
+                        {lead.status !== LeadStatus.Won && (
+                          <button onClick={() => setLeadToConvert(lead)} className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-500 p-0.5" title={t('leads.convertAction')}>
+                            <CheckCircleIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openChat(`Analyze this lead: ${lead.name} from ${lead.company || 'Unknown Company'}`)}
+                          className="text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-500 p-1"
+                          title="AI Insight">
+                          <SparklesIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          disabled={lead.status === LeadStatus.Won}
+                          onClick={() => setEditingLead(lead)}
+                          className={`p-1 ${lead.status === LeadStatus.Won ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
+                          title="Edit Lead"><EditIcon className="h-5 w-5" /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {loading ? <TableSkeleton columns={1} rows={5} /> : filteredLeads.map(lead => (
+                <div key={lead.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-medium text-slate-900 dark:text-white">{lead.name}</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{lead.company}</p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[lead.status]}`}>
+                      {lead.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300 mb-4">
+                    <div className="flex items-center gap-2">
+                      <EnvelopeIcon className="h-4 w-4 text-slate-400" />
+                      <span className="truncate">{lead.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <PhoneIcon className="h-4 w-4 text-slate-400" />
+                      {lead.phone ? (
+                        <a href={`tel:${lead.phone}`} className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>{lead.phone}</a>
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </div>
+                    {lead.segment && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                          {lead.segment}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <ScoreBadge score={lead.calculatedScore || 0} breakdown={lead.scoreBreakdown} size="sm" />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEmailingLead(lead); }}
+                        className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                        disabled={lead.status === LeadStatus.Won}
+                      >
+                        <EnvelopeIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingLead(lead); }}
+                        className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                        disabled={lead.status === LeadStatus.Won}
+                      >
+                        <EditIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : view === 'kanban' ? (
           <LeadsKanbanView leads={filteredLeads} onUpdateLead={handleUpdateLead} onEmailLead={setEmailingLead} />
         ) : (

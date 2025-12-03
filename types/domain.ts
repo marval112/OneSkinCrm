@@ -197,7 +197,7 @@ export interface TeamMessage {
   conversation_id: number;
   sender_id: number;
   message: string;
-  message_type: 'text' | 'system';
+  message_type: 'text' | 'system' | 'call' | 'video_call';
   created_at: string;
   read_by: number[];
 }

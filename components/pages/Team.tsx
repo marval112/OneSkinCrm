@@ -7,6 +7,7 @@ import {
     getOrCreateConversation,
     getMessages,
     sendMessage as sendTeamMessage,
+    sendCallSignal,
     markAsRead,
 } from '../../services/teamService';
 
@@ -26,6 +27,12 @@ const PaperAirplaneIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const UserCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+);
+
+const VideoCameraIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
     </svg>
 );
 
@@ -221,13 +228,32 @@ function Team() {
                                     <div className="text-xs text-green-600 dark:text-green-400">{t('team.online')}</div>
                                 </div>
                             </div>
-                            <a
-                                href={`tel:${selectedUser.email}`}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
-                            >
-                                <PhoneIcon className="w-5 h-5" />
-                                <span>{t('team.call')}</span>
-                            </a>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={async () => {
+                                        if (!currentConversation || !user) return;
+                                        const link = `https://meet.jit.si/OneSkinCRM-${currentConversation.id}`;
+                                        await sendCallSignal(currentConversation.id, user.id, link, 'video_call');
+                                        window.open(link, '_blank');
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-white border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                                >
+                                    <VideoCameraIcon className="w-5 h-5" />
+                                    <span className="hidden sm:inline">Video</span>
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!currentConversation || !user) return;
+                                        const link = `tel:${selectedUser.email}`; // Fallback if no phone
+                                        await sendCallSignal(currentConversation.id, user.id, link, 'call');
+                                        window.location.href = link;
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
+                                >
+                                    <PhoneIcon className="w-5 h-5" />
+                                    <span className="hidden sm:inline">{t('team.call')}</span>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Messages */}
@@ -248,8 +274,8 @@ function Team() {
                                         >
                                             <div
                                                 className={`max-w-md px-4 py-2 rounded-2xl ${isOwnMessage
-                                                        ? 'bg-primary text-white rounded-br-none'
-                                                        : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-none shadow'
+                                                    ? 'bg-primary text-white rounded-br-none'
+                                                    : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-none shadow'
                                                     }`}
                                             >
                                                 <div className="text-sm">{msg.message}</div>

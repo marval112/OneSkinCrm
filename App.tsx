@@ -25,6 +25,8 @@ import useSwipe from './hooks/useSwipe';
 
 
 import { ChatProvider, useChat } from './contexts/ChatContext';
+import { TeamProvider } from './contexts/TeamContext';
+import IncomingCallModal from './components/common/IncomingCallModal';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -114,37 +116,40 @@ function AppContent() {
   return (
     <ToastContext.Provider value={toastContextValue}>
       <HashRouter>
-        {!user ? (
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        ) : (
-          <div className="flex h-screen bg-slate-100 dark:bg-dark text-slate-800 dark:text-slate-200">
-            {/* Edge swipe zone for mobile */}
-            <div
-              {...swipeHandlers}
-              className="fixed top-0 left-0 bottom-0 w-8 z-30 lg:hidden"
-              style={{ touchAction: 'none' }} // Prevent browser back navigation if possible, though hard on iOS
-            />
-            <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-            <div className="flex-1 flex flex-col w-full">
-              <Header
-                onChatToggle={() => isChatPanelOpen ? closeChat() : openChat()}
-                onSidebarToggle={() => setIsSidebarOpen(prev => !prev)}
+        <TeamProvider>
+          {!user ? (
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          ) : (
+            <div className="flex h-screen bg-slate-100 dark:bg-dark text-slate-800 dark:text-slate-200">
+              {/* Edge swipe zone for mobile */}
+              <div
+                {...swipeHandlers}
+                className="fixed top-0 left-0 bottom-0 w-8 z-30 lg:hidden"
+                style={{ touchAction: 'none' }} // Prevent browser back navigation if possible, though hard on iOS
               />
-              {/* Lightweight scheduler to run due reports every ~60s (Admin only, gated) */}
-              {user.role === 'Admin' && ((import.meta as any).env?.VITE_ENABLE_SCHEDULER === 'true') && (
-                <SchedulerTicker />
-              )}
-              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
-                <AppRoutes />
-              </main>
+              <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+              <div className="flex-1 flex flex-col w-full">
+                <Header
+                  onChatToggle={() => isChatPanelOpen ? closeChat() : openChat()}
+                  onSidebarToggle={() => setIsSidebarOpen(prev => !prev)}
+                />
+                {/* Lightweight scheduler to run due reports every ~60s (Admin only, gated) */}
+                {user.role === 'Admin' && ((import.meta as any).env?.VITE_ENABLE_SCHEDULER === 'true') && (
+                  <SchedulerTicker />
+                )}
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
+                  <AppRoutes />
+                </main>
+              </div>
+              {isChatPanelOpen && <AIChatPanel onClose={closeChat} />}
+              <AINudgeTray />
+              <IncomingCallModal />
             </div>
-            {isChatPanelOpen && <AIChatPanel onClose={closeChat} />}
-            <AINudgeTray />
-          </div>
-        )}
+          )}
+        </TeamProvider>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </HashRouter>
     </ToastContext.Provider>

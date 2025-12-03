@@ -35,6 +35,12 @@ const EnvelopeIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const PhoneIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+  </svg>
+);
+
 const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
@@ -511,77 +517,139 @@ function Customers() {
       </div>
 
       {view === 'table' ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead className="bg-slate-50 dark:bg-slate-700/50">
-              <tr>
-                <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedCustomers.length > 0 && selectedCustomers.length === sortedCustomers.length} /></th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
-                  <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                  <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
-                  Segment
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
-                  <button onClick={() => requestSort('status')} className="flex items-center">{t('common.status')} {getSortIcon('status')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
-                  <button onClick={() => requestSort('health_score')} className="flex items-center">Health {getSortIcon('health_score')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
-                  <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
-                </th>
-                <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-300 w-24">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-              {loading ? <TableSkeleton columns={8} rows={5} /> : sortedCustomers.map(customer => (
-                <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedCustomers.includes(customer.id)} onChange={() => handleSelectOne(customer.id)} /></td>
-                  <td className="px-3 py-2" style={{ maxWidth: '180px' }}>
-                    <div className="cursor-pointer hover:underline overflow-hidden" onDoubleClick={() => setEditingCustomer(customer)} onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
-                      <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{customer.name}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{customer.email}</div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
-                    <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{customer.company}{customer.country && `, ${customer.country} `}</div>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
-                    {customer.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{customer.segment}</span>}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`px - 1.5 py - 0.5 inline - flex text - [10px] leading - 4 font - semibold rounded - full ${statusColors[customer.status]} `}>{customer.status}</span>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-success h-2 rounded-full" style={{ width: `${customer.health_score}% ` }}></div></div>
-                      <span className="text-xs font-semibold">{customer.health_score}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
-                    {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '-'}
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
-                    <button onClick={() => { setDealForCustomer(customer); setQDealTitle(`${customer.name} • ${customer.company || 'Deal'} `); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-0.5" title={t('deals.actions.createDeal')}>
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => setEmailingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-0.5" title="Send Email">
-                      <EnvelopeIcon className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => openTimeline(customer)} className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 p-0.5" title="Timeline">
-                      <ClockIcon className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => setEditingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-0.5" title="Edit Customer"><EditIcon className="h-4 w-4" /></button>
-                  </td>
+        <>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-700/50">
+                <tr>
+                  <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedCustomers.length > 0 && selectedCustomers.length === sortedCustomers.length} /></th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
+                    <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                    <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
+                    Segment
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase">
+                    <button onClick={() => requestSort('status')} className="flex items-center">{t('common.status')} {getSortIcon('status')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
+                    <button onClick={() => requestSort('health_score')} className="flex items-center">Health {getSortIcon('health_score')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
+                  </th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-300 w-24">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                {loading ? <TableSkeleton columns={8} rows={5} /> : sortedCustomers.map(customer => (
+                  <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedCustomers.includes(customer.id)} onChange={() => handleSelectOne(customer.id)} /></td>
+                    <td className="px-3 py-2" style={{ maxWidth: '180px' }}>
+                      <div className="cursor-pointer hover:underline overflow-hidden" onDoubleClick={() => setEditingCustomer(customer)} onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
+                        <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{customer.name}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{customer.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                      <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{customer.company}{customer.country && `, ${customer.country} `}</div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
+                      {customer.segment && <span className="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{customer.segment}</span>}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${statusColors[customer.status]} `}>{customer.status}</span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-success h-2 rounded-full" style={{ width: `${customer.health_score}% ` }}></div></div>
+                        <span className="text-xs font-semibold">{customer.health_score}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
+                      {customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
+                      <button onClick={() => { setDealForCustomer(customer); setQDealTitle(`${customer.name} • ${customer.company || 'Deal'} `); setQDealValue(0); setQDealStage(DealStage.QUALIFICATION); setQDealProbability(50); setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16)); setQDealNotes(''); }} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-0.5" title={t('deals.actions.createDeal')}>
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setEmailingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-500 p-0.5" title="Send Email">
+                        <EnvelopeIcon className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => openTimeline(customer)} className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 p-0.5" title="Timeline">
+                        <ClockIcon className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setEditingCustomer(customer)} className="text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary p-0.5" title="Edit Customer"><EditIcon className="h-4 w-4" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {loading ? <TableSkeleton columns={1} rows={5} /> : sortedCustomers.map(customer => (
+              <div key={customer.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-medium text-slate-900 dark:text-white">{customer.name}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{customer.company}</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[customer.status]}`}>
+                    {customer.status}
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300 mb-4">
+                  <div className="flex items-center gap-2">
+                    <EnvelopeIcon className="h-4 w-4 text-slate-400" />
+                    <span className="truncate">{customer.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <PhoneIcon className="h-4 w-4 text-slate-400" />
+                    {customer.phone ? (
+                      <a href={`tel:${customer.phone}`} className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>{customer.phone}</a>
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </div>
+                  {customer.segment && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                        {customer.segment}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-success h-2 rounded-full" style={{ width: `${customer.health_score}%` }}></div></div>
+                    <span className="text-xs font-semibold">{customer.health_score}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEmailingCustomer(customer); }}
+                      className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                    >
+                      <EnvelopeIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingCustomer(customer); }}
+                      className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                    >
+                      <EditIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       ) : view === 'kanban' ? (
         <CustomersKanbanView customers={customers} onUpdateCustomer={handleUpdateCustomer} onEmailCustomer={setEmailingCustomer} />
       ) : (
