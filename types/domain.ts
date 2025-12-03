@@ -180,3 +180,25 @@ export interface ActivityAttachment {
   url?: string;
   base64?: string; // used when stored inline (small files) or from inbound webhook
 }
+
+// --- TEAM COMMUNICATION ---
+
+export interface TeamConversation {
+  id: number;
+  participant_ids: number[];
+  is_group: boolean;
+  group_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamMessage {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  message: string;
+  message_type: 'text' | 'system';
+  created_at: string;
+  read_by: number[];
+}
+

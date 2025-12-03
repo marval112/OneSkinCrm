@@ -536,7 +536,9 @@ function Leads() {
   const handleUpdateLead = async (leadData: Lead) => {
     try {
       const scoreBreakdown = calculateLeadScore(leadData);
-      await updateLead({ ...leadData, score: scoreBreakdown.total });
+      // Remove computed frontend properties before sending to database
+      const { calculatedScore, scoreBreakdown: _, ...dbLeadData } = leadData as any;
+      await updateLead({ ...dbLeadData, score: scoreBreakdown.total });
       toastContext?.showToast(t('leads.updateSuccess'), 'success');
       setEditingLead(null);
       setInlineEditingId(null);
@@ -957,7 +959,7 @@ function Leads() {
               {detailTab === 'info' && (
                 <div className="space-y-2 text-sm">
                   <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailLead.email}</span></div>
-                  <div><span className="text-slate-500">Phone:</span> <span className="font-medium">{detailLead.phone || '-'}</span></div>
+                  <div><span className="text-slate-500">Phone:</span> {detailLead.phone ? <a href={`tel:${detailLead.phone}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{detailLead.phone}</a> : <span className="font-medium">-</span>}</div>
                   <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailLead.company}</span></div>
                   <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailLead.country}</span></div>
                   <div><span className="text-slate-500">Source:</span> <span className="font-medium">{detailLead.source}</span></div>

@@ -71,6 +71,7 @@ export const uiTranslations = {
       documentation: "Documentation",
       login: "Login",
       prospecting: "Prospecting",
+      team: "Team",
     },
     budget: {
       title: "Budget",
@@ -255,6 +256,20 @@ export const uiTranslations = {
     },
     products: {
       active: "Active"
+    },
+    team: {
+      title: "Team Chat",
+      startConversation: "Start a conversation",
+      typeMessage: "Type a message...",
+      call: "Call",
+      online: "Online",
+      offline: "Offline",
+      noMessages: "No messages yet. Start the conversation!",
+      selectUser: "Select a team member to start chatting",
+      you: "You",
+      justNow: "Just now",
+      today: "Today",
+      yesterday: "Yesterday",
     }
   },
   es: {
@@ -327,6 +342,7 @@ export const uiTranslations = {
       documentation: "Documentación",
       login: "Iniciar Sesión",
       prospecting: "Prospección",
+      team: "Equipo",
     },
     budget: {
       title: "Presupuesto",
@@ -511,6 +527,20 @@ export const uiTranslations = {
     },
     products: {
       active: "Activo"
+    },
+    team: {
+      title: "Chat del Equipo",
+      startConversation: "Iniciar una conversación",
+      typeMessage: "Escribe un mensaje...",
+      call: "Llamar",
+      online: "En línea",
+      offline: "Desconectado",
+      noMessages: "No hay mensajes aún. ¡Inicia la conversación!",
+      selectUser: "Selecciona un miembro del equipo para chatear",
+      you: "Tú",
+      justNow: "Justo ahora",
+      today: "Hoy",
+      yesterday: "Ayer",
     }
   },
   pt: {
@@ -583,6 +613,7 @@ export const uiTranslations = {
       documentation: "Documentação",
       login: "Login",
       prospecting: "Prospecção",
+      team: "Equipe",
     },
     budget: {
       title: "Orçamento",
@@ -759,6 +790,20 @@ export const uiTranslations = {
     },
     products: {
       active: "Ativo"
+    },
+    team: {
+      title: "Chat da Equipe",
+      startConversation: "Iniciar uma conversa",
+      typeMessage: "Digite uma mensagem...",
+      call: "Ligar",
+      online: "Online",
+      offline: "Offline",
+      noMessages: "Ainda não há mensagens. Inicie a conversa!",
+      selectUser: "Selecione um membro da equipe para conversar",
+      you: "Você",
+      justNow: "Agora mesmo",
+      today: "Hoje",
+      yesterday: "Ontem",
     }
   },
 };

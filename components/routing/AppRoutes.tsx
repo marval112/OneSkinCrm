@@ -34,6 +34,7 @@ const AlertSettings = lazy(() => import('../settings/AlertSettings'));
 const Prospecting = lazy(() => import('../pages/Prospecting'));
 const Workflows = lazy(() => import('../pages/Workflows'));
 const WorldMap = lazy(() => import('../pages/WorldMap'));
+const Team = lazy(() => import('../pages/Team'));
 
 const LoadingFallback = () => (
     <div className="flex justify-center items-center h-64">
@@ -58,6 +59,7 @@ const AppRoutes = () => {
                 <Route path="/alerts" element={<AlertsPanel />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/world-map" element={<WorldMap />} />
+                <Route path="/team" element={<Team />} />
 
                 {/* ADMIN ONLY ROUTES */}
                 <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>

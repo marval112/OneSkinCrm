@@ -722,7 +722,7 @@ function Customers() {
             {detailTab === 'info' && (
               <div className="space-y-2 text-sm">
                 <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailCustomer.email}</span></div>
-                <div><span className="text-slate-500">Phone:</span> <span className="font-medium">{detailCustomer.phone || '-'}</span></div>
+                <div><span className="text-slate-500">Phone:</span> {detailCustomer.phone ? <a href={`tel:${detailCustomer.phone}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{detailCustomer.phone}</a> : <span className="font-medium">-</span>}</div>
                 <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailCustomer.company}</span></div>
                 <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailCustomer.country}</span></div>
                 <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailCustomer.segment}</span></div>

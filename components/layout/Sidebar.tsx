@@ -154,6 +154,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       { to: '/alerts', labelKey: 'sidebar.alerts', icon: <BellIcon className="h-5 w-5" /> },
       { to: '/reports', labelKey: 'sidebar.reports', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2h6v2H9zm0-4V7a2 2 0 012-2h6l4 4v4H9zM3 7h4v10H3V7z" /></svg> },
       { to: '/documents', labelKey: 'sidebar.documents', icon: <FolderIcon className="h-5 w-5" /> },
+      { to: '/team', labelKey: 'sidebar.team', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" /> },
     ];
 
     // If user is Admin, insert admin-only items into their correct positions
