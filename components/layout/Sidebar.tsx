@@ -186,6 +186,13 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               `flex items-center px-3 py-2 my-1 rounded-lg transition-colors hover:bg-white/10 ${isActive ? 'bg-white/20 text-white font-semibold' : 'text-white/90'}`
             }
             onClick={() => setIsOpen(false)}
+            onTouchStart={(e) => {
+              // Prevent scroll interference on mobile
+              e.currentTarget.style.touchAction = 'none';
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.touchAction = 'auto';
+            }}
           >
             {item.icon}
             <span className="ml-3 text-sm font-medium flex items-center gap-2">
@@ -230,7 +237,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 p-4 overflow-y-auto">
+      <nav className="flex-1 p-4 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
         <div>
           <h2 className="px-3 mb-1 text-xs font-semibold text-white/50 uppercase tracking-wider">Core</h2>
           <NavList items={getCoreNavItems()} />
