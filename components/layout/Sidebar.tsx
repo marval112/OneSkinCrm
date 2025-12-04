@@ -237,7 +237,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 p-4 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
+      <nav className="flex-1 p-4 pb-24 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
         <div>
           <NavList items={getCoreNavItems()} />
         </div>
