@@ -239,7 +239,6 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
       <nav className="flex-1 p-4 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
         <div>
-          <h2 className="px-3 mb-1 text-xs font-semibold text-white/50 uppercase tracking-wider">Core</h2>
           <NavList items={getCoreNavItems()} />
         </div>
         {user?.role === 'Admin' && (
