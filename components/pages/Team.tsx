@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import GroupCallModal from './GroupCallModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../services/i18nService';
 import type { User, TeamConversation, TeamMessage } from '../../types/domain';
@@ -9,6 +11,7 @@ import {
     sendMessage as sendTeamMessage,
     sendCallSignal,
     markAsRead,
+    getUnreadCounts,
 } from '../../services/teamService';
 
 // Icons
@@ -36,11 +39,20 @@ const VideoCameraIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+    </svg>
+);
+
 function Team() {
     const { user } = useAuth();
     const { t } = useTranslation();
+    const [searchParams] = useSearchParams();
     const [teamMembers, setTeamMembers] = useState<User[]>([]);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
+    const [isGroupCallModalOpen, setIsGroupCallModalOpen] = useState(false);
     const [currentConversation, setCurrentConversation] = useState<TeamConversation | null>(null);
     const [messages, setMessages] = useState<TeamMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -73,6 +85,29 @@ function Team() {
         }
     }, [user]);
 
+    // Handle query param for auto-selection
+    useEffect(() => {
+        const userIdParam = searchParams.get('userId');
+        if (userIdParam && teamMembers.length > 0) {
+            const targetUser = teamMembers.find(m => m.id === parseInt(userIdParam));
+            if (targetUser) {
+                handleSelectUser(targetUser);
+            }
+        }
+    }, [searchParams, teamMembers]);
+
+    // Poll for unread counts
+    useEffect(() => {
+        if (!user) return;
+        const fetchUnread = async () => {
+            const counts = await getUnreadCounts(user.id);
+            setUnreadCounts(counts);
+        };
+        fetchUnread();
+        const interval = setInterval(fetchUnread, 5000);
+        return () => clearInterval(interval);
+    }, [user]);
+
     // Load conversation and messages when user is selected
     const loadConversation = useCallback(async (selectedUserId: number) => {
         if (!user) return;
@@ -97,6 +132,8 @@ function Team() {
     const handleSelectUser = (member: User) => {
         setSelectedUser(member);
         loadConversation(member.id);
+        // Clear unread count locally
+        setUnreadCounts(prev => ({ ...prev, [member.id]: 0 }));
     };
 
     // Poll for new messages
@@ -170,6 +207,25 @@ function Team() {
         return date.toLocaleDateString();
     };
 
+    const handleStartGroupCall = async (selectedUserIds: number[]) => {
+        if (!user) return;
+
+        const link = `https://meet.jit.si/OneSkinCRM-Group-${Date.now()}`;
+
+        // Open for self immediately
+        window.open(link, '_blank');
+
+        // Send invites
+        for (const userId of selectedUserIds) {
+            try {
+                const conversation = await getOrCreateConversation(user.id, userId);
+                await sendCallSignal(conversation.id, user.id, link, 'video_call');
+            } catch (error) {
+                console.error(`Failed to invite user ${userId}:`, error);
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -179,11 +235,18 @@ function Team() {
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] bg-white dark:bg-slate-800">
+        <div className="flex h-[calc(100dvh-4rem)] bg-white dark:bg-slate-800 overflow-hidden">
             {/* Left Sidebar - Team Members */}
-            <div className="w-80 border-r border-slate-200 dark:border-slate-700 flex flex-col">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-slate-200 dark:border-slate-700 flex-col`}>
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{t('team.title')}</h2>
+                    <button
+                        onClick={() => setIsGroupCallModalOpen(true)}
+                        className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                        title="Start Group Call"
+                    >
+                        <VideoCameraIcon className="w-5 h-5" />
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
@@ -203,6 +266,11 @@ function Team() {
                                     <div className="relative">
                                         <UserCircleIcon className="w-12 h-12 text-slate-400 dark:text-slate-500" />
                                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></div>
+                                        {unreadCounts[member.id] > 0 && (
+                                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800">
+                                                {unreadCounts[member.id]}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex-1 text-left">
                                         <div className="font-medium text-slate-900 dark:text-white">{member.email}</div>
@@ -216,12 +284,18 @@ function Team() {
             </div>
 
             {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col">
+            <div className={`${!selectedUser ? 'hidden md:flex' : 'flex'} flex-1 flex-col h-full`}>
                 {selectedUser ? (
                     <>
                         {/* Chat Header */}
                         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
                             <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setSelectedUser(null)}
+                                    className="md:hidden p-1 -ml-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                                >
+                                    <ChevronLeftIcon className="w-6 h-6" />
+                                </button>
                                 <UserCircleIcon className="w-10 h-10 text-slate-400 dark:text-slate-500" />
                                 <div>
                                     <div className="font-semibold text-slate-900 dark:text-white">{selectedUser.email}</div>
@@ -314,14 +388,18 @@ function Team() {
                         </form>
                     </>
                 ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="text-center text-slate-500 dark:text-slate-400">
-                            <UserCircleIcon className="w-24 h-24 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
-                            <p className="text-lg">{t('team.selectUser')}</p>
-                        </div>
+                    <div className="hidden md:flex flex-1 items-center justify-center text-slate-500 dark:text-slate-400">
+                        {t('team.selectUser')}
                     </div>
                 )}
             </div>
+
+            <GroupCallModal
+                isOpen={isGroupCallModalOpen}
+                onClose={() => setIsGroupCallModalOpen(false)}
+                users={teamMembers}
+                onStartCall={handleStartGroupCall}
+            />
         </div>
     );
 }

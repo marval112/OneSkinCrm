@@ -119,7 +119,10 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             } catch (e) {
                                 // Ignore audio errors (usually due to autoplay policy)
                             }
-                            showToast(`New message from team`, 'info');
+                            showToast(`New message from team`, 'info', {
+                                label: 'View Message',
+                                onClick: () => window.location.hash = `#/team?userId=${latestMsg.sender_id}`
+                            });
                         }
                     }
                 }

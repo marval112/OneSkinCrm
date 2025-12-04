@@ -95,8 +95,8 @@ function AppContent() {
   // So we will NOT attach swipeHandlers to the main div globally.
   // Instead, we'll add a invisible div on the left edge.
 
-  const showToast = useCallback((message: string, type: 'success' | 'danger' | 'warning' | 'info') => {
-    setToast({ message, type });
+  const showToast = useCallback((message: string, type: 'success' | 'danger' | 'warning' | 'info', action?: { label?: string; onClick: () => void }) => {
+    setToast({ message, type, action });
     setTimeout(() => setToast(null), 5000);
   }, []);
 
@@ -150,7 +150,7 @@ function AppContent() {
             </div>
           )}
         </TeamProvider>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        {toast && <Toast message={toast.message} type={toast.type} action={toast.action} onClose={() => setToast(null)} />}
       </HashRouter>
     </ToastContext.Provider>
   );

@@ -26,13 +26,13 @@ const toastStyles = {
 };
 
 const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
 );
 
 
-function Toast({ message, type, onClose }: ToastProps) {
+function Toast({ message, type, action, onClose }: ToastProps) {
   const [visible, setVisible] = useState(false);
   const styles = toastStyles[type];
 
@@ -48,14 +48,30 @@ function Toast({ message, type, onClose }: ToastProps) {
 
   return (
     <div
-      className={`fixed top-5 right-5 z-50 flex items-center p-4 rounded-lg shadow-lg text-white transition-transform transform ${styles.bg} ${
-        visible ? 'translate-x-0' : 'translate-x-full'
-      }`}
+      className={`fixed top-5 right-5 z-50 flex items-center p-4 rounded-lg shadow-lg text-white transition-transform transform ${styles.bg} ${visible ? 'translate-x-0' : 'translate-x-full'
+        } ${message.action ? 'cursor-pointer hover:opacity-90' : ''}`}
       style={{ transitionDuration: '300ms' }}
+      onClick={() => {
+        if (message.action) {
+          message.action.onClick();
+          onClose();
+        }
+      }}
     >
       {styles.icon}
-      <p className="mx-3 font-medium">{message}</p>
-      <button onClick={onClose} className="ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg hover:bg-black hover:bg-opacity-20">
+      <div className="mx-3">
+        <p className="font-medium">{message.message}</p>
+        {message.action?.label && (
+          <p className="text-xs underline mt-1 opacity-90">{message.action.label}</p>
+        )}
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg hover:bg-black hover:bg-opacity-20"
+      >
         <XMarkIcon className="h-5 w-5" />
       </button>
     </div>

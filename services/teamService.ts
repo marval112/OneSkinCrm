@@ -182,3 +182,26 @@ export const getUnreadCount = async (conversationId: number, userId: number): Pr
 
     return data?.length || 0;
 };
+
+// Get unread counts for all conversations for a user
+export const getUnreadCounts = async (userId: number): Promise<Record<number, number>> => {
+    // Get all unread messages for this user
+    const { data, error } = await supabase
+        .from('team_messages')
+        .select('sender_id, conversation_id')
+        .not('read_by', 'cs', `{${userId}}`)
+        .neq('sender_id', userId); // Don't count own messages
+
+    if (error) {
+        console.error('[Team Service] Error fetching unread counts:', error);
+        return {};
+    }
+
+    // Group by sender_id
+    const counts: Record<number, number> = {};
+    data?.forEach(msg => {
+        counts[msg.sender_id] = (counts[msg.sender_id] || 0) + 1;
+    });
+
+    return counts;
+};

@@ -2,10 +2,14 @@
 export interface ToastMessage {
     message: string;
     type: 'success' | 'danger' | 'warning' | 'info';
+    action?: {
+        label?: string;
+        onClick: () => void;
+    };
 }
 
 export interface ToastContextType {
-    showToast: (message: string, type: ToastMessage['type']) => void;
+    showToast: (message: string, type: ToastMessage['type'], action?: ToastMessage['action']) => void;
 }
 
 export interface ThemeColors {
