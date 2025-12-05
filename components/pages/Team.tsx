@@ -256,10 +256,10 @@ function Team() {
     }
 
     return (
-        <div className="flex h-[calc(100dvh-4rem)] bg-white dark:bg-slate-800 overflow-hidden">
+        <div className="flex h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] bg-white dark:bg-slate-800 overflow-hidden">
             {/* Left Sidebar - Team Members */}
             <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-slate-200 dark:border-slate-700 flex-col`}>
-                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{t('team.title')}</h2>
                     <button
                         onClick={() => setIsGroupCallModalOpen(true)}
@@ -281,20 +281,20 @@ function Team() {
                                 <button
                                     key={member.id}
                                     onClick={() => handleSelectUser(member)}
-                                    className={`w-full p-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedUser?.id === member.id ? 'bg-slate-100 dark:bg-slate-700' : ''
+                                    className={`w-full p-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedUser?.id === member.id ? 'bg-slate-100 dark:bg-slate-700' : ''
                                         }`}
                                 >
                                     <div className="relative">
-                                        <UserCircleIcon className="w-12 h-12 text-slate-400 dark:text-slate-500" />
-                                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></div>
+                                        <UserCircleIcon className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+                                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></div>
                                         {unreadCounts[member.id] > 0 && (
-                                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800">
+                                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800">
                                                 {unreadCounts[member.id]}
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex-1 text-left">
-                                        <div className="font-medium text-slate-900 dark:text-white">{member.email}</div>
+                                    <div className="flex-1 text-left min-w-0">
+                                        <div className="font-medium text-slate-900 dark:text-white truncate text-sm">{member.email}</div>
                                         <div className="text-xs text-slate-500 dark:text-slate-400">{member.role}</div>
                                     </div>
                                 </button>
@@ -309,7 +309,7 @@ function Team() {
                 {selectedUser ? (
                     <>
                         {/* Chat Header */}
-                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+                        <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => setSelectedUser(null)}
