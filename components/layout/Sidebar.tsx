@@ -241,12 +241,6 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div>
           <NavList items={getCoreNavItems()} />
         </div>
-        {user?.role === 'Admin' && (
-          <div className="mt-4 pt-4 border-t border-white/20">
-            <h2 className="px-3 mb-1 text-xs font-semibold text-white/50 uppercase tracking-wider">Admin</h2>
-            <NavList items={ENTERPRISE_NAV_ITEMS} />
-          </div>
-        )}
       </nav>
 
       {/* Footer with Settings, Language and Theme Controls */}
