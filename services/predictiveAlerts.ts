@@ -13,11 +13,12 @@ const daysSince = (dateString: string): number => {
 // --- ALERT GENERATION LOGIC ---
 
 /**
- * Hot leads: score > 70 && created < 7 days
+ * Hot leads: score > 80 && created < 7 days
+ * Increased threshold from 70 to 80 to focus on truly exceptional leads
  */
 const findHotLeads = (leads: Lead[]): Alert[] => {
   return leads
-    .filter(lead => lead.score > 70 && daysSince(lead.created_at) < 7 && lead.status === LeadStatus.New)
+    .filter(lead => lead.score > 80 && daysSince(lead.created_at) < 7 && lead.status === LeadStatus.New)
     .map(lead => ({
       id: `hot-${lead.id}`,
       type: AlertType.HOT_LEAD,
@@ -30,11 +31,12 @@ const findHotLeads = (leads: Lead[]): Alert[] => {
 };
 
 /**
- * Churn risk: last_contact > 30 days && health_score < 40
+ * Churn risk: last_contact > 45 days && health_score < 40
+ * Increased from 30 to 45 days to reduce false positives
  */
 const findChurnRisks = (customers: Customer[]): Alert[] => {
   return customers
-    .filter(c => c.status === CustomerStatus.Active && daysSince(c.last_contact) > 30 && c.health_score < 40)
+    .filter(c => c.status === CustomerStatus.Active && daysSince(c.last_contact) > 45 && c.health_score < 40)
     .map(customer => ({
       id: `churn-${customer.id}`,
       type: AlertType.CHURN_RISK,
@@ -47,40 +49,42 @@ const findChurnRisks = (customers: Customer[]): Alert[] => {
 };
 
 /**
- * Stale deals: same stage > 14 days
+ * Stale deals: same stage > 21 days
+ * Increased from 14 to 21 days to allow more time for complex deals
  */
 const findStaleDeals = (deals: Deal[]): Alert[] => {
-    const activeStages = [DealStage.QUALIFICATION, DealStage.PROPOSAL, DealStage.NEGOTIATION];
-    return deals
-      .filter(d => activeStages.includes(d.status) && daysSince(d.updated_at) > 14)
-      .map(deal => ({
-        id: `stale-${deal.id}`,
-        type: AlertType.STALE_DEAL,
-        priority: AlertPriority.MEDIUM,
-        message: `Deal "${deal.title}" has been in ${deal.status} for over 14 days.`,
-        recommendation: `Review the deal and plan the next action to move it forward.`,
-        relatedEntityId: deal.id,
-        relatedEntityName: deal.title,
-      }));
+  const activeStages = [DealStage.QUALIFICATION, DealStage.PROPOSAL, DealStage.NEGOTIATION];
+  return deals
+    .filter(d => activeStages.includes(d.status) && daysSince(d.updated_at) > 21)
+    .map(deal => ({
+      id: `stale-${deal.id}`,
+      type: AlertType.STALE_DEAL,
+      priority: AlertPriority.MEDIUM,
+      message: `Deal "${deal.title}" has been in ${deal.status} for over 21 days.`,
+      recommendation: `Review the deal and plan the next action to move it forward.`,
+      relatedEntityId: deal.id,
+      relatedEntityName: deal.title,
+    }));
 };
 
 /**
- * Follow-up needed: no activity > 3 days for new/contacted leads
+ * Follow-up needed: no activity > 7 days for new/contacted leads
+ * Increased from 3 to 7 days to reduce alert fatigue
  */
 const findFollowUpNeeded = (leads: Lead[]): Alert[] => {
-    const relevantStages = [LeadStatus.New, LeadStatus.Contacted];
-    // FIX: Changed property from non-existent 'last_activity_date' to 'updated_at' to track activity.
-    return leads
-      .filter(l => relevantStages.includes(l.status) && daysSince(l.updated_at) > 3)
-      .map(lead => ({
-        id: `followup-${lead.id}`,
-        type: AlertType.FOLLOW_UP_NEEDED,
-        priority: AlertPriority.MEDIUM,
-        message: `No activity recorded for ${lead.name} in over 3 days.`,
-        recommendation: `Engage with this lead now to maintain momentum.`,
-        relatedEntityId: lead.id,
-        relatedEntityName: lead.name,
-      }));
+  const relevantStages = [LeadStatus.New, LeadStatus.Contacted];
+  // FIX: Changed property from non-existent 'last_activity_date' to 'updated_at' to track activity.
+  return leads
+    .filter(l => relevantStages.includes(l.status) && daysSince(l.updated_at) > 7)
+    .map(lead => ({
+      id: `followup-${lead.id}`,
+      type: AlertType.FOLLOW_UP_NEEDED,
+      priority: AlertPriority.MEDIUM,
+      message: `No activity recorded for ${lead.name} in over 7 days.`,
+      recommendation: `Engage with this lead now to maintain momentum.`,
+      relatedEntityId: lead.id,
+      relatedEntityName: lead.name,
+    }));
 };
 
 
@@ -88,18 +92,18 @@ const findFollowUpNeeded = (leads: Lead[]): Alert[] => {
  * Main orchestrator function to generate all predictive alerts.
  */
 export const generateAlertRecommendations = async (leads: Lead[], customers: Customer[], deals: Deal[]): Promise<Alert[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate async work
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate async work
 
-    const hotLeads = findHotLeads(leads);
-    const churnAlerts = findChurnRisks(customers);
-    const staleDeals = findStaleDeals(deals);
-    const followUps = findFollowUpNeeded(leads);
+  const hotLeads = findHotLeads(leads);
+  const churnAlerts = findChurnRisks(customers);
+  const staleDeals = findStaleDeals(deals);
+  const followUps = findFollowUpNeeded(leads);
 
-    const allAlerts = [...hotLeads, ...churnAlerts, ...staleDeals, ...followUps];
-    
-    // Sort alerts by priority: High > Medium > Low
-    const priorityOrder = { [AlertPriority.HIGH]: 1, [AlertPriority.MEDIUM]: 2, [AlertPriority.LOW]: 3 };
-    allAlerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-    
-    return allAlerts;
+  const allAlerts = [...hotLeads, ...churnAlerts, ...staleDeals, ...followUps];
+
+  // Sort alerts by priority: High > Medium > Low
+  const priorityOrder = { [AlertPriority.HIGH]: 1, [AlertPriority.MEDIUM]: 2, [AlertPriority.LOW]: 3 };
+  allAlerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  return allAlerts;
 };
