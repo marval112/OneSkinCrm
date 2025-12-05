@@ -26,8 +26,8 @@ export function getSidebarLogoUrl(): string {
     const stored = localStorage.getItem('crm_sidebar_logo_url');
     if (stored && stored.trim()) return stored.trim();
   } catch { }
-  // Fallback to main logo if sidebar logo not set
-  return getBrandLogoUrl();
+  // Default to white logo for sidebar
+  return '/dashboard/logo_white.png';
 }
 
 export const BRANDING_UPDATED_EVENT = 'branding:updated';
