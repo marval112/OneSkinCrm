@@ -270,6 +270,7 @@ export const uiTranslations = {
       justNow: "Just now",
       today: "Today",
       yesterday: "Yesterday",
+      confirmClearChat: "Are you sure you want to clear this chat? This action cannot be undone.",
     }
   },
   es: {
@@ -541,6 +542,7 @@ export const uiTranslations = {
       justNow: "Justo ahora",
       today: "Hoy",
       yesterday: "Ayer",
+      confirmClearChat: "¿Estás seguro de que quieres borrar este chat? Esta acción no se puede deshacer.",
     }
   },
   pt: {
@@ -804,6 +806,7 @@ export const uiTranslations = {
       justNow: "Agora mesmo",
       today: "Hoje",
       yesterday: "Ontem",
+      confirmClearChat: "Tem certeza de que deseja limpar este chat? Esta ação não pode ser desfeita.",
     }
   },
 };

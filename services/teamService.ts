@@ -205,3 +205,16 @@ export const getUnreadCounts = async (userId: number): Promise<Record<number, nu
 
     return counts;
 };
+
+// Delete all messages in a conversation
+export const deleteConversation = async (conversationId: number): Promise<void> => {
+    const { error } = await supabase
+        .from('team_messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+    if (error) {
+        console.error('[Team Service] Error deleting conversation:', error);
+        throw error;
+    }
+};
