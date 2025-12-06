@@ -18,28 +18,9 @@ export function getBrandLogoUrl(): string {
   return '/dashboard/logo.png';
 }
 
-export function getSidebarLogoUrl(): string {
-  try {
-    // Prefer uploaded data URL if present
-    const dataUrl = localStorage.getItem('crm_sidebar_logo_dataurl');
-    if (dataUrl && dataUrl.startsWith('data:image')) return dataUrl;
-    const stored = localStorage.getItem('crm_sidebar_logo_url');
-    if (stored && stored.trim()) return stored.trim();
-  } catch { }
-  // Default to white logo for sidebar
-  return '/dashboard/logo_white.png';
+if (typeof window !== 'undefined') {
+  window.dispatchEvent(new CustomEvent(BRANDING_UPDATED_EVENT));
 }
-
-export const BRANDING_UPDATED_EVENT = 'branding:updated';
-
-export function setBrandName(name: string): void {
-  try {
-    const value = (name || '').trim();
-    if (value) localStorage.setItem('crm_brand_name', value);
-    else localStorage.removeItem('crm_brand_name');
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(BRANDING_UPDATED_EVENT));
-    }
   } catch { }
 }
 
