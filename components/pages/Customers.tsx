@@ -703,8 +703,7 @@ function Customers() {
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      console.log('Create Deal clicked for customer:', customer.name);
-                      handleCreateDeal(customer);
+                      navigate(`/deals?customer_id=${customer.id}&customer_name=${encodeURIComponent(customer.name)}&create=true`);
                     }}
                     className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full"
                     title="Create Deal"

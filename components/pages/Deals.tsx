@@ -265,6 +265,18 @@ function Deals() {
     fetchData();
   }, [fetchData]);
 
+  // Auto-open create modal if create=true parameter is present
+  useEffect(() => {
+    if (searchParams.get('create') === 'true' && !isCreateModalOpen) {
+      setIsCreateModalOpen(true);
+      // Clean up URL parameter
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('create');
+      navigate(`/deals?${newParams.toString()}`, { replace: true });
+    }
+  }, [searchParams, isCreateModalOpen, navigate]);
+
+
   const getCustomerName = useCallback((customerId: number) => {
     return customers.find(c => c.id === customerId)?.name || '';
   }, [customers]);
