@@ -878,6 +878,13 @@ function Leads() {
                       >
                         <EditIcon className="h-5 w-5" />
                       </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/deals?lead_id=${lead.id}&lead_name=${encodeURIComponent(lead.name)}`); }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full"
+                        title="Create Deal"
+                      >
+                        <PlusIcon className="h-5 w-5" />
+                      </button>
                       {lead.status !== LeadStatus.Won && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setLeadToConvert(lead); }}
