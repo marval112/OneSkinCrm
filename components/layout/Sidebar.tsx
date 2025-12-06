@@ -157,11 +157,10 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       { to: '/team', labelKey: 'sidebar.team', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" /> },
     ];
 
-    // If user is Admin, insert admin-only items into their correct positions
+    // If user is Admin, insert admin-only items (Products only, Users moved to Settings)
     if (user?.role === 'Admin') {
       const customerIndex = items.findIndex(item => item.to === '/customers');
       items.splice(customerIndex + 1, 0,
-        { to: '/users', labelKey: 'sidebar.users', icon: <UsersIcon className="h-5 w-5" /> },
         { to: '/products', labelKey: 'sidebar.products', icon: <PackageIcon className="h-5 w-5" /> }
       );
 

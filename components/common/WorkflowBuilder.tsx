@@ -17,7 +17,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onClose, on
     const [action, setAction] = useState(workflow?.nodes.find(n => n.type === 'action')?.config.type || '');
     const [actionParams, setActionParams] = useState(workflow?.nodes.find(n => n.type === 'action')?.config.params || '');
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!name.trim()) {
             alert('Please enter a workflow name');
             return;
@@ -61,7 +61,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onClose, on
             : [{ from: 'trigger_1', to: 'action_1' }];
 
         if (workflow) {
-            const updated = updateWorkflow(workflow.id, {
+            const updated = await updateWorkflow(workflow.id, {
                 name,
                 description,
                 nodes,
@@ -69,7 +69,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ workflow, onClose, on
             });
             if (updated) onSave(updated);
         } else {
-            const newWorkflow = saveWorkflow({
+            const newWorkflow = await saveWorkflow({
                 name,
                 description,
                 nodes,

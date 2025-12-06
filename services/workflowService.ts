@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 export interface WorkflowNode {
     id: string;
     type: 'trigger' | 'condition' | 'action';
@@ -22,57 +24,201 @@ export interface Workflow {
 }
 
 const STORAGE_KEY = 'visual_workflows';
+const MIGRATION_KEY = 'workflows_migrated_to_db';
 
-export const getWorkflows = (): Workflow[] => {
+// Migrate localStorage workflows to Supabase (one-time operation)
+const migrateLocalStorageWorkflows = async (): Promise<void> => {
+    // Check if migration already done
+    if (localStorage.getItem(MIGRATION_KEY) === 'true') {
+        return;
+    }
+
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) return [];
-        return JSON.parse(stored);
-    } catch (e) {
-        console.error('Failed to load workflows', e);
+        if (!stored) {
+            localStorage.setItem(MIGRATION_KEY, 'true');
+            return;
+        }
+
+        const localWorkflows: Workflow[] = JSON.parse(stored);
+        if (localWorkflows.length === 0) {
+            localStorage.setItem(MIGRATION_KEY, 'true');
+            return;
+        }
+
+        // Insert workflows into database
+        for (const workflow of localWorkflows) {
+            const { data: existing } = await supabase
+                .from('workflows')
+                .select('id')
+                .eq('id', workflow.id)
+                .single();
+
+            if (!existing) {
+                await supabase.from('workflows').insert({
+                    id: workflow.id,
+                    name: workflow.name,
+                    description: workflow.description,
+                    trigger_type: workflow.nodes.find(n => n.type === 'trigger')?.config?.value || 'manual',
+                    trigger_config: { nodes: workflow.nodes.filter(n => n.type === 'trigger').map(n => n.config) },
+                    flow_definition: { nodes: workflow.nodes, connections: workflow.connections },
+                    is_active: workflow.enabled,
+                    created_at: workflow.createdAt,
+                });
+            }
+        }
+
+        console.log(`[Workflow Migration] Migrated ${localWorkflows.length} workflows to database`);
+        localStorage.setItem(MIGRATION_KEY, 'true');
+    } catch (error) {
+        console.error('[Workflow Migration] Failed:', error);
+    }
+};
+
+export const getWorkflows = async (): Promise<Workflow[]> => {
+    // Run migration on first call
+    await migrateLocalStorageWorkflows();
+
+    try {
+        const { data, error } = await supabase
+            .from('workflows')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return (data || []).map(row => ({
+            id: String(row.id),
+            name: row.name,
+            description: row.description || '',
+            nodes: row.flow_definition?.nodes || [],
+            connections: row.flow_definition?.connections || [],
+            enabled: row.is_active ?? true,
+            createdAt: row.created_at,
+            updatedAt: row.created_at, // workflows table doesn't have updated_at
+        }));
+    } catch (error) {
+        console.error('[Workflow Service] Error fetching workflows:', error);
         return [];
     }
 };
 
-export const saveWorkflow = (workflow: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Workflow => {
-    const workflows = getWorkflows();
-    const newWorkflow: Workflow = {
-        ...workflow,
-        id: `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+export const saveWorkflow = async (workflow: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workflow> => {
+    const id = `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+        .from('workflows')
+        .insert({
+            id,
+            name: workflow.name,
+            description: workflow.description,
+            trigger_type: workflow.nodes.find(n => n.type === 'trigger')?.config?.value || 'manual',
+            trigger_config: { nodes: workflow.nodes.filter(n => n.type === 'trigger').map(n => n.config) },
+            flow_definition: { nodes: workflow.nodes, connections: workflow.connections },
+            is_active: workflow.enabled,
+            created_at: now,
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    return {
+        id: String(data.id),
+        name: data.name,
+        description: data.description || '',
+        nodes: workflow.nodes,
+        connections: workflow.connections,
+        enabled: data.is_active,
+        createdAt: data.created_at,
+        updatedAt: data.created_at,
     };
-
-    workflows.push(newWorkflow);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(workflows));
-    return newWorkflow;
 };
 
-export const updateWorkflow = (id: string, updates: Partial<Workflow>): Workflow | null => {
-    const workflows = getWorkflows();
-    const index = workflows.findIndex(w => w.id === id);
+export const updateWorkflow = async (id: string, updates: Partial<Workflow>): Promise<Workflow | null> => {
+    const updateData: any = {};
 
-    if (index === -1) return null;
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.enabled !== undefined) updateData.is_active = updates.enabled;
 
-    workflows[index] = {
-        ...workflows[index],
-        ...updates,
-        updatedAt: new Date().toISOString()
+    if (updates.nodes || updates.connections) {
+        const { data: current } = await supabase
+            .from('workflows')
+            .select('flow_definition')
+            .eq('id', id)
+            .single();
+
+        updateData.flow_definition = {
+            nodes: updates.nodes || current?.flow_definition?.nodes || [],
+            connections: updates.connections || current?.flow_definition?.connections || [],
+        };
+
+        if (updates.nodes) {
+            const triggerNode = updates.nodes.find(n => n.type === 'trigger');
+            if (triggerNode) {
+                updateData.trigger_type = triggerNode.config?.value || 'manual';
+                updateData.trigger_config = { nodes: updates.nodes.filter(n => n.type === 'trigger').map(n => n.config) };
+            }
+        }
+    }
+
+    const { data, error } = await supabase
+        .from('workflows')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('[Workflow Service] Error updating workflow:', error);
+        return null;
+    }
+
+    return {
+        id: String(data.id),
+        name: data.name,
+        description: data.description || '',
+        nodes: data.flow_definition?.nodes || [],
+        connections: data.flow_definition?.connections || [],
+        enabled: data.is_active,
+        createdAt: data.created_at,
+        updatedAt: data.created_at,
     };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(workflows));
-    return workflows[index];
 };
 
-export const deleteWorkflow = (id: string): void => {
-    const workflows = getWorkflows();
-    const filtered = workflows.filter(w => w.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+export const deleteWorkflow = async (id: string): Promise<void> => {
+    const { error } = await supabase
+        .from('workflows')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error('[Workflow Service] Error deleting workflow:', error);
+        throw error;
+    }
 };
 
-export const getWorkflowById = (id: string): Workflow | null => {
-    const workflows = getWorkflows();
-    return workflows.find(w => w.id === id) || null;
+export const getWorkflowById = async (id: string): Promise<Workflow | null> => {
+    const { data, error } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error || !data) return null;
+
+    return {
+        id: String(data.id),
+        name: data.name,
+        description: data.description || '',
+        nodes: data.flow_definition?.nodes || [],
+        connections: data.flow_definition?.connections || [],
+        enabled: data.is_active,
+        createdAt: data.created_at,
+        updatedAt: data.created_at,
+    };
 };
 
 // Node type definitions

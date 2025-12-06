@@ -292,7 +292,7 @@ function Dashboard() {
       const matchYear = (yr: number | 'All', val?: number) => (yr === 'All' ? true : val === yr);
       const closedYearMatches = (deal: Deal) => {
         if (chartYear === 'All') return true;
-        const closed = (deal as any)['año_closed'];
+        const closed = (deal as any)['closed_year'];
         if (typeof closed === 'number') return closed === chartYear;
         return matchYear(chartYear, dateYear(deal.updated_at));
       };
@@ -495,11 +495,16 @@ function Dashboard() {
       const achieved2026 = safeDeals
         .filter(d => d.status === DealStage.CLOSED_WON)
         .filter(d => {
-          const closedYear = (d as any)['año_closed'];
+          let closedYear = (d as any)['closed_year']; // Prefer 'closed_year'
           if (typeof closedYear === 'number' && !Number.isNaN(closedYear)) {
             return closedYear === year;
           }
-          // Fallback to updated_at year if legacy data without año_closed
+          // Fallback to 'año_closed' if 'closed_year' is not available or invalid
+          closedYear = (d as any)['año_closed'];
+          if (typeof closedYear === 'number' && !Number.isNaN(closedYear)) {
+            return closedYear === year;
+          }
+          // Fallback to updated_at year if legacy data without 'closed_year' or 'año_closed'
           const upd = (d as any).hasOwnProperty('updated_at') ? new Date((d as any).updated_at).getFullYear() : undefined;
           return upd === year;
         })

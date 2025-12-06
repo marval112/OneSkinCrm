@@ -67,7 +67,7 @@ export async function listCustomersWithBudgets(user: User, years: number[]): Pro
 }
 
 export async function listAchievedByCustomerForYear(user: User, year: number): Promise<Record<number, number>> {
-  let dealsQuery = supabase.from('deals').select('customer_id,value,"año_closed",status,user_id');
+  let dealsQuery = supabase.from('deals').select('customer_id,value,closed_year,status,user_id');
   if (user.role === 'Commercial') {
     dealsQuery = dealsQuery.eq('user_id', user.id);
   }
@@ -77,7 +77,7 @@ export async function listAchievedByCustomerForYear(user: User, year: number): P
   const totals: Record<number, number> = {};
   rows.forEach(d => {
     if (!d.customer_id) return;
-    const closedYear = Number((d as any)['año_closed'] || 0);
+    const closedYear = Number((d as any)['closed_year'] || 0);
     if (closedYear !== year) return;
     if (d.status !== DealStage.CLOSED_WON) return;
     totals[d.customer_id] = (totals[d.customer_id] || 0) + Number(d.value || 0);

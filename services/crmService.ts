@@ -166,7 +166,7 @@ export const createDeal = async (dealData: NewDealInput, userId: number): Promis
         updated_at: now,
     };
     if (isClosed) {
-        (newDealData as any)['año_closed'] = new Date().getFullYear();
+        (newDealData as any)['closed_year'] = new Date().getFullYear();
     }
     const saved = await db.create<Deal>('deals', newDealData as Omit<Deal, 'id'>);
     try {
@@ -192,9 +192,10 @@ export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise
         ...dealData,
         updated_at: new Date().toISOString(),
     };
-    // If transitioning to a closed state, stamp año_closed
-    if (prev && prev.status !== dealWithTimestamp.status && (dealWithTimestamp.status === 'Closed Won' || dealWithTimestamp.status === 'Closed Lost')) {
-        (dealWithTimestamp as any)['año_closed'] = new Date().getFullYear();
+    // If transitioning to a closed state, stamp closed_year
+    const closedStates = ['Closed Won', 'Closed Lost'];
+    if (prev && prev.status !== dealWithTimestamp.status && closedStates.includes(dealWithTimestamp.status)) {
+        (dealWithTimestamp as any)['closed_year'] = new Date().getFullYear();
     }
     const saved = await db.update<Deal>('deals', dealWithTimestamp as Deal);
     try {

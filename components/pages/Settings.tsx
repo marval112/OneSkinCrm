@@ -36,6 +36,7 @@ function Settings() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card title="Users" description="Manage team members and permissions" onClick={() => navigate('/users')} />
         <Card title="Theme" description="Colors and appearance" onClick={() => navigate('/settings/theme')} />
         <Card title="Intelligent Alerts" description="Configure automated metric alerts" onClick={() => navigate('/settings/alerts')} />
         <Card title="Reports" description="Scheduled reports and delivery" onClick={() => navigate('/settings/reports')} />

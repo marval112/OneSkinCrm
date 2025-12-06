@@ -11,8 +11,9 @@ export default function Workflows() {
         loadWorkflows();
     }, []);
 
-    const loadWorkflows = () => {
-        setWorkflows(getWorkflows());
+    const loadWorkflows = async () => {
+        const data = await getWorkflows();
+        setWorkflows(data);
     };
 
     const handleSave = (workflow: Workflow) => {
@@ -24,15 +25,15 @@ export default function Workflows() {
         setIsBuilderOpen(true);
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm('Are you sure you want to delete this workflow?')) {
-            deleteWorkflow(id);
+            await deleteWorkflow(id);
             loadWorkflows();
         }
     };
 
-    const handleToggleEnabled = (workflow: Workflow) => {
-        updateWorkflow(workflow.id, { enabled: !workflow.enabled });
+    const handleToggleEnabled = async (workflow: Workflow) => {
+        await updateWorkflow(workflow.id, { enabled: !workflow.enabled });
         loadWorkflows();
     };
 
@@ -84,8 +85,8 @@ export default function Workflows() {
                                 <button
                                     onClick={() => handleToggleEnabled(workflow)}
                                     className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${workflow.enabled
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
                                         }`}
                                 >
                                     {workflow.enabled ? 'Active' : 'Inactive'}
