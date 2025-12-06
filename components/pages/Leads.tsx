@@ -851,11 +851,22 @@ function Leads() {
 
                   <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
                     <ScoreBadge score={lead.calculatedScore || 0} breakdown={lead.scoreBreakdown} size="sm" />
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
+                      {lead.phone && (
+                        <a
+                          href={`tel:${lead.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                          title="Call"
+                        >
+                          <PhoneIcon className="h-5 w-5" />
+                        </a>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); setEmailingLead(lead); }}
                         className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
                         disabled={lead.status === LeadStatus.Won}
+                        title="Send Email"
                       >
                         <EnvelopeIcon className="h-5 w-5" />
                       </button>
@@ -863,8 +874,25 @@ function Leads() {
                         onClick={(e) => { e.stopPropagation(); setEditingLead(lead); }}
                         className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
                         disabled={lead.status === LeadStatus.Won}
+                        title="Edit"
                       >
                         <EditIcon className="h-5 w-5" />
+                      </button>
+                      {lead.status !== LeadStatus.Won && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setLeadToConvert(lead); }}
+                          className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full"
+                          title="Convert to Customer"
+                        >
+                          <CheckCircleIcon className="h-5 w-5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleAISummary(lead); }}
+                        className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full"
+                        title="AI Insights"
+                      >
+                        <SparklesIcon className="h-5 w-5" />
                       </button>
                     </div>
                   </div>

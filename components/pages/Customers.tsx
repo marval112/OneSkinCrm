@@ -631,18 +631,44 @@ function Customers() {
                     <div className="w-16 bg-gray-200 dark:bg-slate-600 rounded-full h-2"><div className="bg-success h-2 rounded-full" style={{ width: `${customer.health_score}%` }}></div></div>
                     <span className="text-xs font-semibold">{customer.health_score}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
+                    {customer.phone && (
+                      <a
+                        href={`tel:${customer.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                        title="Call"
+                      >
+                        <PhoneIcon className="h-5 w-5" />
+                      </a>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); setEmailingCustomer(customer); }}
                       className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                      title="Send Email"
                     >
                       <EnvelopeIcon className="h-5 w-5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingCustomer(customer); }}
                       className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+                      title="Edit"
                     >
                       <EditIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCreateDeal(customer); }}
+                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full"
+                      title="Create Deal"
+                    >
+                      <PlusIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAISummary(customer); }}
+                      className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full"
+                      title="AI Insights"
+                    >
+                      <SparklesIcon className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
