@@ -457,6 +457,23 @@ function Customers() {
     // Add other filters if Customers page has more filters in the future
   };
 
+  const handleCreateDeal = (customer: Customer) => {
+    // Navigate to deals page with customer pre-selected
+    navigate(`/deals?customer_id=${customer.id}&customer_name=${encodeURIComponent(customer.name)}`);
+  };
+
+  const handleAISummary = async (customer: Customer) => {
+    toastContext?.showToast('Generating AI summary...', 'info');
+    try {
+      const summary = await summarizeCustomer(customer);
+      toastContext?.showToast('AI summary generated!', 'success');
+      // You could show the summary in a modal or detail panel
+      console.log('AI Summary:', summary);
+    } catch (error) {
+      toastContext?.showToast('Failed to generate AI summary', 'danger');
+    }
+  };
+
   const ViewSwitcher = () => (
     <div className="flex items-center p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
       <button
