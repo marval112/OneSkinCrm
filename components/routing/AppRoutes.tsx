@@ -35,6 +35,7 @@ const Prospecting = lazy(() => import('../pages/Prospecting'));
 const Workflows = lazy(() => import('../pages/Workflows'));
 const WorldMap = lazy(() => import('../pages/WorldMap'));
 const Team = lazy(() => import('../pages/Team'));
+const UserActivity = lazy(() => import('../pages/UserActivity'));
 
 const LoadingFallback = () => (
     <div className="flex justify-center items-center h-64">
@@ -72,6 +73,7 @@ const AppRoutes = () => {
                         <Route path="ai" element={<AISettings />} />
                         <Route path="alerts" element={<AlertSettings />} />
                         <Route path="documentation" element={<Documentation />} />
+                        <Route path="activity" element={<UserActivity />} />
                     </Route>
                     <Route path="/users" element={<Users />} />
                     <Route path="/products" element={<Products />} />
