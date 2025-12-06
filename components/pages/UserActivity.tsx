@@ -20,6 +20,7 @@ function UserActivity() {
     const [stats, setStats] = useState<ActivityStats>({ totalSessions: 0, averageDuration: 0, totalUsers: 0, activeNow: 0 });
     const [activeUsers, setActiveUsers] = useState<UserSession[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState(7); // days
 
     useEffect(() => {
@@ -30,6 +31,7 @@ function UserActivity() {
 
     const loadData = async () => {
         setLoading(true);
+        setError(null);
         try {
             const [sessionsData, usersData, statsData, activeData] = await Promise.all([
                 getAllSessions(200),
@@ -38,12 +40,20 @@ function UserActivity() {
                 getActiveUsers(),
             ]);
 
+            console.log('[UserActivity] Loaded data:', {
+                sessions: sessionsData.length,
+                users: usersData.length,
+                stats: statsData,
+                active: activeData.length
+            });
+
             setSessions(sessionsData);
             setUsers(usersData);
             setStats(statsData);
             setActiveUsers(activeData);
         } catch (error) {
             console.error('Error loading activity data:', error);
+            setError(error instanceof Error ? error.message : 'Failed to load activity data');
         } finally {
             setLoading(false);
         }
@@ -131,6 +141,61 @@ function UserActivity() {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">Error Loading Activity Data</h3>
+                <p className="text-red-600 dark:text-red-300">{error}</p>
+                <p className="text-sm text-red-500 dark:text-red-400 mt-4">
+                    Make sure you have executed the SQL migration script to create the user_sessions table.
+                </p>
+                <button
+                    onClick={loadData}
+                    className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
+    if (sessions.length === 0) {
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">User Activity</h1>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Monitor user login activity and session duration</p>
+                    </div>
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700"
+                    >
+                        Back to Settings
+                    </button>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-8 text-center">
+                    <svg className="mx-auto h-16 w-16 text-blue-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">No Activity Data Yet</h3>
+                    <p className="text-blue-700 dark:text-blue-300 mb-4">
+                        Activity tracking has been enabled. Data will appear here once users log in.
+                    </p>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-4 text-left max-w-2xl mx-auto">
+                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Setup Steps:</h4>
+                        <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                            <li>Execute the SQL migration script in Supabase SQL Editor</li>
+                            <li>Log out and log back in to create your first session</li>
+                            <li>Activity data will start appearing automatically</li>
+                        </ol>
+                    </div>
+                </div>
             </div>
         );
     }
