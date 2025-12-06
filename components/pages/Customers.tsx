@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useContext, useMemo } from 're
 import SavedSearchControls from '../common/SavedSearchControls';
 import { useSearchParams } from 'react-router-dom';
 import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getCountries, createDeal, getDealsByCustomer } from '../../services/crmService';
+import QuickDealModal from '../common/QuickDealModal';
 import { exportToExcel } from '../../services/exportService';
 import type { Customer, Country } from '../../types';
 import { DealStage } from '../../types';
@@ -463,9 +464,27 @@ function Customers() {
     // Add other filters if Customers page has more filters in the future
   };
 
+  const [dealModalOpen, setDealModalOpen] = useState(false);
+  const [selectedEntityForDeal, setSelectedEntityForDeal] = useState<Customer | null>(null);
+
   const handleCreateDeal = (customer: Customer) => {
-    // Navigate to deals page with customer pre-selected
-    navigate(`/deals?customer_id=${customer.id}&customer_name=${encodeURIComponent(customer.name)}`);
+    setSelectedEntityForDeal(customer);
+    setDealModalOpen(true);
+  };
+
+  const handleSaveDeal = async (dealData: any) => {
+    if (!user || !selectedEntityForDeal) return;
+    try {
+      await createDeal({
+        ...dealData,
+        customer_id: selectedEntityForDeal.id
+      }, user.id);
+      toastContext?.showToast('Deal created successfully!', 'success');
+      setDealModalOpen(false);
+      setSelectedEntityForDeal(null);
+    } catch (error) {
+      toastContext?.showToast('Failed to create deal', 'danger');
+    }
   };
 
   const handleAISummary = async (customer: Customer) => {
@@ -1055,6 +1074,16 @@ function Customers() {
     />
   )
 }
+
+<QuickDealModal
+  isOpen={dealModalOpen}
+  onClose={() => {
+    setDealModalOpen(false);
+    setSelectedEntityForDeal(null);
+  }}
+  onSave={handleSaveDeal}
+  customer={selectedEntityForDeal || undefined}
+/>
     </div >
   );
 }
