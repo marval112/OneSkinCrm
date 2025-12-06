@@ -700,7 +700,12 @@ function Customers() {
                     <EditIcon className="h-5 w-5" />
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleCreateDeal(customer); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log('Create Deal clicked for customer:', customer.name);
+                      handleCreateDeal(customer);
+                    }}
                     className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full"
                     title="Create Deal"
                   >

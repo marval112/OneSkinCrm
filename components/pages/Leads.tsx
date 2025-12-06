@@ -911,7 +911,13 @@ function Leads() {
                       <EditIcon className="h-5 w-5" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedLeadForDeal(lead); setDealModalOpen(true); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log('Create Deal clicked for lead:', lead.name);
+                        setSelectedLeadForDeal(lead);
+                        setDealModalOpen(true);
+                      }}
                       className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full"
                       title="Create Deal"
                     >
