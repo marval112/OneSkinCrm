@@ -719,8 +719,9 @@ function Customers() {
                   </button>
                 </div>
               </div>
-              </div>
             ))}
+          </div>
+          ) : view === 'kanban' ? (
         </div>
     </>
   ) : view === 'kanban' ? (
