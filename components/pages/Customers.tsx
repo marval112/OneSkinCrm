@@ -6,7 +6,7 @@ import { getCustomers, bulkDeleteCustomers, createCustomer, updateCustomer, getC
 import QuickDealModal from '../common/QuickDealModal';
 import { exportToExcel } from '../../services/exportService';
 import type { Customer, Country } from '../../types';
-import { DealStage } from '../../types';
+import { DealStage, Deal } from '../../types';
 import { CustomerStatus, Segment } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -294,6 +294,19 @@ function Customers() {
   const [customerDeals, setCustomerDeals] = useState<Deal[]>([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
+
+  const fetchTimeline = useCallback(async (customerId: number) => {
+    setTimelineLoading(true);
+    try {
+      const activities = await listActivitiesForCustomer(customerId, 50);
+      setTimelineItems(activities);
+    } catch (error) {
+      console.error('Failed to fetch timeline', error);
+      toastContext?.showToast('Failed to load timeline', 'danger');
+    } finally {
+      setTimelineLoading(false);
+    }
+  }, [toastContext]);
 
   const openTimeline = async (customer: Customer) => {
     setTimelineCustomer(customer);
@@ -721,374 +734,372 @@ function Customers() {
               </div>
             ))}
           </div>
-          ) : view === 'kanban' ? (
-        </div>
-    </>
-  ) : view === 'kanban' ? (
-    <CustomersKanbanView customers={customers} onUpdateCustomer={handleUpdateCustomer} onEmailCustomer={setEmailingCustomer} />
-  ) : (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {Object.values(Segment).map(segment => {
-        const segmentCustomers = sortedCustomers.filter(customer => customer.segment === segment);
-        return (
-          <div key={segment} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{segment}</h3>
-              <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">{segmentCustomers.length}</span>
-            </div>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {segmentCustomers.map(customer => (
-                <div key={customer.id} className="bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-600 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{customer.name}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{customer.company}</div>
-                      <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{customer.email}</div>
-                    </div>
-                    <span className={`px - 1.5 py - 0.5 text - [10px] font - semibold rounded - full flex - shrink - 0 ${statusColors[customer.status]} `}>{customer.status}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-12 bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div className="bg-success h-1.5 rounded-full" style={{ width: `${customer.health_score}% ` }}></div></div>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-400">{customer.health_score}</span>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); setEmailingCustomer(customer); }} className="p-0.5 text-slate-400 hover:text-blue-600" title="Email">
-                        <EnvelopeIcon className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); openTimeline(customer); }} className="p-0.5 text-slate-400 hover:text-indigo-600" title="Timeline">
-                        <ClockIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
+        </>
+      ) : view === 'kanban' ? (
+        <CustomersKanbanView customers={customers} onUpdateCustomer={handleUpdateCustomer} onEmailCustomer={setEmailingCustomer} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Object.values(Segment).map(segment => {
+            const segmentCustomers = sortedCustomers.filter(customer => customer.segment === segment);
+            return (
+              <div key={segment} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{segment}</h3>
+                  <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">{segmentCustomers.length}</span>
                 </div>
-              ))}
-              {segmentCustomers.length === 0 && (
-                <div className="text-center text-xs text-slate-400 py-4">No customers in this segment</div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  )
-}
-
-{
-  dealForCustomer && (
-    <Modal title={`${t('deals.actions.createDeal')} • ${dealForCustomer.name} `} onClose={() => setDealForCustomer(null)}>
-      <div className="p-6 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
-            <input type="text" value={qDealTitle} onChange={(e) => setQDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
-            <input type="number" min="0" value={qDealValue} onChange={(e) => setQDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
-            <select value={qDealStage} onChange={(e) => setQDealStage(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
-              {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
-            <input type="datetime-local" value={qDealExpectedClose} onChange={(e) => setQDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
-            <input type="number" min="0" max="100" value={qDealProbability} onChange={(e) => setQDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
-            <textarea rows={2} value={qDealNotes} onChange={(e) => setQDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
-          </div>
-        </div>
-        <div className="text-right">
-          <button className="px-4 py-2 bg-primary text-white rounded-md" onClick={async () => {
-            if (!user || !dealForCustomer) return;
-            try {
-              await createDeal({
-                title: qDealTitle || `${dealForCustomer.name} • ${dealForCustomer.company || 'Deal'} `,
-                value: Number(qDealValue) || 0,
-                status: qDealStage,
-                expected_close_date: new Date(qDealExpectedClose).toISOString(),
-                probability: Number(qDealProbability) || 0,
-                notes: qDealNotes || undefined,
-                customer_id: dealForCustomer.id,
-              }, user.id);
-              toastContext?.showToast('Deal created.', 'success');
-              setDealForCustomer(null);
-            } catch (e) {
-              toastContext?.showToast('Failed to create deal.', 'danger');
-            }
-          }}>{t('deals.form.saveDeal')}</button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-{
-  isCreateModalOpen && (
-    <Modal title={t('customers.newCustomer')} onClose={() => setIsCreateModalOpen(false)}>
-      <CustomerForm onSave={handleCreateCustomer} onCancel={() => setIsCreateModalOpen(false)} />
-    </Modal>
-  )
-}
-
-{
-  editingCustomer && (
-    <Modal title={`${t('common.edit')} ${editingCustomer.name} `} onClose={() => setEditingCustomer(null)}>
-      <CustomerForm isEdit customer={editingCustomer} onSave={(payload) => handleUpdateCustomer(payload.customer as any)} onCancel={() => setEditingCustomer(null)} />
-    </Modal>
-  )
-}
-
-{
-  emailingCustomer && (
-    <EmailComposer
-      recipient={{ name: emailingCustomer.name, email: emailingCustomer.email }}
-      onClose={() => setEmailingCustomer(null)}
-      onSent={() => toastContext?.showToast(`Email sent to ${emailingCustomer.name} `, 'success')}
-    />
-  )
-}
-
-{
-  detailCustomer && (
-    <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-black/40" onClick={() => setDetailCustomer(null)}></div>
-      <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-800 shadow-xl p-6 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">{detailCustomer.name}</h3>
-          <button onClick={() => setDetailCustomer(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">{t('common.cancel')}</button>
-        </div>
-        <div className="flex items-center gap-2 mb-4">
-          <button onClick={() => setDetailTab('info')} className={`px - 3 py - 1.5 rounded - md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'} `}>Info</button>
-          <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>{t('customers.timeline.title')}</button>
-          <button onClick={() => setDetailTab('deals')} className={`px-3 py-1.5 rounded-md ${detailTab === 'deals' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Deals</button>
-          <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab === 'email' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
-        </div>
-        {detailTab === 'info' && (
-          <div className="space-y-2 text-sm">
-            <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailCustomer.email}</span></div>
-            <div><span className="text-slate-500">Phone:</span> {detailCustomer.phone ? <a href={`tel:${detailCustomer.phone}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{detailCustomer.phone}</a> : <span className="font-medium">-</span>}</div>
-            <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailCustomer.company}</span></div>
-            <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailCustomer.country}</span></div>
-            <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailCustomer.segment}</span></div>
-            <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailCustomer.status}</span></div>
-            <div className="flex items-center gap-2"><span className="text-slate-500">Health:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-success h-2.5 rounded-full" style={{ width: `${detailCustomer.health_score}% ` }}></div></div> <span className="font-semibold">{detailCustomer.health_score}</span></div>
-          </div>
-        )}
-        {detailTab === 'timeline' && (
-          <div className="space-y-4">
-            {timelineLoading ? (
-              <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
-            ) : (
-              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
-                {timelineItems.map(item => (
-                  <li key={item.id} className="py-3">
-                    <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
-                    {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
-                    {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="mt-3 p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
-                {aiLoading && <div className="text-xs text-slate-500">...</div>}
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3 items-center">
-                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
-                  if (!timelineCustomer) return; setAiLoading(true); try { const text = await summarizeCustomer(timelineCustomer, timelineItems); setAiSummary(text); } finally { setAiLoading(false); }
-                }}>{t('aiAssistant.summarizeCustomer')}</button>
-                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
-                  if (!timelineCustomer) return; setAiLoading(true); try { const email = await draftCustomerFollowUpEmail(timelineCustomer, timelineItems); setAiEmail(email); } finally { setAiLoading(false); }
-                }}>{t('aiAssistant.draftFollowUpEmail')}</button>
-                <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
-                  if (!timelineCustomer) return; setAiLoading(true); try { const tasks = await suggestCustomerTasks(timelineCustomer, timelineItems); setAiSuggested(tasks || []); } finally { setAiLoading(false); }
-                }}>{t('aiAssistant.suggestTasks')}</button>
-                <button className="ml-auto text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
-              </div>
-              {aiSummary && (
-                <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>
-              )}
-              {aiSuggested.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
-                  <ul className="text-sm list-disc pl-5">
-                    {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays} d` : ''}</li>))}
-                  </ul>
-                  <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async () => {
-                    if (!timelineCustomer || !user) return;
-                    for (const s of aiSuggested) {
-                      const due = typeof s.dueDays === 'number' ? new Date(Date.now() + s.dueDays * 24 * 3600 * 1000).toISOString() : undefined;
-                      const map: Record<string, TaskType> = {
-                        'Follow Up Call': TaskType.FOLLOW_UP_CALL,
-                        'Send Information': TaskType.SEND_INFORMATION,
-                        'Send Samples': TaskType.SEND_SAMPLES,
-                        'Send Quotation': TaskType.SEND_QUOTATION,
-                        'Schedule Visit': TaskType.SCHEDULE_VISIT,
-                      } as any;
-                      const ttype = map[s.type] || TaskType.FOLLOW_UP_CALL;
-                      await createTask({ user_id: user.id, customer_id: timelineCustomer.id, type: ttype, status: TaskStatus.PENDING, title: s.title, due_date: due } as any);
-                    }
-                    toastContext?.showToast('Suggested tasks added.', 'success');
-                  }}>{t('aiAssistant.addSuggestedTasks')}</button>
-                </div>
-              )}
-              {aiEmail && (
-                <div className="mb-1 text-sm">
-                  <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.draftEmail')}</div>
-                  <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">
-                    <div className="font-medium">Asunto: {aiEmail.subject}</div>
-                    <pre className="whitespace-pre-wrap text-sm mt-1">{aiEmail.body}</pre>
-                  </div>
-                  <button className="mt-2 px-2 py-1 text-sm bg-slate-600 text-white rounded" onClick={() => { setDetailCustomer(timelineCustomer); setDetailTab('email'); setTimelineCustomer(null); setAiEmail(null); }}>{t('aiAssistant.openInEmailComposer')}</button>
-                </div>
-              )}
-            </div>
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
-              <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
-              <div className="text-right mt-2">
-                <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('customers.timeline.save')}</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {detailTab === 'deals' && (
-          <div className="space-y-4">
-            {dealsLoading ? (
-              <div className="py-8 text-center text-slate-500">Loading deals...</div>
-            ) : customerDeals.length === 0 ? (
-              <div className="py-8 text-center text-slate-500">No deals found for this customer.</div>
-            ) : (
-              <div className="space-y-3">
-                {customerDeals.map(deal => (
-                  <div key={deal.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600 flex justify-between items-center">
-                    <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{deal.title}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        Created: {new Date(deal.created_at).toLocaleDateString()} • Close: {new Date(deal.expected_close_date).toLocaleDateString()}
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {segmentCustomers.map(customer => (
+                    <div key={customer.id} className="bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-600 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{customer.name}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{customer.company}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{customer.email}</div>
+                        </div>
+                        <span className={`px - 1.5 py - 0.5 text - [10px] font - semibold rounded - full flex - shrink - 0 ${statusColors[customer.status]} `}>{customer.status}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-1">
+                          <div className="w-12 bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div className="bg-success h-1.5 rounded-full" style={{ width: `${customer.health_score}% ` }}></div></div>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">{customer.health_score}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); setEmailingCustomer(customer); }} className="p-0.5 text-slate-400 hover:text-blue-600" title="Email">
+                            <EnvelopeIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); openTimeline(customer); }} className="p-0.5 text-slate-400 hover:text-indigo-600" title="Timeline">
+                            <ClockIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">€{deal.value.toLocaleString()}</div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${deal.status === 'Closed Won' ? 'bg-green-100 text-green-800' :
-                        deal.status === 'Closed Lost' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                        {deal.status}
-                      </span>
+                  ))}
+                  {segmentCustomers.length === 0 && (
+                    <div className="text-center text-xs text-slate-400 py-4">No customers in this segment</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )
+      }
+
+      {
+        dealForCustomer && (
+          <Modal title={`${t('deals.actions.createDeal')} • ${dealForCustomer.name} `} onClose={() => setDealForCustomer(null)}>
+            <div className="p-6 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.dealTitle')}</label>
+                  <input type="text" value={qDealTitle} onChange={(e) => setQDealTitle(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.valueEuro')}</label>
+                  <input type="number" min="0" value={qDealValue} onChange={(e) => setQDealValue(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.stage')}</label>
+                  <select value={qDealStage} onChange={(e) => setQDealStage(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600">
+                    {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.expectedCloseDate')}</label>
+                  <input type="datetime-local" value={qDealExpectedClose} onChange={(e) => setQDealExpectedClose(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')}</label>
+                  <input type="number" min="0" max="100" value={qDealProbability} onChange={(e) => setQDealProbability(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.notes')}</label>
+                  <textarea rows={2} value={qDealNotes} onChange={(e) => setQDealNotes(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600" />
+                </div>
+              </div>
+              <div className="text-right">
+                <button className="px-4 py-2 bg-primary text-white rounded-md" onClick={async () => {
+                  if (!user || !dealForCustomer) return;
+                  try {
+                    await createDeal({
+                      title: qDealTitle || `${dealForCustomer.name} • ${dealForCustomer.company || 'Deal'} `,
+                      value: Number(qDealValue) || 0,
+                      status: qDealStage,
+                      expected_close_date: new Date(qDealExpectedClose).toISOString(),
+                      probability: Number(qDealProbability) || 0,
+                      notes: qDealNotes || undefined,
+                      customer_id: dealForCustomer.id,
+                    }, user.id);
+                    toastContext?.showToast('Deal created.', 'success');
+                    setDealForCustomer(null);
+                  } catch (e) {
+                    toastContext?.showToast('Failed to create deal.', 'danger');
+                  }
+                }}>{t('deals.form.saveDeal')}</button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        isCreateModalOpen && (
+          <Modal title={t('customers.newCustomer')} onClose={() => setIsCreateModalOpen(false)}>
+            <CustomerForm onSave={handleCreateCustomer} onCancel={() => setIsCreateModalOpen(false)} />
+          </Modal>
+        )
+      }
+
+      {
+        editingCustomer && (
+          <Modal title={`${t('common.edit')} ${editingCustomer.name} `} onClose={() => setEditingCustomer(null)}>
+            <CustomerForm isEdit customer={editingCustomer} onSave={(payload) => handleUpdateCustomer(payload.customer as any)} onCancel={() => setEditingCustomer(null)} />
+          </Modal>
+        )
+      }
+
+      {
+        emailingCustomer && (
+          <EmailComposer
+            recipient={{ name: emailingCustomer.name, email: emailingCustomer.email }}
+            onClose={() => setEmailingCustomer(null)}
+            onSent={() => toastContext?.showToast(`Email sent to ${emailingCustomer.name} `, 'success')}
+          />
+        )
+      }
+
+      {
+        detailCustomer && (
+          <div className="fixed inset-0 z-40">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDetailCustomer(null)}></div>
+            <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-800 shadow-xl p-6 overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">{detailCustomer.name}</h3>
+                <button onClick={() => setDetailCustomer(null)} className="px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">{t('common.cancel')}</button>
+              </div>
+              <div className="flex items-center gap-2 mb-4">
+                <button onClick={() => setDetailTab('info')} className={`px - 3 py - 1.5 rounded - md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'} `}>Info</button>
+                <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>{t('customers.timeline.title')}</button>
+                <button onClick={() => setDetailTab('deals')} className={`px-3 py-1.5 rounded-md ${detailTab === 'deals' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Deals</button>
+                <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab === 'email' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
+              </div>
+              {detailTab === 'info' && (
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-slate-500">Email:</span> <span className="font-medium">{detailCustomer.email}</span></div>
+                  <div><span className="text-slate-500">Phone:</span> {detailCustomer.phone ? <a href={`tel:${detailCustomer.phone}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{detailCustomer.phone}</a> : <span className="font-medium">-</span>}</div>
+                  <div><span className="text-slate-500">Company:</span> <span className="font-medium">{detailCustomer.company}</span></div>
+                  <div><span className="text-slate-500">Country:</span> <span className="font-medium">{detailCustomer.country}</span></div>
+                  <div><span className="text-slate-500">Segment:</span> <span className="font-medium">{detailCustomer.segment}</span></div>
+                  <div><span className="text-slate-500">Status:</span> <span className="font-medium">{detailCustomer.status}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-slate-500">Health:</span> <div className="w-24 bg-gray-200 dark:bg-slate-600 rounded-full h-2.5"><div className="bg-success h-2.5 rounded-full" style={{ width: `${detailCustomer.health_score}% ` }}></div></div> <span className="font-semibold">{detailCustomer.health_score}</span></div>
+                </div>
+              )}
+              {detailTab === 'timeline' && (
+                <div className="space-y-4">
+                  {timelineLoading ? (
+                    <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
+                  ) : (
+                    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
+                      {timelineItems.map(item => (
+                        <li key={item.id} className="py-3">
+                          <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                          {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                          {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-3 p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-semibold">{t('header.aiAssistant')}</div>
+                      {aiLoading && <div className="text-xs text-slate-500">...</div>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-3 items-center">
+                      <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
+                        if (!timelineCustomer) return; setAiLoading(true); try { const text = await summarizeCustomer(timelineCustomer, timelineItems); setAiSummary(text); } finally { setAiLoading(false); }
+                      }}>{t('aiAssistant.summarizeCustomer')}</button>
+                      <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
+                        if (!timelineCustomer) return; setAiLoading(true); try { const email = await draftCustomerFollowUpEmail(timelineCustomer, timelineItems); setAiEmail(email); } finally { setAiLoading(false); }
+                      }}>{t('aiAssistant.draftFollowUpEmail')}</button>
+                      <button className="px-2 py-1 text-sm bg-primary text-white rounded" disabled={aiLoading} onClick={async () => {
+                        if (!timelineCustomer) return; setAiLoading(true); try { const tasks = await suggestCustomerTasks(timelineCustomer, timelineItems); setAiSuggested(tasks || []); } finally { setAiLoading(false); }
+                      }}>{t('aiAssistant.suggestTasks')}</button>
+                      <button className="ml-auto text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+                    </div>
+                    {aiSummary && (
+                      <div className="mb-3 text-sm whitespace-pre-wrap bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">{aiSummary}</div>
+                    )}
+                    {aiSuggested.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.suggestedTasks')}</div>
+                        <ul className="text-sm list-disc pl-5">
+                          {aiSuggested.map((s, idx) => (<li key={idx}>{s.type} • {s.title}{typeof s.dueDays === 'number' ? ` • in ${s.dueDays} d` : ''}</li>))}
+                        </ul>
+                        <button className="mt-2 px-2 py-1 text-sm bg-success text-white rounded" onClick={async () => {
+                          if (!timelineCustomer || !user) return;
+                          for (const s of aiSuggested) {
+                            const due = typeof s.dueDays === 'number' ? new Date(Date.now() + s.dueDays * 24 * 3600 * 1000).toISOString() : undefined;
+                            const map: Record<string, TaskType> = {
+                              'Follow Up Call': TaskType.FOLLOW_UP_CALL,
+                              'Send Information': TaskType.SEND_INFORMATION,
+                              'Send Samples': TaskType.SEND_SAMPLES,
+                              'Send Quotation': TaskType.SEND_QUOTATION,
+                              'Schedule Visit': TaskType.SCHEDULE_VISIT,
+                            } as any;
+                            const ttype = map[s.type] || TaskType.FOLLOW_UP_CALL;
+                            await createTask({ user_id: user.id, customer_id: timelineCustomer.id, type: ttype, status: TaskStatus.PENDING, title: s.title, due_date: due } as any);
+                          }
+                          toastContext?.showToast('Suggested tasks added.', 'success');
+                        }}>{t('aiAssistant.addSuggestedTasks')}</button>
+                      </div>
+                    )}
+                    {aiEmail && (
+                      <div className="mb-1 text-sm">
+                        <div className="text-xs text-slate-500 mb-1">{t('aiAssistant.draftEmail')}</div>
+                        <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600">
+                          <div className="font-medium">Asunto: {aiEmail.subject}</div>
+                          <pre className="whitespace-pre-wrap text-sm mt-1">{aiEmail.body}</pre>
+                        </div>
+                        <button className="mt-2 px-2 py-1 text-sm bg-slate-600 text-white rounded" onClick={() => { setDetailCustomer(timelineCustomer); setDetailTab('email'); setTimelineCustomer(null); setAiEmail(null); }}>{t('aiAssistant.openInEmailComposer')}</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
+                    <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                    <div className="text-right mt-2">
+                      <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('customers.timeline.save')}</button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-              <button
-                onClick={() => {
-                  // Pre-fill deal creation with this customer
-                  setDetailCustomer(null);
-                  // Logic to open deal modal would go here, or navigate to deals page
-                  // For now, we can just close the detail view or maybe trigger a create deal action if available
-                  // But the requirement was just to view history.
-                }}
-                className="w-full py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 text-sm"
-              >
-                View in Deals Pipeline
-              </button>
+                </div>
+              )}
+              {detailTab === 'deals' && (
+                <div className="space-y-4">
+                  {dealsLoading ? (
+                    <div className="py-8 text-center text-slate-500">Loading deals...</div>
+                  ) : customerDeals.length === 0 ? (
+                    <div className="py-8 text-center text-slate-500">No deals found for this customer.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {customerDeals.map(deal => (
+                        <div key={deal.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{deal.title}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              Created: {new Date(deal.created_at).toLocaleDateString()} • Close: {new Date(deal.expected_close_date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100">€{deal.value.toLocaleString()}</div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${deal.status === 'Closed Won' ? 'bg-green-100 text-green-800' :
+                              deal.status === 'Closed Lost' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                              {deal.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={() => {
+                        // Pre-fill deal creation with this customer
+                        setDetailCustomer(null);
+                        // Logic to open deal modal would go here, or navigate to deals page
+                        // For now, we can just close the detail view or maybe trigger a create deal action if available
+                        // But the requirement was just to view history.
+                      }}
+                      className="w-full py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 text-sm"
+                    >
+                      View in Deals Pipeline
+                    </button>
+                  </div>
+                </div>
+              )}
+              {detailTab === 'email' && (
+                <EmailComposer recipient={{ name: detailCustomer.name, email: detailCustomer.email }} onClose={() => setDetailTab('timeline')} onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name} `, 'success'); setDetailTab('timeline'); }} />
+              )}
             </div>
           </div>
-        )}
-        {detailTab === 'email' && (
-          <EmailComposer recipient={{ name: detailCustomer.name, email: detailCustomer.email }} onClose={() => setDetailTab('timeline')} onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name} `, 'success'); setDetailTab('timeline'); }} />
-        )}
-      </div>
-    </div>
-  )
-}
+        )
+      }
 
-{
-  timelineCustomer && (
-    <Modal title={`${t('customers.timeline.title')} • ${timelineCustomer.name} `} onClose={() => setTimelineCustomer(null)}>
-      <div className="p-6 space-y-4">
-        {timelineLoading ? (
-          <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
-        ) : (
-          <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-            {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
-            {timelineItems.map(item => (
-              <li key={item.id} className="py-3">
-                <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
-                {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
-                {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
-                {item.attachments && item.attachments.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {item.attachments.map((att, idx) => (
-                      <a key={idx} href={att.base64 ? `data:${att.content_type}; base64, ${att.base64} ` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
-                        {att.filename}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
-          <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
-          <div className="text-right mt-2">
-            <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('customers.timeline.save')}</button>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  )
-}
+      {
+        timelineCustomer && (
+          <Modal title={`${t('customers.timeline.title')} • ${timelineCustomer.name} `} onClose={() => setTimelineCustomer(null)}>
+            <div className="p-6 space-y-4">
+              {timelineLoading ? (
+                <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
+              ) : (
+                <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
+                  {timelineItems.map(item => (
+                    <li key={item.id} className="py-3">
+                      <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                      {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                      {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                      {item.attachments && item.attachments.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {item.attachments.map((att, idx) => (
+                            <a key={idx} href={att.base64 ? `data:${att.content_type}; base64, ${att.base64} ` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
+                              {att.filename}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
+                <textarea value={timelineNote} onChange={e => setTimelineNote(e.target.value)} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                <div className="text-right mt-2">
+                  <button disabled={timelineSaving} onClick={addTimelineNote} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('customers.timeline.save')}</button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
 
-{
-  confirmDelete && (
-    <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
-      <div className="p-6">
-        <p>{t('customers.deleteConfirm').replace('{count}', selectedCustomers.length.toString())}</p>
-        <div className="mt-6 flex justify-end gap-4">
-          <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
-          <button onClick={handleDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
+      {
+        confirmDelete && (
+          <Modal title={t('common.confirmDeletion')} onClose={() => setConfirmDelete(false)}>
+            <div className="p-6">
+              <p>{t('customers.deleteConfirm').replace('{count}', selectedCustomers.length.toString())}</p>
+              <div className="mt-6 flex justify-end gap-4">
+                <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">{t('common.cancel')}</button>
+                <button onClick={handleDelete} className="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger-hover">{t('common.delete')}</button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
 
-{
-  isImportModalOpen && (
-    <ImportModal
-      title="Import Customers from CSV"
-      requiredHeaders={['name', 'email']}
-      optionalHeaders={['id', 'company', 'phone', 'country', 'segment', 'status', 'health_score', 'user_id']}
-      onClose={() => setIsImportModalOpen(false)}
-      onImport={handleImport}
-    />
-  )
-}
+      {
+        isImportModalOpen && (
+          <ImportModal
+            title="Import Customers from CSV"
+            requiredHeaders={['name', 'email']}
+            optionalHeaders={['id', 'company', 'phone', 'country', 'segment', 'status', 'health_score', 'user_id']}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={handleImport}
+          />
+        )
+      }
 
-<QuickDealModal
-  isOpen={dealModalOpen}
-  onClose={() => {
-    setDealModalOpen(false);
-    setSelectedEntityForDeal(null);
-  }}
-  onSave={handleSaveDeal}
-  customer={selectedEntityForDeal || undefined}
-/>
+      <QuickDealModal
+        isOpen={dealModalOpen}
+        onClose={() => {
+          setDealModalOpen(false);
+          setSelectedEntityForDeal(null);
+        }}
+        onSave={handleSaveDeal}
+        customer={selectedEntityForDeal || undefined}
+      />
     </div >
   );
 }

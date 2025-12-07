@@ -378,7 +378,6 @@ function Leads() {
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const toastContext = useContext(ToastContext);
   const { t } = useTranslation();
   const { user } = useAuth();
