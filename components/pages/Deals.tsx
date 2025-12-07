@@ -45,14 +45,16 @@ type NewDealInput = {
 };
 
 const DealForm = ({
-  deal, customers, leads = [], onSave, onCancel, isEdit = false
+  deal, customers, leads = [], onSave, onCancel, isEdit = false, initialCustomerId, initialLeadId
 }: {
   deal?: Deal | null,
   customers: Customer[],
   leads?: Lead[],
   onSave: (data: NewDealInput) => void,
   onCancel: () => void,
-  isEdit?: boolean
+  isEdit?: boolean,
+  initialCustomerId?: number,
+  initialLeadId?: number
 }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<NewDealInput>(deal ? {
@@ -66,8 +68,8 @@ const DealForm = ({
     notes: deal.notes,
   } : {
     title: '',
-    customer_id: customers[0]?.id || 0,
-    lead_id: undefined,
+    customer_id: initialCustomerId || customers[0]?.id || 0,
+    lead_id: initialLeadId,
     value: 0,
     status: DealStage.QUALIFICATION,
     probability: 10,
@@ -75,7 +77,11 @@ const DealForm = ({
     notes: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [association, setAssociation] = useState<'customer' | 'lead'>(() => (deal?.lead_id ? 'lead' : 'customer'));
+  const [association, setAssociation] = useState<'customer' | 'lead'>(() => {
+    if (deal) return deal.lead_id ? 'lead' : 'customer';
+    if (initialLeadId) return 'lead';
+    return 'customer';
+  });
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -106,7 +112,13 @@ const DealForm = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      onSave(formData);
+      const cleanData = { ...formData };
+      if (association === 'customer') {
+        cleanData.lead_id = undefined;
+      } else {
+        cleanData.customer_id = undefined;
+      }
+      onSave(cleanData);
     }
   };
 
@@ -532,7 +544,14 @@ function Deals() {
 
       {isCreateModalOpen && (
         <Modal title={t('deals.form.createTitle')} onClose={() => setIsCreateModalOpen(false)}>
-          <DealForm customers={customers} leads={leads} onSave={handleCreateDeal} onCancel={() => setIsCreateModalOpen(false)} />
+          <DealForm
+            customers={customers}
+            leads={leads}
+            onSave={handleCreateDeal}
+            onCancel={() => setIsCreateModalOpen(false)}
+            initialCustomerId={searchParams.get('customer_id') ? parseInt(searchParams.get('customer_id')!) : undefined}
+            initialLeadId={searchParams.get('lead_id') ? parseInt(searchParams.get('lead_id')!) : undefined}
+          />
         </Modal>
       )}
 
