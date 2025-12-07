@@ -267,14 +267,14 @@ function Deals() {
 
   // Auto-open create modal if create=true parameter is present
   useEffect(() => {
-    if (searchParams.get('create') === 'true' && !isCreateModalOpen) {
+    const shouldCreate = searchParams.get('create') === 'true';
+    console.log('Deals page loaded, create param:', shouldCreate, 'modal open:', isCreateModalOpen);
+
+    if (shouldCreate && !isCreateModalOpen) {
+      console.log('Opening create modal automatically');
       setIsCreateModalOpen(true);
-      // Clean up URL parameter
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('create');
-      navigate(`/deals?${newParams.toString()}`, { replace: true });
     }
-  }, [searchParams, isCreateModalOpen, navigate]);
+  }, [searchParams]);
 
 
   const getCustomerName = useCallback((customerId: number) => {
