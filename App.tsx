@@ -1,7 +1,7 @@
 
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import AIChatPanel from './components/common/AIChatPanel';
@@ -28,11 +28,64 @@ import { ChatProvider, useChat } from './contexts/ChatContext';
 import { TeamProvider } from './contexts/TeamContext';
 import IncomingCallModal from './components/common/IncomingCallModal';
 
+import { getNavItems } from './components/layout/navigationConfig';
+
+// Main Layout Component to handle Router context and Global Swipes
+const MainLayout = () => {
+  const { user } = useAuth();
+  const { isOpen: isChatPanelOpen, openChat, closeChat } = useChat();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const swipeHandlers = useSwipe({
+    onSwipedRight: () => {
+      setIsSidebarOpen(true);
+    },
+    onSwipedLeft: () => {
+      if (!user) return;
+      const navItems = getNavItems(user.role);
+      const currentIndex = navItems.findIndex(item => item.to === location.pathname);
+
+      if (currentIndex !== -1 && currentIndex < navItems.length - 1) {
+        const nextItem = navItems[currentIndex + 1];
+        navigate(nextItem.to);
+      }
+    }
+  });
+
+  return (
+    <div className="flex h-screen bg-slate-100 dark:bg-dark text-slate-800 dark:text-slate-200">
+      {/* Sidebar handles its own close swipe */}
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+
+      {/* Main Content Area with Global Swipe Detection */}
+      <div
+        className="flex-1 flex flex-col w-full"
+        {...swipeHandlers}
+      >
+        <Header
+          onChatToggle={() => isChatPanelOpen ? closeChat() : openChat()}
+          onSidebarToggle={() => setIsSidebarOpen(prev => !prev)}
+        />
+        {/* Lightweight scheduler to run due reports every ~60s (Admin only, gated) */}
+        {user?.role === 'Admin' && ((import.meta as any).env?.VITE_ENABLE_SCHEDULER === 'true') && (
+          <SchedulerTicker />
+        )}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
+          <AppRoutes />
+        </main>
+      </div>
+      {isChatPanelOpen && <AIChatPanel onClose={closeChat} />}
+      <AINudgeTray />
+      <IncomingCallModal />
+    </div>
+  );
+};
+
 function AppContent() {
   const { user, loading } = useAuth();
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const { isOpen: isChatPanelOpen, openChat, closeChat } = useChat();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDbInitialized, setIsDbInitialized] = useState(false);
 
   useEffect(() => {
@@ -75,29 +128,13 @@ function AppContent() {
     return () => { if (id) window.clearInterval(id); };
   }, [isDbInitialized, loading, user]);
 
-  // Swipe to open sidebar (only from left edge)
-  const swipeHandlers = useSwipe({
-    onSwipedRight: () => {
-      // Only open if swipe started near the left edge (e.g., < 30px)
-      // Note: useSwipe hook provides coordinates in onTouchStart, but we need to access them here.
-      // Since our simple hook doesn't expose start coords in the callback, we'll rely on a small modification or
-      // just check if we can access the event. 
-      // Actually, let's just allow it for now or rely on the hook's logic.
-      // To properly implement edge detection, we might need to check the start position.
-      // For now, let's assume the user wants to open it easily. 
-      // But to avoid conflict with horizontal scrolling, let's wrap the edge area.
-      setIsSidebarOpen(true);
-    }
-  });
-
-  // We need a specific edge detection zone because swiping right in the middle of the screen
-  // might be for other purposes (like Kanban).
-  // So we will NOT attach swipeHandlers to the main div globally.
-  // Instead, we'll add a invisible div on the left edge.
-
-  const showToast = useCallback((message: string, type: 'success' | 'danger' | 'warning' | 'info', action?: { label?: string; onClick: () => void }) => {
-    setToast({ message, type, action });
-    setTimeout(() => setToast(null), 5000);
+  const showToast = useMemo(() => {
+    // Simple wrapper to avoid passing state setter directly down context if not needed, 
+    // but here we just need a memoized showToast function
+    return (message: string, type: 'success' | 'danger' | 'warning' | 'info', action?: { label?: string; onClick: () => void }) => {
+      setToast({ message, type, action });
+      setTimeout(() => setToast(null), 5000);
+    };
   }, []);
 
   const toastContextValue = useMemo(() => ({ showToast }), [showToast]);
@@ -123,31 +160,7 @@ function AppContent() {
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           ) : (
-            <div className="flex h-screen bg-slate-100 dark:bg-dark text-slate-800 dark:text-slate-200">
-              {/* Edge swipe zone for mobile */}
-              <div
-                {...swipeHandlers}
-                className="fixed top-0 left-0 bottom-0 w-8 z-30 lg:hidden"
-                style={{ touchAction: 'none' }} // Prevent browser back navigation if possible, though hard on iOS
-              />
-              <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-              <div className="flex-1 flex flex-col w-full">
-                <Header
-                  onChatToggle={() => isChatPanelOpen ? closeChat() : openChat()}
-                  onSidebarToggle={() => setIsSidebarOpen(prev => !prev)}
-                />
-                {/* Lightweight scheduler to run due reports every ~60s (Admin only, gated) */}
-                {user.role === 'Admin' && ((import.meta as any).env?.VITE_ENABLE_SCHEDULER === 'true') && (
-                  <SchedulerTicker />
-                )}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
-                  <AppRoutes />
-                </main>
-              </div>
-              {isChatPanelOpen && <AIChatPanel onClose={closeChat} />}
-              <AINudgeTray />
-              <IncomingCallModal />
-            </div>
+            <MainLayout />
           )}
         </TeamProvider>
         {toast && <Toast message={toast.message} type={toast.type} action={toast.action} onClose={() => setToast(null)} />}

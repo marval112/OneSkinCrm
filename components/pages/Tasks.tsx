@@ -195,6 +195,96 @@ function Tasks() {
     }
   };
 
+  const renderTaskCard = (task: Task) => {
+    const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
+    return (
+      <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 flex flex-col gap-3">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+              {task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
+                task.type === 'Send Information' ? t('tasks.types.sendInformation') :
+                  task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
+                    task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
+                      t('tasks.types.scheduleVisit')}
+            </span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{task.title || t('tasks.ui.noTitle')}</span>
+          </div>
+          {task.due_date && (
+            <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${badge}`}>
+              {new Date(task.due_date).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+
+        {/* Association */}
+        <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
+          {renderLeadCustomer(task) || t('tasks.ui.noAssociation')}
+        </div>
+
+        {/* Auto Rule Badge */}
+        {task.rule_title && (
+          <div className="text-xs text-slate-500 italic bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded w-fit">
+            🤖 {task.rule_title}
+          </div>
+        )}
+
+        {/* Timer & Actions row */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-600 mt-1">
+          {/* Timer Section */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleToggleTimer(task)}
+              className={`p-1.5 rounded-full transition-colors ${task.timer_start ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-green-100 hover:text-green-600'}`}
+              title={task.timer_start ? 'Stop timer' : 'Start timer'}
+            >
+              {task.timer_start ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+            <span className={`text-xs font-mono font-medium ${task.timer_start ? 'text-green-600 animate-pulse' : 'text-slate-500'}`}>
+              {formatDuration(getTaskDuration(task))}
+            </span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <button onClick={() => openEdit(task)} className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600 rounded">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            </button>
+            <button
+              onClick={async () => { if (!user) return; const payload: any = { user_id: user.id, lead_id: task.lead_id, customer_id: task.customer_id, type: task.type, status: TaskStatus.PENDING, title: task.title, notes: task.notes, due_date: task.due_date, rule_title: 'Cloned manually' }; await createTask(payload); refresh(); }}
+              className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600 rounded"
+              title="Clone"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 01-2-2V5" /></svg>
+            </button>
+            <button onClick={async () => { await deleteTask(task.id); refresh(); }} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+
+            {task.status !== 'Completed' ? (
+              <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-3 py-1 bg-success text-white text-xs font-medium rounded shadow-sm hover:shadow active:scale-95 transition-all ml-1">
+                {t('tasks.ui.complete')}
+              </button>
+            ) : (
+              <span className="px-3 py-1 text-green-700 bg-green-100 text-xs font-medium rounded border border-green-200">
+                {t('tasks.ui.completed')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!user) return null;
 
   return (
@@ -242,108 +332,129 @@ function Tasks() {
             return (
               <div key={type}>
                 <h4 className="text-sm font-semibold mb-2">{type}</h4>
-                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                    {items.map(task => {
-                      const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
-                      return (
-                        <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <td className="px-6 py-3 text-xs w-2/3">{task.title || type} {task.lead_id || task.customer_id ? `• ${renderLeadCustomer(task)}` : ''}</td>
-                          <td className="px-6 py-3 text-xs w-1/3 text-right">{task.due_date ? (<span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>) : '-'}</td>
-                          <td className="px-6 py-3 text-right text-xs">
-                            {task.status !== 'Completed' ? (
-                              <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-2 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
-                            ) : (
-                              <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                      {items.map(task => {
+                        const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
+                        return (
+                          <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="px-6 py-3 text-xs w-2/3">{task.title || type} {task.lead_id || task.customer_id ? `• ${renderLeadCustomer(task)}` : ''}</td>
+                            <td className="px-6 py-3 text-xs w-1/3 text-right">{task.due_date ? (<span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>) : '-'}</td>
+                            <td className="px-6 py-3 text-right text-xs">
+                              {task.status !== 'Completed' ? (
+                                <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-2 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
+                              ) : (
+                                <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {items.map(task => renderTaskCard(task))}
+                </div>
               </div>
             )
           })}
         </div>
       ) : (
-        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead className="bg-slate-50 dark:bg-slate-700/50">
-            <tr>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.type')}</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
-              <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-            {filtered.length === 0 && (
-              <tr><td className="px-3 py-2 text-slate-500" colSpan={4}>{t('tasks.ui.noTasks')}</td></tr>
-            )}
-            {filtered.map(task => {
-              const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
-              return (
-                <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="px-3 py-2 text-xs">
-                    {
-                      task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
-                        task.type === 'Send Information' ? t('tasks.types.sendInformation') :
-                          task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
-                            task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
-                              t('tasks.types.scheduleVisit')
-                    }
-                    {task.rule_title && (
-                      <div className="text-xs text-slate-500 mt-0.5">{task.rule_title}</div>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs">{task.title || '-'}</td>
-                  <td className="px-3 py-2 text-xs">{renderLeadCustomer(task)}</td>
-                  <td className="px-3 py-2 text-xs">
-                    {task.due_date ? (
-                      <span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>
-                    ) : '-'}
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggleTimer(task)}
-                        className={`p-1.5 rounded-md ${task.timer_start ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
-                        title={task.timer_start ? 'Stop timer' : 'Start timer'}
-                      >
-                        {task.timer_start ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </button>
-                      <span className={`text-xs font-mono ${task.timer_start ? 'text-green-600 font-semibold' : 'text-slate-600'}`}>
-                        {formatDuration(getTaskDuration(task))}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-right text-xs">
-                    <div className="flex gap-2 justify-end items-center">
-                      {task.status !== 'Completed' ? (
-                        <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-2 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
-                      ) : (
-                        <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
-                      )}
-                      <button onClick={() => openEdit(task)} className="px-2 py-1 border rounded-md">Edit</button>
-                      <button onClick={async () => { if (!user) return; const payload: any = { user_id: user.id, lead_id: task.lead_id, customer_id: task.customer_id, type: task.type, status: TaskStatus.PENDING, title: task.title, notes: task.notes, due_date: task.due_date, rule_title: 'Cloned manually' }; await createTask(payload); refresh(); }} className="px-2 py-1 border rounded-md">Clone</button>
-                      <button onClick={async () => { await deleteTask(task.id); refresh(); }} className="px-2 py-1 border rounded-md text-danger">Delete</button>
-                    </div>
-                  </td>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-700/50">
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.type')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                {filtered.length === 0 && (
+                  <tr><td className="px-3 py-2 text-slate-500" colSpan={6}>{t('tasks.ui.noTasks')}</td></tr>
+                )}
+                {filtered.map(task => {
+                  const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
+                  return (
+                    <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="px-3 py-2 text-xs">
+                        {
+                          task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :
+                            task.type === 'Send Information' ? t('tasks.types.sendInformation') :
+                              task.type === 'Send Samples' ? t('tasks.types.sendSamples') :
+                                task.type === 'Send Quotation' ? t('tasks.types.sendQuotation') :
+                                  t('tasks.types.scheduleVisit')
+                        }
+                        {task.rule_title && (
+                          <div className="text-xs text-slate-500 mt-0.5">{task.rule_title}</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs">{task.title || '-'}</td>
+                      <td className="px-3 py-2 text-xs">{renderLeadCustomer(task)}</td>
+                      <td className="px-3 py-2 text-xs">
+                        {task.due_date ? (
+                          <span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>
+                        ) : '-'}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleTimer(task)}
+                            className={`p-1.5 rounded-md ${task.timer_start ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                            title={task.timer_start ? 'Stop timer' : 'Start timer'}
+                          >
+                            {task.timer_start ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={`text-xs font-mono ${task.timer_start ? 'text-green-600 font-semibold' : 'text-slate-600'}`}>
+                            {formatDuration(getTaskDuration(task))}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right text-xs">
+                        <div className="flex gap-2 justify-end items-center">
+                          {task.status !== 'Completed' ? (
+                            <button onClick={async () => { await completeTask(task.id); refresh(); }} className="px-2 py-1 bg-success text-white rounded-md">{t('tasks.ui.complete')}</button>
+                          ) : (
+                            <span className="px-2 py-1 text-green-700 bg-green-100 rounded-md">{t('tasks.ui.completed')}</span>
+                          )}
+                          <button onClick={() => openEdit(task)} className="px-2 py-1 border rounded-md">Edit</button>
+                          <button onClick={async () => { if (!user) return; const payload: any = { user_id: user.id, lead_id: task.lead_id, customer_id: task.customer_id, type: task.type, status: TaskStatus.PENDING, title: task.title, notes: task.notes, due_date: task.due_date, rule_title: 'Cloned manually' }; await createTask(payload); refresh(); }} className="px-2 py-1 border rounded-md">Clone</button>
+                          <button onClick={async () => { await deleteTask(task.id); refresh(); }} className="px-2 py-1 border rounded-md text-danger">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {filtered.length === 0 && (
+              <div className="text-center text-slate-500 py-4 text-sm">{t('tasks.ui.noTasks')}</div>
+            )}
+            {filtered.map(task => renderTaskCard(task))}
+          </div>
+        </>
       )}
       {/* Controls row */}
       <div className="mt-4 flex items-center gap-2">
