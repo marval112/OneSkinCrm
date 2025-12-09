@@ -396,6 +396,57 @@ function Deals() {
     toastContext?.showToast(t('deals.exportSuccess'), 'success');
   };
 
+  const renderDealCard = (deal: Deal & { partyName?: string }) => {
+    return (
+      <div key={deal.id} className="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600">
+        <div className="flex justify-between items-start mb-2">
+          <div
+            className="font-semibold text-primary cursor-pointer hover:underline"
+            onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}
+          >
+            {deal.title}
+          </div>
+          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${stageColors[deal.status]}`}>
+            {deal.status}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-end mb-3">
+          <div className="text-sm">
+            <div className="text-slate-900 dark:text-white font-bold text-lg">€{(deal.value || 0).toLocaleString()}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Prob: {deal.probability}%</div>
+          </div>
+          <div className="text-right text-xs">
+            <div className="text-slate-600 dark:text-slate-300 font-medium">{(deal as any).partyName || '—'}</div>
+            <div className="text-slate-400">{deal.expected_close_date}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-600 gap-2">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }}
+              className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded dark:bg-slate-600 dark:text-slate-200"
+            >
+              <ClockIcon className="h-3 w-3" /> Timeline
+            </button>
+            {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+              <button
+                onClick={() => setEditingDeal(deal as Deal)}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded"
+              >
+                <EditIcon className="h-3 w-3" /> Edit
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
@@ -495,51 +546,61 @@ function Deals() {
         />
       ) : (
         /* Table View */
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => requestSort('title')} className="flex items-center">Deal Title {getSortIcon('title')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
-                  <button onClick={() => requestSort('partyName')} className="flex items-center">Contact {getSortIcon('partyName')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
-                  <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
-                </th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
-                <tr key={deal.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-600">{(deal as any).partyName || ''}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
-                  <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-600">{deal.probability}%</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
-                    {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
-                      <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
-                    )}
-                  </td>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-3"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" onChange={handleSelectAll} checked={selectedDeals.length > 0 && selectedDeals.length === processedDeals.length} /></th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <button onClick={() => requestSort('title')} className="flex items-center">Deal Title {getSortIcon('title')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
+                    <button onClick={() => requestSort('partyName')} className="flex items-center">Contact {getSortIcon('partyName')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
+                    <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
+                  <tr key={deal.id} className="hover:bg-slate-50">
+                    <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-600">{(deal as any).partyName || ''}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-600">{deal.probability}%</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
+                      {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+                        <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {loading && <div className="text-center py-4">Loading...</div>}
+            {!loading && processedDeals.length === 0 && <div className="text-center text-slate-500 py-4">No deals found.</div>}
+            {!loading && processedDeals.map(deal => renderDealCard(deal))}
+          </div>
+        </>
       )}
 
       {isCreateModalOpen && (

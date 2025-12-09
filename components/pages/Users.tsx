@@ -157,7 +157,8 @@ function Users() {
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                         <tr>
@@ -195,6 +196,44 @@ function Users() {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                {loading ? <div className="text-center py-4">Loading...</div> : users.map(user => (
+                    <div key={user.id} className="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 flex flex-col gap-3">
+                        <div className="flex justify-between items-start">
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{user.email}</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">Code: {user.seller_code || 'N/A'}</span>
+                            </div>
+                            <span className={`px-2 py-0.5 inline-flex text-[10px] font-bold uppercase leading-4 rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-800'}`}>
+                                {user.role}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-600">
+                            <input type="checkbox" className="h-5 w-5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setEditingUser(user)}
+                                    className="px-3 py-1.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-600 hover:bg-slate-50"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setCloneInitial({ email: '', role: user.role, seller_code: '' });
+                                        setIsModalOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-medium rounded border border-slate-200 dark:border-slate-500 bg-white dark:bg-slate-600 hover:bg-slate-50"
+                                >
+                                    Clone
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {isModalOpen && (

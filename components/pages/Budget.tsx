@@ -165,7 +165,8 @@ export default function Budget() {
         )
       }
 
-      <div className="overflow-x-auto">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
@@ -194,7 +195,7 @@ export default function Budget() {
                     <input
                       type="number"
                       min="0"
-                      className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
+                      className="w-32 px-2 py-1 text-xs border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
                       defaultValue={Number(r.budget2026 || 0)}
                       onBlur={(e) => handleSave(r.id, 2026, e.target.value)}
                     />
@@ -206,7 +207,7 @@ export default function Budget() {
                     <input
                       type="number"
                       min="0"
-                      className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
+                      className="w-32 px-2 py-1 text-xs border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
                       defaultValue={Number(r.budget2027 || 0)}
                       onBlur={(e) => handleSave(r.id, 2027, e.target.value)}
                     />
@@ -218,7 +219,7 @@ export default function Budget() {
                     <input
                       type="number"
                       min="0"
-                      className="w-32 px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
+                      className="w-32 px-2 py-1 text-xs border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600"
                       defaultValue={Number(r.budget2028 || 0)}
                       onBlur={(e) => handleSave(r.id, 2028, e.target.value)}
                     />
@@ -246,6 +247,79 @@ export default function Budget() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {loading ? (
+          <div className="text-center py-4">Loading...</div>
+        ) : filteredRows.map(r => (
+          <div key={r.id} className="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-3 border-b border-slate-100 dark:border-slate-600 pb-2">
+              <div>
+                <div className="text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={() => navigate('/customers')}>{r.name}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">{r.company}{r.country ? `, ${r.country}` : ''}</div>
+              </div>
+              <div className="text-xs text-slate-400">{r.email}</div>
+            </div>
+
+            {/* Budget Inputs */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div>
+                <label className="block text-[10px] text-slate-500 uppercase mb-1">Budget 2026</label>
+                <input
+                  type="number"
+                  className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-md dark:bg-slate-600 dark:border-slate-500"
+                  defaultValue={Number(r.budget2026 || 0)}
+                  onBlur={(e) => handleSave(r.id, 2026, e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 uppercase mb-1">Budget 2027</label>
+                <input
+                  type="number"
+                  className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-md dark:bg-slate-600 dark:border-slate-500"
+                  defaultValue={Number(r.budget2027 || 0)}
+                  onBlur={(e) => handleSave(r.id, 2027, e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 uppercase mb-1">Budget 2028</label>
+                <input
+                  type="number"
+                  className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-md dark:bg-slate-600 dark:border-slate-500"
+                  defaultValue={Number(r.budget2028 || 0)}
+                  onBlur={(e) => handleSave(r.id, 2028, e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Stats Footer */}
+            <div className="flex justify-between items-center text-xs pt-2 bg-slate-50 dark:bg-slate-800 -mx-4 -mb-4 px-4 py-3 rounded-b-lg border-t border-slate-100 dark:border-slate-600">
+              <div>
+                <span className="text-slate-500 block">Closed Won</span>
+                <span className="font-medium">{formatEuro(Number(r.achieved2026 || 0))}</span>
+              </div>
+              <div className="text-center">
+                <span className="text-slate-500 block">Delta</span>
+                {(() => {
+                  const delta = (Number(r.budget2026 || 0)) - (Number(r.achieved2026 || 0));
+                  return <span className={`font-semibold ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatEuro(delta)}</span>;
+                })()}
+              </div>
+              <div className="text-right">
+                <span className="text-slate-500 block">% Won</span>
+                {(() => {
+                  const budget = Number(r.budget2026 || 0);
+                  const achieved = Number(r.achieved2026 || 0);
+                  const pct = budget > 0 ? Math.round((achieved / budget) * 100) : 0;
+                  return <span className="font-semibold">{pct}%</span>;
+                })()}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div >
   );
