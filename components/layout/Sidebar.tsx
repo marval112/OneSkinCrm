@@ -236,19 +236,104 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <SidebarContent />
       </aside>
 
-      {/* Sidebar for Mobile (Drawer) */}
-      <div className={`fixed inset-0 z-40 flex ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:hidden`}>
+      {/* Mobile Full Screen Grid (App Launcher Style) */}
+      <div className={`fixed inset-0 z-50 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:hidden`}>
         <div
-          {...swipeHandlers}
-          className="w-64 h-full text-white shadow-lg flex flex-col"
+          className="w-full h-full flex flex-col"
           style={{
             background: `linear-gradient(180deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 85%, black) 100%)`
           }}
         >
-          <SidebarContent />
+          {/* Mobile Header */}
+          <div className="flex justify-between items-center p-4 border-b border-white/20">
+            <div className="flex items-center gap-2">
+              <img src={sidebarLogoUrl} alt={brandName} className="h-8 object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo_white.png'; }} />
+              <span className="text-lg font-bold text-white">{brandName}</span>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white p-2">
+              <XMarkIcon className="h-8 w-8" />
+            </button>
+          </div>
+
+          {/* Mobile Grid Content */}
+          <div className="flex-1 overflow-y-auto p-6" style={{ touchAction: 'pan-y' }}>
+            <div className="grid grid-cols-3 gap-6">
+              {/* Standard Navigation Items */}
+              {getNavItems(user?.role).map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center justify-center gap-3 p-2 rounded-xl transition-all aspect-square ${isActive ? 'bg-white/20 shadow-lg' : 'hover:bg-white/10'}`
+                  }
+                >
+                  <div className="text-white [&>svg]:w-8 [&>svg]:h-8">
+                    {React.cloneElement(item.icon as React.ReactElement, { className: 'w-8 h-8' })}
+                  </div>
+                  <span className="text-xs font-medium text-white text-center leading-tight">
+                    {t(item.labelKey)}
+                  </span>
+                  {/* Badges for Mobile Grid */}
+                  {item.to === '/tasks' && (pendingCount > 0 || overdueCount > 0 || todayCount > 0) && (
+                    <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white/10" />
+                  )}
+                </NavLink>
+              ))}
+
+              {/* Settings (Admin) */}
+              {user?.role === 'Admin' && (
+                <NavLink
+                  to="/settings"
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center justify-center gap-3 p-2 rounded-xl transition-all aspect-square ${isActive ? 'bg-white/20 shadow-lg' : 'hover:bg-white/10'}`
+                  }
+                >
+                  <div className="text-white">
+                    <PaintBrushIcon className="w-8 h-8" />
+                  </div>
+                  <span className="text-xs font-medium text-white text-center leading-tight">{t('sidebar.settings')}</span>
+                </NavLink>
+              )}
+
+              {/* Language Toggle (Cycles) */}
+              <button
+                onClick={() => {
+                  const nextLang = language === 'en' ? 'es' : language === 'es' ? 'pt' : 'en';
+                  setLanguage(nextLang);
+                }}
+                className="flex flex-col items-center justify-center gap-3 p-2 rounded-xl hover:bg-white/10 aspect-square"
+              >
+                <div className="text-white">
+                  <GlobeAltIcon className="w-8 h-8" />
+                </div>
+                <span className="text-xs font-medium text-white text-center leading-tight uppercase">{language}</span>
+              </button>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={() => { toggleThemeMode(); setCurrentMode(getThemeMode()); }}
+                className="flex flex-col items-center justify-center gap-3 p-2 rounded-xl hover:bg-white/10 aspect-square"
+              >
+                <div className="text-white">
+                  {currentMode === 'dark' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                      <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                      <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-xs font-medium text-white text-center leading-tight">{currentMode === 'dark' ? 'Light' : 'Dark'}</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex-1 bg-black bg-opacity-50" onClick={() => setIsOpen(false)}></div>
       </div>
+
     </>
   );
 }
