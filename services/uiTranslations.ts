@@ -131,6 +131,7 @@ export const uiTranslations = {
       newLead: "New Lead",
       editLead: "Edit Lead",
       createDeal: "Create associated Deal",
+      allSources: "All Sources",
       searchPlaceholder: "Search leads...",
       exportExcel: "Export Excel",
       importExcel: "Import Excel",
@@ -140,7 +141,9 @@ export const uiTranslations = {
       updateSuccess: "Lead updated successfully!",
       updateFailure: "Failed to update lead.",
       createSuccess: "New lead created successfully!",
+
       createFailure: "Failed to create lead.",
+      duplicateError: "A lead with this email already exists.",
       exportSuccess: "Leads exported to Excel.",
       timeline: {
         title: "Timeline",
@@ -212,7 +215,9 @@ export const uiTranslations = {
       updateSuccess: "Customer updated successfully!",
       updateFailure: "Failed to update customer.",
       createSuccess: "New customer created successfully!",
+
       createFailure: "Failed to create customer.",
+      duplicateError: "A customer with this email already exists.",
       exportExcel: "Export Excel",
       importExcel: "Import Excel",
       importSuccess: "Successfully imported {count} customers.",
@@ -403,6 +408,7 @@ export const uiTranslations = {
       newLead: "Nuevo Lead",
       editLead: "Editar Lead",
       createDeal: "Crear oportunidad asociada",
+      allSources: "Todas las fuentes",
       searchPlaceholder: "Buscar leads...",
       exportExcel: "Exportar Excel",
       importExcel: "Importar Excel",
@@ -412,7 +418,9 @@ export const uiTranslations = {
       updateSuccess: "Lead actualizado correctamente.",
       updateFailure: "Fallo al actualizar el lead.",
       createSuccess: "Nuevo lead creado correctamente.",
+
       createFailure: "Fallo al crear el lead.",
+      duplicateError: "Ya existe un lead con este email.",
       exportSuccess: "Leads exportados a Excel.",
       timeline: {
         title: "Timeline",
@@ -484,7 +492,9 @@ export const uiTranslations = {
       updateSuccess: "Cliente actualizado correctamente.",
       updateFailure: "Fallo al actualizar el cliente.",
       createSuccess: "Nuevo cliente creado correctamente.",
+
       createFailure: "Fallo al crear el cliente.",
+      duplicateError: "Ya existe un cliente con este email.",
       exportExcel: "Exportar Excel",
       importExcel: "Importar Excel",
       importSuccess: "{count} clientes importados correctamente.",
@@ -675,6 +685,7 @@ export const uiTranslations = {
       newLead: "Novo Lead",
       editLead: "Editar Lead",
       createDeal: "Criar negócio associado",
+      allSources: "Todas as fontes",
       searchPlaceholder: "Buscar leads...",
       exportExcel: "Exportar Excel",
       importExcel: "Importar Excel",
@@ -684,7 +695,9 @@ export const uiTranslations = {
       updateSuccess: "Lead atualizado com sucesso!",
       updateFailure: "Falha ao atualizar o lead.",
       createSuccess: "Novo lead criado com sucesso!",
+
       createFailure: "Falha ao criar o lead.",
+      duplicateError: "Já existe um lead com este e-mail.",
       exportSuccess: "Leads exportados para Excel.",
       timeline: {
         title: "Timeline",
@@ -756,7 +769,9 @@ export const uiTranslations = {
       updateSuccess: "Cliente atualizado com sucesso!",
       updateFailure: "Falha ao atualizar o cliente.",
       createSuccess: "Novo cliente criado com sucesso!",
+
       createFailure: "Falha ao criar o cliente.",
+      duplicateError: "Já existe um cliente com este e-mail.",
       exportExcel: "Exportar Excel",
       importExcel: "Importar Excel",
       importSuccess: "{count} clientes importados com sucesso.",

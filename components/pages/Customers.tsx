@@ -438,8 +438,12 @@ function Customers() {
       toastContext?.showToast(t('customers.createSuccess'), 'success');
       setIsCreateModalOpen(false);
       fetchCustomers();
-    } catch (error) {
-      toastContext?.showToast(t('customers.createFailure'), 'danger');
+    } catch (error: any) {
+      if (error.message.includes('already exists')) {
+        toastContext?.showToast(t('customers.duplicateError'), 'warning');
+      } else {
+        toastContext?.showToast(t('customers.createFailure'), 'danger');
+      }
     }
   };
 

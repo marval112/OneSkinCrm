@@ -69,7 +69,7 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onDismiss }) => {
         <div className={`flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${styles.iconBg}`}>{styles.icon}</div>
         <div className="ml-4 flex-grow">
           <h3 className={`text-sm font-semibold ${styles.text}`}>{alert.type.replace(/_/g, ' ').toUpperCase()} on {alert.relatedEntityName}</h3>
-          <p className="text-slate-800 mt-1">{alert.message}</p>
+          <p className="text-sm text-slate-800 mt-1">{alert.message}</p>
           <div className="mt-3 bg-slate-50 p-3 rounded-md">
             <h4 className="text-sm font-semibold text-slate-600">Next Best Action:</h4>
             <p className="text-sm text-slate-600 mt-1">{alert.recommendation}</p>
@@ -105,7 +105,7 @@ const NotificationCard: React.FC<{ notification: AlertNotification; onRead: (id:
     <div className={`p-4 rounded-lg border ${getBgColor()} flex items-start gap-3`}>
       <div className="flex-shrink-0 mt-1">{getIcon()}</div>
       <div className="flex-grow">
-        <h4 className="font-semibold text-slate-900">{notification.title}</h4>
+        <h4 className="text-sm font-semibold text-slate-900">{notification.title}</h4>
         <p className="text-sm text-slate-700">{notification.message}</p>
         <p className="text-xs text-slate-500 mt-1">{new Date(notification.date).toLocaleString()}</p>
       </div>
@@ -182,8 +182,8 @@ function AlertsPanel() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Alerts Center</h1>
-          <p className="text-slate-500">Monitor predictive insights and metric notifications.</p>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-white">Alerts Center</h1>
+          <p className="text-sm text-slate-500">Monitor predictive insights and metric notifications.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => navigate('/settings/alerts')} className="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 dark:border-slate-600 dark:text-white">
@@ -197,7 +197,7 @@ function AlertsPanel() {
 
       {notifications.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-white flex items-center gap-2">
             <BellIcon className="h-5 w-5" />
             New Notifications
           </h2>
@@ -210,7 +210,7 @@ function AlertsPanel() {
       )}
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Predictive Insights</h2>
+        <h2 className="text-base font-semibold text-slate-800 dark:text-white">Predictive Insights</h2>
         {activeAlerts.length > 0 ? (
           <div className="space-y-4">
             {activeAlerts.map(alert => <AlertCard key={alert.id} alert={alert} onDismiss={handleDismiss} />)}

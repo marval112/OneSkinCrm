@@ -81,7 +81,7 @@ function DealKanbanBoard({ deals, onStageChange, onDealClick, getCustomerName, g
     };
 
     return (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-2 w-full h-full overflow-hidden pb-4">
             {stages.map(stage => {
                 const stageDeals = getDealsByStage(stage);
                 const totalValue = calculateTotalValue(stage);
@@ -91,15 +91,15 @@ function DealKanbanBoard({ deals, onStageChange, onDealClick, getCustomerName, g
                 return (
                     <div
                         key={stage}
-                        className="flex-shrink-0 w-80"
+                        className="flex-1 min-w-0 flex flex-col h-full"
                         onDragOver={(e) => handleDragOver(e, stage)}
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, stage)}
                     >
                         {/* Column Header */}
-                        <div className={`${stageHeaderColors[stage]} rounded-t-lg p-3 shadow-sm`}>
+                        <div className={`${stageHeaderColors[stage]} rounded-t-lg p-3 shadow-sm flex-shrink-0`}>
                             <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-sm">{stage}</h3>
+                                <h3 className="font-semibold text-sm truncate">{stage}</h3>
                                 <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
                                     {stageDeals.length}
                                 </span>
@@ -111,10 +111,11 @@ function DealKanbanBoard({ deals, onStageChange, onDealClick, getCustomerName, g
 
                         {/* Drop Zone */}
                         <div
-                            className={`min-h-[500px] bg-slate-50 dark:bg-slate-800/50 rounded-b-lg p-2 space-y-2 border-2 transition-colors ${isDragOver
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-transparent'
+                            className={`flex-1 overflow-y-auto min-h-0 bg-slate-50 dark:bg-slate-800/50 rounded-b-lg p-2 space-y-2 border-2 transition-colors scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 ${isDragOver
+                                ? 'border-primary bg-primary/5'
+                                : 'border-transparent'
                                 }`}
+                            style={{ maxHeight: 'calc(100vh - 220px)' }}
                         >
                             {stageDeals.length === 0 && (
                                 <div className="flex items-center justify-center h-32 text-slate-400 dark:text-slate-500 text-sm">

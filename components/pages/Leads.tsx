@@ -564,8 +564,12 @@ function Leads() {
       toastContext?.showToast(t('leads.createSuccess'), 'success');
       handleCloseCreateModal();
       fetchLeads();
-    } catch (error) {
-      toastContext?.showToast(t('leads.createFailure'), 'danger');
+    } catch (error: any) {
+      if (error.message.includes('already exists')) {
+        toastContext?.showToast(t('leads.duplicateError'), 'warning');
+      } else {
+        toastContext?.showToast(t('leads.createFailure'), 'danger');
+      }
     }
   };
 
@@ -579,7 +583,7 @@ function Leads() {
       setEditingLead(null);
       setInlineEditingId(null);
       fetchLeads();
-    } catch (error) {
+    } catch (error: any) {
       toastContext?.showToast(t('leads.updateFailure'), 'danger');
     }
   };
@@ -944,11 +948,11 @@ function Leads() {
         ) : view === 'kanban' ? (
           <LeadsKanbanView leads={filteredLeads} onUpdateLead={handleUpdateLead} onEmailLead={setEmailingLead} />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="flex flex-wrap gap-4 w-full">
             {Object.values(Segment).map(segment => {
               const segmentLeads = filteredLeads.filter(lead => lead.segment === segment);
               return (
-                <div key={segment} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
+                <div key={segment} className="flex-1 min-w-[300px] bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{segment}</h3>
                     <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">{segmentLeads.length}</span>

@@ -49,20 +49,20 @@ function Toast({ message, type, action, onClose }: ToastProps) {
   return (
     <div
       className={`fixed top-5 right-5 z-50 flex items-center p-4 rounded-lg shadow-lg text-white transition-transform transform ${styles.bg} ${visible ? 'translate-x-0' : 'translate-x-full'
-        } ${message.action ? 'cursor-pointer hover:opacity-90' : ''}`}
+        } ${action ? 'cursor-pointer hover:opacity-90' : ''}`}
       style={{ transitionDuration: '300ms' }}
       onClick={() => {
-        if (message.action) {
-          message.action.onClick();
+        if (action) {
+          action.onClick();
           onClose();
         }
       }}
     >
       {styles.icon}
       <div className="mx-3">
-        <p className="font-medium">{message.message}</p>
-        {message.action?.label && (
-          <p className="text-xs underline mt-1 opacity-90">{message.action.label}</p>
+        <p className="font-medium">{message}</p>
+        {action?.label && (
+          <p className="text-xs underline mt-1 opacity-90">{action.label}</p>
         )}
       </div>
       <button

@@ -24,6 +24,19 @@ export const getLeads = async (user: User): Promise<Lead[]> => {
 };
 
 export const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>, userId: number): Promise<Lead> => {
+    // Check for duplicate email
+    if (leadData.email) {
+        const { data: existing } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('email', leadData.email)
+            .maybeSingle();
+
+        if (existing) {
+            throw new Error('A lead with this email already exists.');
+        }
+    }
+
     const now = new Date().toISOString();
     const newLeadData = {
         ...leadData,
@@ -107,6 +120,19 @@ export const getCustomers = async (user: User): Promise<Customer[]> => {
 };
 
 export const createCustomer = async (customerData: Omit<Customer, 'id' | 'created_at' | 'user_id'>, userId: number): Promise<Customer> => {
+    // Check for duplicate email
+    if (customerData.email) {
+        const { data: existing } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('email', customerData.email)
+            .maybeSingle();
+
+        if (existing) {
+            throw new Error('A customer with this email already exists.');
+        }
+    }
+
     const newCustomer = {
         ...customerData,
         user_id: userId,
