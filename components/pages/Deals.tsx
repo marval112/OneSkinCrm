@@ -313,9 +313,15 @@ function Deals() {
 
     if (sortConfig !== null) {
       filtered.sort((a, b) => {
+        // @ts-ignore
         const aValue = a[sortConfig.key];
+        // @ts-ignore
         const bValue = b[sortConfig.key];
-        if (aValue === undefined || aValue === null || bValue === undefined || bValue === null) return 0;
+
+        // Handle null/undefined values - push them to the end
+        if ((aValue === undefined || aValue === null) && (bValue === undefined || bValue === null)) return 0;
+        if (aValue === undefined || aValue === null) return 1;
+        if (bValue === undefined || bValue === null) return -1;
 
         if (aValue < bValue) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
