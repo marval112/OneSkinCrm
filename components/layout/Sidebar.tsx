@@ -149,7 +149,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div className="flex justify-center items-center h-12 gap-2">
           <img src={sidebarLogoUrl} alt={brandName} className="h-full object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo_white.png'; }} />
           <span className="text-sm font-medium text-white">{brandName}</span>
-          <span className="text-xs align-middle font-light text-white/60 ml-2">v1.0</span>
+          <span className="text-xs align-middle font-light text-white/60 ml-2">v{import.meta.env.VITE_COMMIT_HASH || '1.0'}</span>
         </div>
         <button
           className="lg:hidden absolute top-1/2 right-4 -translate-y-1/2 p-1 text-white/80 hover:text-white"
