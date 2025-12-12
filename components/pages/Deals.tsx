@@ -418,7 +418,13 @@ function Deals() {
           </div>
           <div className="text-right text-xs">
             <div className="text-slate-600 dark:text-slate-300 font-medium">{(deal as any).partyName || '—'}</div>
-            <div className="text-slate-400">{deal.expected_close_date}</div>
+            <div className="text-slate-400">Exp: {deal.expected_close_date}</div>
+            <div className="text-slate-400 mt-1">
+              Ref: {new Date(deal.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              {(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+                <> • Cls: {new Date(deal.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</>
+              )}
+            </div>
           </div>
         </div>
 
@@ -431,7 +437,7 @@ function Deals() {
               onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }}
               className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded dark:bg-slate-600 dark:text-slate-200"
             >
-              <ClockIcon className="h-3 w-3" /> Timeline
+              <ClockIcon className="h-3 w-3" />
             </button>
             {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
               <button
@@ -562,8 +568,14 @@ function Deals() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     <button onClick={() => requestSort('value')} className="flex items-center">Value {getSortIcon('value')}</button>
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     <button onClick={() => requestSort('probability')} className="flex items-center">Probability {getSortIcon('probability')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <span>Closed</span>
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
@@ -572,13 +584,19 @@ function Deals() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
-                {loading ? <TableSkeleton columns={6} rows={4} /> : processedDeals.map(deal => (
+                {loading ? <TableSkeleton columns={8} rows={4} /> : processedDeals.map(deal => (
                   <tr key={deal.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-slate-900 cursor-pointer hover:underline" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }}>{deal.title}</td>
                     <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-600">{(deal as any).partyName || ''}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
                     <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-600">{deal.probability}%</td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-600">
+                      {new Date(deal.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-600">
+                      {(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) ? new Date(deal.updated_at).toLocaleDateString() : '—'}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
                     </td>
