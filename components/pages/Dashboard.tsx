@@ -1040,7 +1040,10 @@ function Dashboard() {
                     strokeWidth={index === 2 ? 3 : 2}
                     dot={{ r: index === 2 ? 4 : 3 }}
                     activeDot={{ r: 6 }}
-                  />
+                  >
+                    {/* Only show labels for the current year (last index) to avoid clutter */}
+                    {index === 2 && <LabelList dataKey={`year${year}`} content={renderLineTopEuroLabel} />}
+                  </Line>
                 ));
               })()}
             </LineChart>
