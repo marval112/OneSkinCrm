@@ -34,7 +34,7 @@ import { getNavItems } from './components/layout/navigationConfig';
 const MainLayout = () => {
   const { user } = useAuth();
   const { isOpen: isChatPanelOpen, openChat, closeChat } = useChat();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
