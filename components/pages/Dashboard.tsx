@@ -1017,8 +1017,8 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-base mb-3" title="Comparativa de ingresos mensuales de los últimos 3 años (basado en oportunidades Closed Won).">{t('dashboard.revenueByMonth')}</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 10, left: 0, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis dataKey="month" stroke="rgb(100 116 139)" />
               <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} padding={{ top: 30 }} />
@@ -1051,11 +1051,11 @@ function Dashboard() {
         </div>
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-base mb-3" title="Valor agregado de oportunidades por etapa; para etapas cerradas se toma el año de cierre.">{t('dashboard.dealValueByStage')}</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-              <YAxis dataKey="name" type="category" width={105} stroke="rgb(100 116 139)" />
+              <YAxis dataKey="name" type="category" width={90} stroke="rgb(100 116 139)" />
               <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
@@ -1078,8 +1078,8 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-base mb-3" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <FunnelChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <ResponsiveContainer width="100%" height={250}>
+            <FunnelChart margin={{ top: 10, right: 5, bottom: 10, left: 5 }}>
               <CustomTooltip
                 formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
               />
