@@ -1021,7 +1021,7 @@ function Dashboard() {
             <LineChart data={stats.revenueByMonth} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onDoubleClick={() => navigate(`/deals?status=${DealStage.CLOSED_WON}`)} className="cursor-pointer">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
               <XAxis dataKey="month" stroke="rgb(100 116 139)" />
-              <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
+              <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} padding={{ top: 30 }} />
               <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
