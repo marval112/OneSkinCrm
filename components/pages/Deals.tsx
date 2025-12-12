@@ -196,7 +196,7 @@ const DealForm = ({
   );
 };
 
-type SortableDealKeys = keyof Deal | 'partyName';
+type SortableDealKeys = keyof Deal | 'partyName' | 'closed_at';
 type SortDirection = 'ascending' | 'descending';
 interface SortConfig {
   key: SortableDealKeys;
@@ -299,7 +299,8 @@ function Deals() {
   const processedDeals = useMemo(() => {
     const dealsWithPartyNames = deals.map(deal => ({
       ...deal,
-      partyName: deal.customer_id ? getCustomerName(deal.customer_id) : (deal.lead_id ? getLeadName(deal.lead_id) : '—')
+      partyName: deal.customer_id ? getCustomerName(deal.customer_id) : (deal.lead_id ? getLeadName(deal.lead_id) : '—'),
+      closed_at: (deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) ? deal.updated_at : null
     }));
 
     let filtered = dealsWithPartyNames.filter(deal => {
@@ -575,7 +576,7 @@ function Deals() {
                     <button onClick={() => requestSort('created_at')} className="flex items-center">Created {getSortIcon('created_at')}</button>
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    <span>Closed</span>
+                    <button onClick={() => requestSort('closed_at')} className="flex items-center">Closed {getSortIcon('closed_at')}</button>
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
