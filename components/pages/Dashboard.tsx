@@ -342,11 +342,12 @@ function Dashboard() {
       allWonDeals.forEach(deal => {
         const dealDate = new Date(deal.updated_at);
         const dealYear = dealDate.getFullYear();
-        const dealMonth = dealDate.toLocaleString('default', { month: 'short' });
+
+        // Use getMonth() (0-11) directly to avoid locale mismatch with 'months' array
+        const monthIndex = dealDate.getMonth();
 
         if (years.includes(dealYear)) {
-          const monthIndex = months.indexOf(dealMonth);
-          if (monthIndex !== -1) {
+          if (monthIndex >= 0 && monthIndex < 12) {
             revenueByMonth[monthIndex][`year${dealYear}`] =
               (revenueByMonth[monthIndex][`year${dealYear}`] as number) + Number(deal.value);
           }
