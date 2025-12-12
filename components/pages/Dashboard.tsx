@@ -100,8 +100,11 @@ function Dashboard() {
   const currentYear = new Date().getFullYear();
   const [budgetYear, setBudgetYear] = useState<number>(currentYear);
   const budgetYears = [currentYear - 2, currentYear - 1, currentYear];
-  const [chartYear, setChartYear] = useState<number | 'All'>(currentYear);
-  const chartYears: Array<number | 'All'> = [currentYear - 2, currentYear - 1, currentYear];
+  const [chartYear, setChartYear] = useState<number>(currentYear);
+  // Allow picking back to 2022 or earlier if needed
+  const chartYears: Array<number> = [currentYear - 2, currentYear - 1, currentYear];
+
+  const [activeDatePreset, setActiveDatePreset] = useState<string>('year'); // Default to 'This Year'
 
   const BLUE_SHADES = ['#1e3a8a', '#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
   const COLORS = ['#1f4dd8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
@@ -320,9 +323,10 @@ function Dashboard() {
       const wonLeadsInYear = leadsInYear.filter(l => l.status === LeadStatus.Won);
       const leadConversionRate = leadsInYear.length > 0 ? (wonLeadsInYear.length / leadsInYear.length) * 100 : 0;
 
-      // Chart: Revenue by Month (multi-year comparison: current year, year-1, year-2)
+      // Chart: Revenue by Month (multi-year comparison: selected year, year-1, year-2)
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const years = [currentYear - 2, currentYear - 1, currentYear];
+      const comparisonYear = typeof chartYear === 'number' ? chartYear : currentYear;
+      const years = [comparisonYear - 2, comparisonYear - 1, comparisonYear];
 
       // Initialize data structure with all 12 months and 3 years
       const revenueByMonth = months.map(month => {
@@ -585,48 +589,89 @@ function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Recompute Budget vs Closed Won when budgetYear changes
+  // Recompute when budgetYear or chartYear changes
+  // Also re-apply the active preset when chartYear changes to ensure range matches the new year "same month" etc
   useEffect(() => {
-    fetchData(dateRange);
+    if (activeDatePreset) {
+      setPresetRange(activeDatePreset as any, chartYear);
+    } else {
+      // If no preset active (custom range), we might want to shift it? 
+      // For now, if custom range, we just re-fetch. But logic implies we should stick to the selected year.
+      // If user manually changed year, we usually want to default to full year or keep preset.
+      // Let's force full year if custom range doesn't make sense? 
+      // Actually best UX: If I change year, reset to "This Year" unless I have a relative preset like "Month" active.
+      if (!activeDatePreset) {
+        setPresetRange('year', chartYear);
+      }
+      else {
+        fetchData(dateRange);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [budgetYear, chartYear]);
 
-  const handleDateChange = (range: { from: string; to: string } | null) => {
+  const handleDateChange = (range: { from: string; to: string } | null, preset?: string) => {
     setDateRange(range);
-    localStorage.setItem('dashboardDateRange', JSON.stringify(range));
+    if (preset) setActiveDatePreset(preset);
+    else setActiveDatePreset(''); // Custom range clears preset
+
+    // localStorage.setItem('dashboardDateRange', JSON.stringify(range));
     fetchData(range);
   };
 
-  const setPresetRange = (preset: 'today' | '7d' | '30d' | 'month' | 'quarter' | 'ytd') => {
+  const setPresetRange = (preset: 'today' | 'week' | 'month' | 'quarter' | 'year', year: number) => {
+    // Logic duplicated/moved to DateRangePicker but we need to construct it here to set state?
+    // Actually DateRangePicker component exports the logic internally but we used to calc it here.
+    // Let's use the DateRangePicker component's internal logic via a helper or just replicate for "on load / on year change" sync.
+    // For simplicity, I'll rely on a simplified construction here OR just trigger the DateRangePicker via ref? No.
+    // Replicate logic briefly for the exact sync or use the same helper if exported? 
+    // It's not exported. I will implement a local 'getRangeForYear' helper.
+
+    const targetYear = year;
     const now = new Date();
-    const end = now.toISOString();
-    let start: string;
+    // Adjust "now" to match target year's day/month roughly
+    const nowInYear = new Date(now);
+    nowInYear.setFullYear(targetYear);
+
+    const isPast = targetYear < currentYear;
+
+    let from = new Date(nowInYear);
+    let to = new Date(nowInYear);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(23, 59, 59, 999);
+
     if (preset === 'today') {
-      const d = new Date(now);
-      d.setHours(0, 0, 0, 0);
-      start = d.toISOString();
-    } else if (preset === '7d') {
-      const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      start = d.toISOString();
-    } else if (preset === '30d') {
-      const d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      start = d.toISOString();
+      // Just today
+    } else if (preset === 'week') {
+      const day = nowInYear.getDay();
+      const diff = nowInYear.getDate() - day + (day === 0 ? -6 : 1); // adjust to Monday
+      from.setDate(diff);
+      const end = new Date(from);
+      end.setDate(from.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      to = end;
     } else if (preset === 'month') {
-      // this month
-      const d = new Date(now.getFullYear(), now.getMonth(), 1);
-      start = d.toISOString();
+      from = new Date(targetYear, nowInYear.getMonth(), 1);
+      if (isPast) {
+        to = new Date(targetYear, nowInYear.getMonth() + 1, 0);
+        to.setHours(23, 59, 59, 999);
+      }
     } else if (preset === 'quarter') {
-      const q = Math.floor(now.getMonth() / 3);
-      const d = new Date(now.getFullYear(), q * 3, 1);
-      start = d.toISOString();
-    } else {
-      // ytd
-      const d = new Date(now.getFullYear(), 0, 1);
-      start = d.toISOString();
+      const q = Math.floor(nowInYear.getMonth() / 3);
+      from = new Date(targetYear, q * 3, 1);
+      if (isPast) {
+        to = new Date(targetYear, (q * 3) + 3, 0);
+        to.setHours(23, 59, 59, 999);
+      }
+    } else { // year
+      from = new Date(targetYear, 0, 1);
+      to = new Date(targetYear, 11, 31);
+      to.setHours(23, 59, 59, 999);
     }
-    const range = { from: start, to: end };
+
+    const range = { from: from.toISOString(), to: to.toISOString() };
     setDateRange(range);
-    localStorage.setItem('dashboardDateRange', JSON.stringify(range));
+    setActiveDatePreset(preset);
     fetchData(range);
   };
 
@@ -821,12 +866,13 @@ function Dashboard() {
           <DateRangePicker
             value={dateRange}
             onChange={handleDateChange}
+            year={chartYear}
             rightSlot={
               <div className="flex items-center gap-2 flex-wrap">
                 <label className="text-xs text-slate-500 dark:text-slate-400">Year</label>
                 <select
-                  value={chartYear === 'All' ? 'All' : String(chartYear)}
-                  onChange={(e) => setChartYear(e.target.value === 'All' ? 'All' : parseInt(e.target.value, 10))}
+                  value={chartYear}
+                  onChange={(e) => setChartYear(parseInt(e.target.value, 10))}
                   className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
                 >
                   {chartYears.map(y => <option key={String(y)} value={String(y)}>{String(y)}</option>)}
