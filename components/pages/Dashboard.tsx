@@ -1079,7 +1079,7 @@ function Dashboard() {
         <div className="bg-white dark:bg-slate-800 p-6 pb-3 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-base mb-3" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <FunnelChart margin={{ top: 40, right: 0, bottom: -10, left: 0 }}>
+            <FunnelChart margin={{ top: 25, right: 0, bottom: 15, left: 0 }}>
               <CustomTooltip
                 formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
               />
