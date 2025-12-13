@@ -1079,7 +1079,7 @@ function Dashboard() {
         <div className="bg-white dark:bg-slate-800 p-6 pb-3 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-base mb-3" title="Embudo por valor con las mismas cifras del gráfico por etapa.">{t('dashboard.dealsFunnel') || 'Deals Funnel (Value)'}</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <FunnelChart margin={{ top: 25, right: 0, bottom: 15, left: 0 }}>
+            <FunnelChart margin={{ top: 0, right: -10, bottom: -10, left: 10 }}>
               <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
@@ -1102,7 +1102,7 @@ function Dashboard() {
           <h3 className="font-semibold text-base mb-3" title="Porcentaje de oportunidades Ganadas frente a Perdidas en el año/periodo.">{t('dashboard.winRate')}</h3>
           <div className="relative" style={{ height: 180 }}>
             <ResponsiveContainer width="100%" height={180}>
-              <PieChart margin={{ top: 10, right: 0, bottom: 0, left: 0 }}>
+              <PieChart margin={{ top: 10, right: 0, bottom: -30, left: 10 }}>
                 {(() => {
                   const wr = parseFloat((stats.kpis.winRate || '0').toString().replace('%', '')) || 0;
                   const clamped = Math.max(0, Math.min(100, wr));
@@ -1111,7 +1111,7 @@ function Dashboard() {
                     { name: 'Rest', value: 100 - clamped }
                   ];
                   return (
-                    <Pie data={data} dataKey="value" startAngle={180} endAngle={0} innerRadius={70} outerRadius={95} stroke="none" labelLine={false} label={renderPieLabel}>
+                    <Pie data={data} dataKey="value" startAngle={180} endAngle={0} innerRadius={80} outerRadius={110} stroke="none" labelLine={false} label={renderPieLabel}>
                       <Cell key="win" fill="#2563eb" />
                       <Cell key="rest" fill="#bfdbfe" />
                     </Pie>
