@@ -1140,7 +1140,6 @@ function Dashboard() {
               <CustomTooltip
                 formatter={(value: number, name: string) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`, name]}
               />
-              <Legend wrapperStyle={{ color: 'rgb(100 116 139)' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
