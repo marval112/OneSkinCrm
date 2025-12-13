@@ -1133,8 +1133,8 @@ function Dashboard() {
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
           <h3 className="font-semibold text-base mb-3" title="Distribución de leads por fuente para el año/periodo.">{t('dashboard.leadSources')}</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-              <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={80} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
+            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              <Pie data={stats.leadSourceData} cx="50%" cy="50%" labelLine={false} outerRadius={95} dataKey="value" nameKey="name" onDoubleClick={(data) => navigate(`/leads?source=${encodeURIComponent(data.name)}`)} label={renderLeadSourcesInnerLabel}>
                 {stats.leadSourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="cursor-pointer" />)}
               </Pie>
               <CustomTooltip
