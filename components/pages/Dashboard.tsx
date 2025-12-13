@@ -1054,8 +1054,8 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={stats.dealValueByStage} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
-              <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
-              <YAxis dataKey="name" type="category" width={90} stroke="rgb(100 116 139)" />
+              <XAxis type="number" stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} />
+              <YAxis dataKey="name" type="category" width={90} stroke="rgb(100 116 139)" tick={{ fontSize: 11 }} />
               <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
@@ -1149,8 +1149,8 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={stats.teamPerformance} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.25)" />
-              <XAxis dataKey="name" stroke="rgb(100 116 139)" />
-              <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} />
+              <XAxis dataKey="name" stroke="rgb(100 116 139)" tick={{ fontSize: 11 }} />
+              <YAxis stroke="rgb(100 116 139)" tickFormatter={(value) => `€${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} />
               <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
