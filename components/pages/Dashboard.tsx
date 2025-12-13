@@ -7,7 +7,7 @@ import { supabase } from '../../services/supabaseClient';
 import { getBudgetsForCustomers } from '../../services/budgetService';
 import DateRangePicker from '../common/DateRangePicker';
 import CustomTooltip from '../common/CustomTooltip';
-import TopLeadsWidget from '../dashboard/TopLeadsWidget';
+// TopLeadsWidget import removed - component not found
 import { useTranslation } from '../../services/i18nService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { getBrandName, getBrandLogoUrl } from '../../services/brandingService';
@@ -294,7 +294,7 @@ function Dashboard() {
       const dateYear = (iso?: string | null) => (iso ? new Date(iso).getFullYear() : undefined);
       const matchYear = (yr: number | 'All', val?: number) => (yr === 'All' ? true : val === yr);
       const closedYearMatches = (deal: Deal) => {
-        if (chartYear === 'All') return true;
+        if (typeof chartYear === 'string' && chartYear === 'All') return true;
         const closed = (deal as any)['closed_year'];
         if (typeof closed === 'number') return closed === chartYear;
         return matchYear(chartYear, dateYear(deal.updated_at));
@@ -1081,7 +1081,7 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={220}>
             <FunnelChart margin={{ top: 25, right: 0, bottom: 15, left: 0 }}>
               <CustomTooltip
-                formatter={(value: number, name: string) => [`€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
+                formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
               <Funnel data={stats.dealValueByStage} dataKey="value" nameKey="name" isAnimationActive>
                 {stats.dealValueByStage.map((entry, index) => {
@@ -1138,7 +1138,7 @@ function Dashboard() {
                 {stats.leadSourceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="cursor-pointer" />)}
               </Pie>
               <CustomTooltip
-                formatter={(value: number, name: string) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`, name]}
+                formatter={(value: number) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })} leads`}
               />
             </PieChart>
           </ResponsiveContainer>
