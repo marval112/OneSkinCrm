@@ -155,7 +155,7 @@ function Dashboard() {
 
   const renderPieLabel = (props: any) => {
     const { x, y, value, fill } = props;
-    const label = typeof value === 'number' ? value.toLocaleString(undefined, { maximumFractionDigits: 0 }) : String(value);
+    const label = typeof value === 'number' ? `${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}%` : String(value);
     const color = getContrastText(fill || SERIES_ACCENT);
     return <text x={x} y={y} fill={color} textAnchor="middle" dominantBaseline="central" fontSize={12}>{label}</text>;
   };
