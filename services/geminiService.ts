@@ -43,7 +43,7 @@ export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoni
 
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -91,7 +91,7 @@ export const getCustomerInsights = async (customer: Customer): Promise<string> =
 
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
     });
     return response.text;
@@ -124,7 +124,7 @@ Created at: ${lead.created_at}
 Recent activity (most recent first):\n${recent || '(no activity)'}
 `;
   try {
-    const response = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt });
+    const response = await client.models.generateContent({ model: 'gemini-pro', contents: prompt });
     return response.text;
   } catch (e) {
     console.error('summarizeLead error', e);
@@ -153,7 +153,7 @@ Recent activity:\n${recent || '(none)'}
 `;
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
@@ -179,7 +179,7 @@ Lead: ${lead.name} (${lead.company}) • Status: ${lead.status}
 Last email snippet: ${lastMsg.substring(0, 300)}
 `;
   try {
-    const response = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } });
+    const response = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } });
     const text = response.text.trim();
     const obj = JSON.parse(text);
     if (obj && obj.subject && obj.body) return obj;
@@ -209,7 +209,7 @@ Recent activity:\n${recent || '(none)'}
 `;
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
@@ -232,7 +232,7 @@ export const proposeAgenda = async (tasks: { id: number; type: string; due_date?
   }
   const prompt = `Create a day agenda starting at 09:00 with 45-min slots for these tasks. Return JSON array of {"id": number, "start": "HH:MM"}. Prioritize overdue and due today tasks first.
 Tasks: ${JSON.stringify(tasks.slice(0, 40))}`;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as AgendaItem[]; throw new Error('bad'); } catch { return []; }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as AgendaItem[]; throw new Error('bad'); } catch { return []; }
 };
 
 export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []): Promise<string> => {
@@ -247,7 +247,7 @@ export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []):
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value} • Expected Close: ${deal.expected_close_date}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
 };
 
 export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = []): Promise<SuggestedTask[]> => {
@@ -262,7 +262,7 @@ export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = [
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as SuggestedTask[]; throw new Error('bad'); } catch { return []; }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as SuggestedTask[]; throw new Error('bad'); } catch { return []; }
 };
 
 export const generateDashboardInsights = async (payload: any): Promise<string> => {
@@ -271,7 +271,7 @@ export const generateDashboardInsights = async (payload: any): Promise<string> =
   const prompt = `Write 4-6 short, actionable CRM insights (Spanish) from this JSON. Avoid generic tips; include specific CTAs.
 JSON: ${JSON.stringify(payload).slice(0, 5000)}
 `;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
 };
 
 export const suggestDealStage = async (deal: Deal, activities: ActivityLog[] = []): Promise<DealStage | null> => {
@@ -287,7 +287,7 @@ Deal: ${deal.title} • Current: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
   try {
-    const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } });
+    const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } });
     const obj = JSON.parse(r.text.trim());
     const s = String(obj?.stage || '');
     const map: Record<string, DealStage> = {
@@ -316,7 +316,7 @@ Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
   try {
-    const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } });
+    const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } });
     const obj = JSON.parse(r.text.trim());
     const d = Number(obj?.dueDays);
     const s = String(obj?.stage || '');
@@ -349,7 +349,7 @@ export const summarizeCustomer = async (customer: Customer, activities: Activity
 Customer: ${customer.name} (${customer.company}) • Status: ${customer.status} • Health: ${customer.health_score} • Country: ${customer.country}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt }); return r.text; } catch { return 'Could not generate summary.'; }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt }); return r.text; } catch { return 'Could not generate summary.'; }
 };
 
 export const draftCustomerFollowUpEmail = async (customer: Customer, activities: ActivityLog[] = []): Promise<{ subject: string; body: string }> => {
@@ -360,7 +360,7 @@ export const draftCustomerFollowUpEmail = async (customer: Customer, activities:
 Customer: ${customer.name} (${customer.company}) • Status: ${customer.status}
 Last email: ${lastMsg.substring(0, 300)}
 `;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject: 'Seguimiento', body: 'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject: 'Seguimiento', body: 'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
 };
 
 export const prioritizeTasks = async (tasks: { id: number; type: string; due_date?: string | null; title?: string }[]): Promise<number[]> => {
@@ -378,7 +378,7 @@ export const prioritizeTasks = async (tasks: { id: number; type: string; due_dat
   const prompt = `Rank these tasks from highest to lowest priority for a sales rep. Consider proximity of due date and potential revenue impact inferred from title/type. Return ONLY a JSON array with the ordered ids.
 Tasks: ${JSON.stringify(sample)}
 `;
-  try { const r = await client.models.generateContent({ model: 'gemini-2.0-flash-exp', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as number[]; throw new Error('bad'); } catch { return tasks.map(t => t.id); }
+  try { const r = await client.models.generateContent({ model: 'gemini-pro', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as number[]; throw new Error('bad'); } catch { return tasks.map(t => t.id); }
 };
 
 export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lead>> => {
@@ -421,7 +421,7 @@ export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lea
     };
 
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: { parts: [imagePart, textPart] },
       config: {
         responseMimeType: 'application/json',
@@ -472,7 +472,7 @@ export const generateProspects = async (query: string): Promise<any[]> => {
 
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -523,7 +523,7 @@ export const draftCommercialEmail = async (
 
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
