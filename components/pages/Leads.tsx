@@ -746,14 +746,14 @@ function Leads() {
         view === 'table' ? (
           <>
             <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <table className="min-w-full table-fixed divide-y divide-slate-200 dark:divide-slate-700">
                 <thead className="bg-slate-50 dark:bg-slate-700/50">
                   <tr>
                     <th className="px-2 py-3 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" onChange={handleSelectAll} checked={selectedLeads.length > 0 && selectedLeads.length === filteredLeads.length} /></th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase" style={{ maxWidth: '180px' }}>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase w-[180px]">
                       <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIcon('name')}</button>
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell w-[160px]">
                       <button onClick={() => requestSort('company')} className="flex items-center">Company {getSortIcon('company')}</button>
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
@@ -778,7 +778,7 @@ function Leads() {
                   {loading ? <TableSkeleton columns={8} rows={5} /> : filteredLeads.map(lead => (
                     <tr key={lead.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedLeads.includes(lead.id)} onChange={() => handleSelectOne(lead.id)} /></td>
-                      <td className="px-3 py-2" style={{ maxWidth: '180px' }} onDoubleClick={() => setEditingLead(lead)}>
+                      <td className="px-3 py-2 w-[180px]" onDoubleClick={() => setEditingLead(lead)}>
                         <div className="flex items-center gap-1.5 overflow-hidden">
                           {inlineEditingId === lead.id ? (
                             <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
@@ -798,7 +798,7 @@ function Leads() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
+                      <td className="px-3 py-2 hidden md:table-cell w-[160px]">
                         <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{lead.company}{lead.country && `, ${lead.country}`}</div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
