@@ -136,8 +136,8 @@ export const processCommand = async (prompt: string, context?: string, userName?
         // If no function call, or an invalid one, return the text response
         return { type: 'text', data: response.text };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error processing AI command:", error);
-        return { type: 'text', data: "Sorry, I encountered an error trying to understand that. Please try again." };
+        return { type: 'text', data: `Error details: ${error.message || JSON.stringify(error)}` };
     }
 };
