@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useContext, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads } from '../../services/crmService';
+import { getUsers } from '../../services/userService';
 import { scanBusinessCard } from '../../services/geminiService';
 import { calculateLeadScore } from '../../services/leadScoringService';
 import { exportToExcel } from '../../services/exportService';
-import type { Lead, Country } from '../../types';
+import type { Lead, Country, User } from '../../types';
 import { LeadStatus, LeadSource, Segment, DealStage } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -107,7 +108,7 @@ const LeadForm = ({
 }: {
   lead?: Partial<Lead>,
   onSave: (payload: {
-    lead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'>,
+    lead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'user_id'> & { user_id: number },
     deal?: {
       title: string;
       value: number;
@@ -122,6 +123,7 @@ const LeadForm = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: lead?.name || '',
     company: lead?.company || '',
@@ -133,6 +135,7 @@ const LeadForm = ({
     source: lead?.source || LeadSource.Website,
     score: lead?.score || 0,
     notes: lead?.notes || '',
+    user_id: lead?.user_id || user?.id || 0,
   });
   const [createDealFlag, setCreateDealFlag] = useState(false);
   const [dealTitle, setDealTitle] = useState('');
@@ -143,20 +146,26 @@ const LeadForm = ({
   const [dealNotes, setDealNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [countries, setCountries] = useState<Country[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const fetchCountriesData = async () => {
+    const fetchData = async () => {
       try {
-        const countryData = await getCountries();
+        const [countryData, usersData] = await Promise.all([
+          getCountries(),
+          getUsers() // Assuming getUsers is imported from userService
+        ]);
         setCountries(countryData);
+        setUsers(usersData);
+
         if (!lead?.country && countryData.length > 0) {
           setFormData(prev => ({ ...prev, country: countryData.find(c => c.code === 'ES')?.name || countryData[0].name }));
         }
       } catch (error) {
-        console.error("Failed to fetch countries", error);
+        console.error("Failed to fetch data", error);
       }
     };
-    fetchCountriesData();
+    fetchData();
   }, [lead]);
 
   const validateForm = () => {
@@ -173,7 +182,7 @@ const LeadForm = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'user_id' ? Number(value) : value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -207,9 +216,17 @@ const LeadForm = ({
           <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
         </div>
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Phone</label>
-          <input type="text" id="phone" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Phone</label>
+            <input type="text" id="phone" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+          </div>
+          <div>
+            <label htmlFor="user_id" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Owner (Vendedor)</label>
+            <select id="user_id" name="user_id" value={formData.user_id} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+              {users.map(u => <option key={u.id} value={u.id}>{u.email} {u.id === user?.id ? '(You)' : ''}</option>)}
+            </select>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
