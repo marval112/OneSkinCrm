@@ -1,5 +1,6 @@
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 import { getGeminiApiKey, loadGeminiApiKey } from './aiSettingsService';
+import { generateWithFallback } from './geminiService';
 
 // --- TYPES ---
 
@@ -103,8 +104,8 @@ export const processCommand = async (prompt: string, context?: string): Promise<
         
         Be helpful, professional, and provide actionable insights. Use the context to give relevant answers.`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await generateWithFallback(ai, {
+            model: 'gemini-2.5-flash', // This will be overridden by fallback logic
             contents: prompt,
             config: {
                 // Removed tools to prevent function calling loop

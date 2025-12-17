@@ -29,7 +29,7 @@ const MODEL_PRIORITY = [
   'gemini-flash-latest',   // Fallback: generic alias
 ];
 
-async function generateWithFallback(client: any, params: any) {
+export async function generateWithFallback(client: any, params: any) {
   let lastError;
   const attemptedModels: string[] = [];
 
