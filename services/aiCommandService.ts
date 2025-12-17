@@ -77,32 +77,34 @@ async function getClient(): Promise<GoogleGenAI | null> {
     return key ? new GoogleGenAI({ apiKey: key }) : null;
 }
 
-export const processCommand = async (prompt: string, context?: string): Promise<CommandResponse> => {
+import { AI_SALES_MENTOR_PROMPT } from './aiPersona';
+
+export const processCommand = async (prompt: string, context?: string, userName?: string, language: string = 'en'): Promise<CommandResponse> => {
     const ai = await getClient();
     if (!ai) {
         return { type: 'text', data: "AI features are disabled. Please set your Gemini API key in Settings." };
     }
 
     try {
-        const systemInstruction = `You are an AI assistant for the OneSkin CRM, a premium manufacturer of high-end lacquered decorative panels (MDF/Melamine) for the furniture and interior design industry.
-        
-        CURRENT CONTEXT: ${context || 'None'}
+        const companyName = "OneSkin";
+        const sellerName = userName || "Seller";
+
+        let systemInstruction = AI_SALES_MENTOR_PROMPT
+            .replace(/{company_name}/g, companyName)
+            .replace(/{seller_name}/g, sellerName)
+            .replace(/{language}/g, language);
+
+        systemInstruction += `\n\nCURRENT CONTEXT: ${context || 'None'}`;
+
+        // Add specific CRM capabilities context
+        systemInstruction += `\n\nNOTE: You also have access to CRM data and tools. If the user asks to perform an action like creating a task or finding a customer, USE THE AVAILABLE TOOLS/FUNCTIONS.
         
         CAPABILITIES:
         - Analyze leads and customers based on their information
         - Provide insights about lead quality, potential, and next steps
         - Suggest follow-up actions and strategies
         - Answer questions about CRM data and operations
-        - Help with sales and business development strategies
-        
-        When analyzing a lead, consider:
-        - Company name and industry relevance
-        - Lead source and quality indicators
-        - Potential for business in the decorative panels/furniture sector
-        - Suggested next steps for engagement
-        - Timeline recommendations
-        
-        Be helpful, professional, and provide actionable insights. Use the context to give relevant answers.`;
+        - Help with sales and business development strategies`;
 
         const response = await generateWithFallback(ai, {
             model: 'gemini-2.5-flash', // This will be overridden by fallback logic

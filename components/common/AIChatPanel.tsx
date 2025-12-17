@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { processCommand, Command, CommandResponse } from '../../services/aiCommandService';
 import { useChat } from '../../contexts/ChatContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from '../../services/i18nService';
 import useVoiceInput from '../../hooks/useVoiceInput';
 
 interface Message {
@@ -41,6 +43,8 @@ const MicrophoneIcon = (props: React.SVGProps<SVGSVGElement>) => (
 function AIChatPanel({ onClose }: AIChatPanelProps) {
   const location = useLocation();
   const { initialMessage } = useChat();
+  const { user } = useAuth();
+  const { language } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "Hello! How can I help you manage your CRM today?", sender: 'ai' }
   ]);
@@ -107,7 +111,8 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     try {
       // Pass current path as context
       const context = `Current Page: ${location.pathname}`;
-      const response = await processCommand(text, context);
+      const sellerName = user?.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : undefined;
+      const response = await processCommand(text, context, sellerName, language);
       handleCommandResponse(response);
     } catch (error) {
       const errorMessage: Message = { id: Date.now() + 1, text: "Sorry, something went wrong.", sender: 'ai' };
@@ -199,8 +204,8 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
                 type="button"
                 onClick={toggleVoiceInput}
                 className={`p-2 rounded-md transition-all ${isListening
-                    ? 'bg-red-500 text-white animate-pulse'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                   }`}
                 disabled={isLoading}
                 title={isListening ? 'Stop recording' : 'Start voice input'}
