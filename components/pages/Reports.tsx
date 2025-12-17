@@ -381,7 +381,7 @@ function Reports() {
   const displayRows = selectedCustomReport ? executeCustomReport : rows;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md w-full max-w-full">
       <h1 className="text-xl font-semibold mb-4">Reports</h1>
 
       {/* Filters */}
@@ -465,12 +465,12 @@ function Reports() {
       </div>
 
       {/* Results table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
               {displayColumns.map(col => (
-                <th key={col} className="px-4 py-2 text-left text-xs font-semibold text-slate-600 uppercase">{col}</th>
+                <th key={col} className="px-2 py-2 text-left text-xs font-semibold text-slate-600 uppercase whitespace-nowrap">{col}</th>
               ))}
             </tr>
           </thead>
@@ -484,7 +484,7 @@ function Reports() {
                 (displayRows as any[]).map((r, idx) => (
                   <tr key={idx} className="hover:bg-slate-50">
                     {displayColumns.map(c => (
-                      <td key={c} className="px-4 py-2 text-sm text-slate-800">{(r as any)[c] ?? ''}</td>
+                      <td key={c} className="px-2 py-2 text-xs text-slate-800 break-words max-w-[200px]">{(r as any)[c] ?? ''}</td>
                     ))}
                   </tr>
                 ))
