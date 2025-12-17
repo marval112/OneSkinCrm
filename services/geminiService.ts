@@ -38,7 +38,7 @@ export async function generateWithFallback(client: any, params: any) {
       // Clone params and set model
       const currentParams = { ...params, model };
       // console.log(`Attempting AI generation with model: ${model}`); // Debug
-      const result = await generateWithFallback(client, currentParams);
+      const result = await client.models.generateContent(currentParams);
       return result;
     } catch (error: any) {
       lastError = error;
