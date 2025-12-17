@@ -26,7 +26,7 @@ function EmailComposer({ recipient, initialSubject = '', initialBody = '', inlin
     const [body, setBody] = useState(initialBody);
     const [isLoading, setIsLoading] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
-    const [aiLanguage, setAiLanguage] = useState<'English' | 'Spanish'>('English');
+    const [aiLanguage, setAiLanguage] = useState<'English' | 'Spanish' | 'Portuguese'>('English');
     const toastContext = useContext(ToastContext);
 
     const handleDraftWithAI = async () => {
@@ -81,11 +81,12 @@ function EmailComposer({ recipient, initialSubject = '', initialBody = '', inlin
                         <div className="flex items-center gap-2">
                             <select
                                 value={aiLanguage}
-                                onChange={(e) => setAiLanguage(e.target.value as 'English' | 'Spanish')}
+                                onChange={(e) => setAiLanguage(e.target.value as 'English' | 'Spanish' | 'Portuguese')}
                                 className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="English">English</option>
                                 <option value="Spanish">Spanish</option>
+                                <option value="Portuguese">Portuguese</option>
                             </select>
                             <button
                                 type="button"
