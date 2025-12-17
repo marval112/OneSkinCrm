@@ -269,7 +269,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   }
                 >
                   <div className="text-white [&>svg]:w-8 [&>svg]:h-8">
-                    {React.cloneElement(item.icon as React.ReactElement, { className: 'w-8 h-8' })}
+                    {React.cloneElement(item.icon as React.ReactElement<any>, { className: 'w-8 h-8' })}
                   </div>
                   <span className="text-xs font-medium text-white text-center leading-tight">
                     {t(item.labelKey)}
