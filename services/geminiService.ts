@@ -159,18 +159,15 @@ export const summarizeLead = async (lead: Lead, activities: ActivityLog[] = []):
     .slice(0, 5)
     .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}${a.message ? `\n  ${a.message.substring(0, 160)}...` : ''}`)
     .join('\n');
-  const prompt = `Summarize this lead for a sales rep in 4-6 bullet points with next context-specific hints. Avoid generic advice.
-
-Lead:
-Name: ${lead.name}
-Company: ${lead.company}
-Country: ${lead.country}
-Source: ${lead.source}
-Status: ${lead.status}
-Created at: ${lead.created_at}
-
-Recent activity (most recent first):\n${recent || '(no activity)'}
-`;
+  const prompt = `
+    You are a Sales Mentor for OneSkin. 
+    Task: Summarize this lead for a sales colleague in 4-6 bullet points. 
+    Tone: Professional, motivating, and actionable. Avoid generic advice; focus on context-specific hints to help them close.
+    
+    Lead Context:
+    Name: ${lead.name} (${lead.company}) • Status: ${lead.status}
+    Recent activity:\n${recent || '(no activity)'}
+  `;
   try {
     const response = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt });
     return response.text;
@@ -221,11 +218,17 @@ export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog
     return { subject: `Seguimiento ${lead.company}`, body: `Hola ${lead.name},\n\nGracias por tu interés. Adjunto catálogo y propuesta. ¿Te viene bien una llamada esta semana?\n\nSaludos,` };
   }
   const lastMsg = activities.find(a => a.channel === 'email' && a.message)?.message || '';
-  const prompt = `Draft a concise, friendly Spanish follow-up email for a sales rep of decorative wall panels. Mention any recent context. Output JSON: {"subject": string, "body": string}.
-
-Lead: ${lead.name} (${lead.company}) • Status: ${lead.status}
-Last email snippet: ${lastMsg.substring(0, 300)}
-`;
+  const prompt = `
+    You are a Sales Master and Mentor for OneSkin. 
+    Task: Draft a concise, professional, and highly persuasive follow-up email in Spanish.
+    Tone: Motivating, elegant, and connected to the customer's needs.
+    
+    Context:
+    Lead: ${lead.name} (${lead.company}) • Status: ${lead.status}
+    Last email snippet: ${lastMsg.substring(0, 300)}
+    
+    Output JSON: {"subject": string, "body": string}.
+  `;
   try {
     const response = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } });
     const text = response.text.trim();
@@ -291,10 +294,15 @@ export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []):
     .slice(0, 5)
     .map(a => `- [${a.created_at}] ${a.channel}${a.direction ? ` (${a.direction})` : ''}${a.subject ? `: ${a.subject}` : ''}`)
     .join('\n');
-  const prompt = `You are a sales strategist. Provide a concise win plan for this deal in 4-6 bullets: risks, objections, next steps.
-Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value} • Expected Close: ${deal.expected_close_date}
-Recent activity:\n${recent || '(none)'}
-`;
+  const prompt = `
+    You are a Sales Strategist and Mentor. 
+    Task: Provide a concise win plan for this deal in 4-6 bullets.
+    Tone: Sharp, professional, and highly motivating. Highlight risks, objections, and clear next steps to win.
+    
+    Deal Context:
+    Title: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
+    Recent activity:\n${recent || '(none)'}
+  `;
   try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
 };
 
@@ -316,9 +324,13 @@ Recent activity:\n${recent || '(none)'}
 export const generateDashboardInsights = async (payload: any): Promise<string> => {
   const client = getClient();
   if (!client) return 'Insights (mock): el pipeline abierto y la tasa de éxito se mantienen estables. Prioriza leads de Website y segment Industrial.';
-  const prompt = `Write 4-6 short, actionable CRM insights (Spanish) from this JSON. Avoid generic tips; include specific CTAs.
-JSON: ${JSON.stringify(payload).slice(0, 5000)}
-`;
+  const prompt = `
+    You are the OneSkin Sales Mentor. 
+    Task: Write 4-6 short, actionable, and highly motivating CRM insights in Spanish from this JSON data. 
+    Tone: Empowering and professional. Avoid generic tips; include specific CTAs that encourage the team to act.
+    
+    Data: ${JSON.stringify(payload).slice(0, 5000)}
+  `;
   try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
 };
 
@@ -404,10 +416,17 @@ export const draftCustomerFollowUpEmail = async (customer: Customer, activities:
   const client = getClient();
   if (!client) return { subject: `Propuesta ${customer.company}`, body: `Hola ${customer.name},\n\nAdjunto propuesta y catálogo. ¿Agendamos una llamada esta semana?\n\nSaludos,` };
   const lastMsg = activities.find(a => a.channel === 'email' && a.message)?.message || '';
-  const prompt = `Draft a concise Spanish email for a customer of decorative wall panels. Output JSON {"subject","body"}.
-Customer: ${customer.name} (${customer.company}) • Status: ${customer.status}
-Last email: ${lastMsg.substring(0, 300)}
-`;
+  const prompt = `
+    You are a Sales Master and Mentor for OneSkin.
+    Task: Draft a concise, elegant, and motivating Spanish email for an existing customer.
+    Goal: Nurture the relationship and propose next steps (upsell, visit, etc).
+    
+    Context:
+    Customer: ${customer.name} (${customer.company}) • Status: ${customer.status}
+    Last email: ${lastMsg.substring(0, 300)}
+    
+    Output JSON {"subject","body"}.
+  `;
   try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject: 'Seguimiento', body: 'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
 };
 
