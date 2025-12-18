@@ -13,7 +13,7 @@ import type { ToastMessage } from './types';
 import { applyTheme, getActiveTheme } from './services/themeService';
 import { initializeDatabase } from './services/databaseInitialization';
 import { runDueReports } from './services/scheduledReports';
-import { loadGeminiApiKey } from './services/aiSettingsService';
+import { loadGeminiApiKey, loadOpenRouterApiKey } from './services/aiSettingsService';
 import { runNurtureCoach } from './services/nurtureCoach';
 import { applyBrandFavicon } from './services/brandingService';
 
@@ -102,7 +102,7 @@ function AppContent() {
         console.error("Database initialization failed.");
       }
       // Warm AI key cache from Supabase (non-blocking for UI)
-      try { await loadGeminiApiKey(); } catch { }
+      try { await loadGeminiApiKey(); await loadOpenRouterApiKey(); } catch { }
       setIsDbInitialized(true);
     };
     initDb();

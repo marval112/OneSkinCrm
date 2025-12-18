@@ -2,6 +2,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKey, loadGeminiApiKey } from './aiSettingsService';
+import { generateWithOpenRouter } from './openRouterService';
 import type { Lead, Customer, ActivityLog, Deal } from '../types';
 import { DealStage } from '../types';
 
@@ -20,17 +21,24 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
-  'gemini-3-flash-preview', // Newest release (Dec 17, 2025)
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',      // Stable 2.0
+  'gemini-3-flash',          // Latest Flash (shown in AI Studio)
+  'gemini-2.5-flash-lite',   // Very efficient 2.5
+  'gemini-2.5-flash',        // Standard 2.5
+  'gemini-2.0-flash',        // Fallback 2.0
   'gemini-2.0-flash-lite-preview-02-05',
+];
+
+const OPENROUTER_MODELS = [
+  'xiaomi/mimo-v2-flash:free',
+  'nex-agi/deepseek-v3.1-nex-n1:free',
+  'tngtech/deepseek-r1t2-chimera:free',
 ];
 
 export async function generateWithFallback(client: any, params: any) {
   let lastError;
   const attemptedModels: string[] = [];
 
+  // 1. Try Gemini Models first
   for (const model of MODEL_PRIORITY) {
     try {
       // Clone params and set model
@@ -59,8 +67,21 @@ export async function generateWithFallback(client: any, params: any) {
       throw error;
     }
   }
+
+  // 2. Try OpenRouter Models as second-tier fallback
+  for (const model of OPENROUTER_MODELS) {
+    try {
+      console.warn(`Gemini failed/exhausted. Trying OpenRouter model: ${model}`);
+      const result = await generateWithOpenRouter({ ...params, model });
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`OpenRouter model ${model} failed. Trying next...`);
+    }
+  }
+
   console.error("All AI models failed. Attempted:", attemptedModels);
-  throw lastError || new Error("All AI models failed");
+  throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
 }
 
 export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoning: string; }> => {
