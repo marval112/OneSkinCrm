@@ -34,44 +34,46 @@ const OPENROUTER_MODELS = [
   'tngtech/deepseek-r1t2-chimera:free',
 ];
 
+const OPENROUTER_VISION_MODELS = [
+  'nvidia/nemotron-nano-12b-v2-vl:free', // Vision specialized
+];
+
 export async function generateWithFallback(client: any, params: any) {
   let lastError;
   const attemptedModels: string[] = [];
 
+  // Helper to check if vision is requested
+  const isVisionTask = params.contents?.parts?.some((p: any) => p.inlineData) || false;
+
   // 1. Try Gemini Models first
   for (const model of MODEL_PRIORITY) {
     try {
-      // Clone params and set model
       const currentParams = { ...params, model };
-      // console.log(`Attempting AI generation with model: ${model}`); // Debug
       const result = await client.models.generateContent(currentParams);
       return result;
     } catch (error: any) {
       lastError = error;
-      attemptedModels.push(model);
-
-      // Check for Quota (429) or Not Found (404) or Overloaded (503)
       const msg = error.message || '';
       const status = error.status || (error.response ? error.response.status : 0);
-
       const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota');
       const isNotFound = status === 404 || msg.includes('404') || msg.includes('not found');
-      const isOverloaded = status === 503 || msg.includes('503');
-
-      if (isQuota || isNotFound || isOverloaded) {
-        console.warn(`Model ${model} failed (${isQuota ? 'Quota' : isNotFound ? 'Not Found' : 'Error'}). Trying next...`);
+      if (isQuota || isNotFound) {
+        console.warn(`Model ${model} failed (${isQuota ? 'Quota' : 'Not Found'}). Trying next...`);
         continue;
       }
-
-      // If it's a different error (e.g. invalid prompt), throw immediately
       throw error;
     }
   }
 
-  // 2. Try OpenRouter Models as second-tier fallback
-  for (const model of OPENROUTER_MODELS) {
+  // 2. Select OpenRouter priority based on task type
+  const openRouterList = isVisionTask
+    ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
+    : OPENROUTER_MODELS;
+
+  // 3. Try OpenRouter Models as fallback
+  for (const model of openRouterList) {
     try {
-      console.warn(`Gemini failed/exhausted. Trying OpenRouter model: ${model}`);
+      console.warn(`Gemini failed. Trying OpenRouter model: ${model}${isVisionTask ? ' (Vision Task)' : ''}`);
       const result = await generateWithOpenRouter({ ...params, model });
       return result;
     } catch (error: any) {
@@ -80,7 +82,6 @@ export async function generateWithFallback(client: any, params: any) {
     }
   }
 
-  console.error("All AI models failed. Attempted:", attemptedModels);
   throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
 }
 
