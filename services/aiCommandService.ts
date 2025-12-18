@@ -138,6 +138,20 @@ export const processCommand = async (prompt: string, context?: string, userName?
 
     } catch (error: any) {
         console.error("Error processing AI command:", error);
+
+        const msg = error.message || '';
+        const isQuota = msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED');
+
+        if (isQuota) {
+            const warningIcon = "⏳";
+            if (language === 'es') {
+                return { type: 'text', data: `${warningIcon} **Límite de uso diario alcanzado**\n\nHas consumido tu cuota gratuita de IA por hoy. Por favor, intenta de nuevo más tarde o revisa tu plan.` };
+            } else if (language === 'pt') {
+                return { type: 'text', data: `${warningIcon} **Limite de uso diário atingido**\n\nVocê atingiu sua cota gratuita de IA por hoje. Por favor, tente novamente mais tarde ou verifique seu plano.` };
+            }
+            return { type: 'text', data: `${warningIcon} **Daily usage limit reached**\n\nYou have used your free AI quota for today. Please try again later or check your plan.` };
+        }
+
         return { type: 'text', data: `Error details: ${error.message || JSON.stringify(error)}` };
     }
 };

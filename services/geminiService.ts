@@ -19,13 +19,14 @@ function getClient() {
 }
 
 // Model priority for automatic fallback to maximize free tier usage
-const MODEL_PRIORITY = [
-  'gemini-2.5-flash-lite', // Primary: modern, lightweight, likely separate quota
+'gemini-2.5-flash-lite', // Primary: modern, lightweight, likely separate quota
   'gemini-2.5-flash',      // Secondary: higher limits but currently exhausted
   'gemini-2.0-flash-lite-preview-02-05', // Fallback: very new lite
   'gemini-2.5-pro',        // Fallback: pro tier (very limited but high quality)
   'gemini-2.0-flash-exp',  // Fallback: experimental
   'gemini-2.0-flash',      // Fallback: previous stable
+  'gemini-1.5-flash',      // Fallback: reliable workhorse
+  'gemini-1.5-pro',        // Fallback: high quality older model
   'gemini-flash-latest',   // Fallback: generic alias
 ];
 
