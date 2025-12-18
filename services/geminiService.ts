@@ -20,15 +20,11 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
+  'gemini-3-flash-preview', // Newest release (Dec 17, 2025)
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
+  'gemini-2.0-flash',      // Stable 2.0
   'gemini-2.0-flash-lite-preview-02-05',
-  'gemini-1.5-flash', // Retrying standard 1.5
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-flash-001',
-  'gemini-1.5-pro',
-  'gemini-pro',       // Legacy 1.0 Pro (very reliable availability)
-  'gemini-1.0-pro',   // Alternate name
 ];
 
 export async function generateWithFallback(client: any, params: any) {
