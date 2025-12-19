@@ -39,8 +39,8 @@ class GeminiLiveService {
             this.options.onError?.(error);
         };
 
-        this.ws.onclose = () => {
-            console.log('[GeminiLive] Closed');
+        this.ws.onclose = (event) => {
+            console.log(`[GeminiLive] Closed. Code: ${event.code}, Reason: ${event.reason}`);
             this.options.onClose?.();
         };
     }
@@ -49,12 +49,12 @@ class GeminiLiveService {
         const setup = {
             setup: {
                 model: 'models/gemini-2.5-flash-native-audio-dialog',
-                generation_config: {
-                    response_modalities: ['AUDIO']
+                generationConfig: {
+                    responseModalities: ['AUDIO']
                 }
             }
         };
-        console.log('[GeminiLive] Sending setup:', setup);
+        console.log('[GeminiLive] Sending setup:', JSON.stringify(setup, null, 2));
         this.ws?.send(JSON.stringify(setup));
     }
 
