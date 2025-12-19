@@ -280,7 +280,7 @@ export const uiTranslations = {
   },
   es: {
     labels: {
-      leadStatus: { New: "Nuevo", Contactado: "Contactado", Qualified: "Cualificado", Lost: "Perdido", Won: "Ganado" },
+      leadStatus: { New: "Nuevo", Contacted: "Contactado", Qualified: "Cualificado", Lost: "Perdido", Won: "Ganado" },
       customerStatus: { Active: "Activo", Churned: "Dado de baja", Prospect: "Prospecto" },
       segments: { Industrial: "Industrial", Distribucion: "Distribución", Otros: "Otros" },
     },
