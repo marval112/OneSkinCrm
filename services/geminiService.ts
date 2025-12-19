@@ -21,13 +21,11 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
-  'gemini-2.0-flash',        // Most stable and powerful for current tasks
-  'gemini-1.5-flash',        // Reliable fallback
-  'gemini-1.5-flash-8b',     // Super fast fallback
-  'gemini-2.5-flash-native-audio-preview-12-2025', // Attempt current preview if exists
-  'gemini-3-flash-preview',  // Attempt experimental preview if exists
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash-lite-preview-02-05',
+  'gemini-2.5-flash',        // Exact ID from screenshot
+  'gemini-2.5-flash-lite',   // Exact ID from screenshot
+  'gemini-3-flash',          // Exact ID from screenshot
+  'gemini-2.0-flash',        // Reliable fallback
+  'gemini-1.5-flash',
 ];
 
 const OPENROUTER_MODELS = [

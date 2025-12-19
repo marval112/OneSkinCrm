@@ -6,6 +6,7 @@ import { useChat } from '../../contexts/ChatContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../services/i18nService';
 import useVoiceInput from '../../hooks/useVoiceInput';
+import { useGeminiLive } from '../../hooks/useGeminiLive';
 
 interface Message {
   id: number;
@@ -69,11 +70,41 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     return (localStorage.getItem('oneskin_ai_input_mode') as 'text' | 'voice') || 'text';
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { isListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
+
+  // Standard Voice Input (for transcription in text mode)
+  const { isListening: isSTTListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
+
+  // Gemini Live API (for native audio dialog)
+  const {
+    start: startLive,
+    stop: stopLive,
+    isListening: isLiveListening,
+    isConnected: isLiveConnected,
+    error: liveError
+  } = useGeminiLive({
+    onMessage: (text) => {
+      setMessages(prev => {
+        // Check if last message is AI and update it or add new
+        const last = prev[prev.length - 1];
+        if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
+          return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+        }
+        return [...prev, { id: Date.now(), text, sender: 'ai' }];
+      });
+    },
+    onCommand: (command, args) => {
+      handleCommandResponse({ type: 'command', data: { command: command as Command, args } });
+    }
+  });
+
+  const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
 
   useEffect(() => {
     localStorage.setItem('oneskin_ai_input_mode', inputMode);
-  }, [inputMode]);
+    // Stop any active listening when switching modes
+    if (isSTTListening) stopListening();
+    if (isLiveListening) stopLive();
+  }, [inputMode, isSTTListening, isLiveListening, stopListening, stopLive]);
 
   useEffect(() => {
     if (initialMessage) {
@@ -83,29 +114,28 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     }
   }, [initialMessage]);
 
-  // Update input with voice transcript
+  // Update input with voice transcript (only in text mode)
   useEffect(() => {
-    if (transcript) {
+    if (transcript && inputMode === 'text') {
       setInputValue(transcript);
     }
-  }, [transcript]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, [transcript, inputMode]);
 
   useEffect(() => {
     scrollToBottom();
     return () => {
       window.speechSynthesis?.cancel();
+      stopLive();
     };
-  }, [messages]);
+  }, [messages, stopLive]);
 
   const { showToast } = useContext(ToastContext) || {};
   const navigate = useNavigate();
 
   const speak = useCallback((text: string) => {
-    if (inputMode !== 'voice' || !('speechSynthesis' in window)) return;
+    // Only speak via TTS if NOT in Live Mode (Live Mode has native audio out)
+    if (inputMode === 'voice' && isLiveConnected) return;
+    if (!('speechSynthesis' in window)) return;
 
     // Stop any current speech
     window.speechSynthesis.cancel();
@@ -116,7 +146,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     utterance.pitch = 1.0;
 
     window.speechSynthesis.speak(utterance);
-  }, [inputMode, language]);
+  }, [inputMode, language, isLiveConnected]);
 
   const handleCommandResponse = (response: CommandResponse) => {
     let aiText = '';
@@ -189,144 +219,152 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, location.pathname]);
+  }, [isLoading, location.pathname, language, user]);
 
-  const handleSuggestionClick = (suggestion: string) => {
-    handleSendMessage(suggestion);
-  };
+const handleSuggestionClick = (suggestion: string) => {
+  handleSendMessage(suggestion);
+};
 
-  const toggleVoiceInput = () => {
-    if (isListening) {
+const toggleVoiceInput = () => {
+  if (inputMode === 'voice') {
+    if (isLiveListening) {
+      stopLive();
+    } else {
+      startLive();
+    }
+  } else {
+    if (isSTTListening) {
       stopListening();
     } else {
       startListening();
     }
-  };
+  }
+};
 
-  const suggestedCommands = [
-    "Show me new leads from the website",
-    "Create a task for Juan to follow up on the Archviz deal",
-    "Find the customer from 'Luxury Homes LLC'"
-  ];
+const suggestedCommands = [
+  "Show me new leads from the website",
+  "Create a task for Juan to follow up on the Archviz deal",
+  "Find the customer from 'Luxury Homes LLC'"
+];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl flex flex-col w-full max-w-2xl h-full max-h-[80vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center">
-            <SparklesIcon className="w-6 h-6 text-primary mr-2" />
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-              {language === 'es' ? 'Tu Mentor de Ventas' : language === 'pt' ? 'Seu Mentor de Vendas' : 'AI Sales Mentor'}
-            </h3>
-          </div>
-          <button onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
-            <XMarkIcon className="w-6 h-6" />
-          </button>
+return (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl flex flex-col w-full max-w-2xl h-full max-h-[80vh]">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center">
+          <SparklesIcon className="w-6 h-6 text-primary mr-2" />
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+            {language === 'es' ? 'Tu Mentor de Ventas' : language === 'pt' ? 'Seu Mentor de Vendas' : 'AI Sales Mentor'}
+          </h3>
         </div>
+        <button onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+          <XMarkIcon className="w-6 h-6" />
+        </button>
+      </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-bl-none'}`}>
-                <p className="text-sm">{msg.text}</p>
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="max-w-xs px-4 py-2 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
-                <div className="flex items-center justify-center space-x-1">
-                  <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full animate-pulse [animation-delay:-0.3s]"></div>
-                  <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full animate-pulse [animation-delay:-0.15s]"></div>
-                  <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex flex-wrap gap-2">
-              {messages.length <= 1 && suggestedCommands.map(cmd => (
-                <button key={cmd} onClick={() => handleSuggestionClick(cmd)} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">{cmd}</button>
-              ))}
-            </div>
-            {/* Input Mode Toggle */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
-              <button
-                onClick={() => setInputMode('text')}
-                className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all ${inputMode === 'text' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                TEXT
-              </button>
-              <button
-                onClick={() => setInputMode('voice')}
-                className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all ${inputMode === 'voice' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                VOICE
-              </button>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-bl-none'}`}>
+              <p className="text-sm">{msg.text}</p>
             </div>
           </div>
-          {voiceError && (
-            <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-xs text-red-600 dark:text-red-400">
-              {voiceError}
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="max-w-xs px-4 py-2 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none">
+              <div className="flex items-center justify-center space-x-1">
+                <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full animate-pulse [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full animate-pulse [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-slate-500 dark:bg-slate-400 rounded-full animate-pulse"></div>
+              </div>
             </div>
-          )}
-          {inputMode === 'voice' ? (
-            <div className="flex flex-col items-center justify-center py-6">
-              <button
-                type="button"
-                onClick={toggleVoiceInput}
-                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${isListening
-                  ? 'bg-red-500 text-white animate-pulse scale-110 shadow-red-500/50'
-                  : 'bg-primary text-white hover:bg-primary-hover'
-                  }`}
-                disabled={isLoading}
-              >
-                <MicrophoneIcon className="w-10 h-10" />
-              </button>
-              <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
-                {isListening ? (language === 'es' ? 'Escuchando...' : 'Listening...') : (language === 'es' ? 'Toca para hablar' : 'Tap to speak')}
-              </p>
-              {inputValue && !isListening && (
-                <div className="mt-4 w-full flex items-center gap-2">
-                  <div className="flex-1 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 italic">
-                    "{inputValue}"
-                  </div>
-                  <button
-                    onClick={() => handleSendMessage(inputValue)}
-                    className="p-3 bg-primary text-white rounded-full hover:bg-primary-hover shadow-md"
-                  >
-                    <PaperAirplaneIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputValue); }} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={language === 'es' ? "Pregúntame lo que quieras..." : "Ask me anything..."}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:disabled:bg-slate-600"
-                disabled={isLoading}
-                aria-label="Chat input"
-              />
-              <button type="submit" className="p-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:bg-slate-400 dark:disabled:bg-slate-500" disabled={isLoading}>
-                <PaperAirplaneIcon className="w-5 h-5" />
-              </button>
-            </form>
-          )}
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap gap-2">
+            {messages.length <= 1 && suggestedCommands.map(cmd => (
+              <button key={cmd} onClick={() => handleSuggestionClick(cmd)} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">{cmd}</button>
+            ))}
+          </div>
+          {/* Input Mode Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
+            <button
+              onClick={() => setInputMode('text')}
+              className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all ${inputMode === 'text' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              TEXT
+            </button>
+            <button
+              onClick={() => setInputMode('voice')}
+              className={`px-3 py-1 text-[10px] font-semibold rounded-md transition-all ${inputMode === 'voice' ? 'bg-white dark:bg-slate-600 text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              VOICE
+            </button>
+          </div>
         </div>
+        {(voiceError || liveError) && (
+          <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-xs text-red-600 dark:text-red-400">
+            {voiceError || liveError}
+          </div>
+        )}
+        {inputMode === 'voice' ? (
+          <div className="flex flex-col items-center justify-center py-6">
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${activeIsListening
+                ? 'bg-red-500 text-white animate-pulse scale-110 shadow-red-500/50'
+                : 'bg-primary text-white hover:bg-primary-hover'
+                }`}
+              disabled={isLoading}
+            >
+              <MicrophoneIcon className="w-10 h-10" />
+            </button>
+            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+              {activeIsListening ? (language === 'es' ? 'Voz Activa (Sigue hablando...)' : 'Live Voice (Keep speaking...)') : (language === 'es' ? 'Toca para iniciar sesión de voz' : 'Tap to start voice session')}
+            </p>
+            {inputValue && !isListening && (
+              <div className="mt-4 w-full flex items-center gap-2">
+                <div className="flex-1 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 italic">
+                  "{inputValue}"
+                </div>
+                <button
+                  onClick={() => handleSendMessage(inputValue)}
+                  className="p-3 bg-primary text-white rounded-full hover:bg-primary-hover shadow-md"
+                >
+                  <PaperAirplaneIcon className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputValue); }} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={language === 'es' ? "Pregúntame lo que quieras..." : "Ask me anything..."}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:disabled:bg-slate-600"
+              disabled={isLoading}
+              aria-label="Chat input"
+            />
+            <button type="submit" className="p-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:bg-slate-400 dark:disabled:bg-slate-500" disabled={isLoading}>
+              <PaperAirplaneIcon className="w-5 h-5" />
+            </button>
+          </form>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default AIChatPanel;

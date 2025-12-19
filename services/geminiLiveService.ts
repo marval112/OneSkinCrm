@@ -1,0 +1,126 @@
+import { getGeminiApiKey } from './aiSettingsService';
+
+export interface LiveChatOptions {
+    onMessage?: (text: string) => void;
+    onAudio?: (audio: Int16Array) => void;
+    onCommand?: (command: string, args: any) => void;
+    onError?: (error: any) => void;
+    onClose?: () => void;
+}
+
+class GeminiLiveService {
+    private ws: WebSocket | null = null;
+    private options: LiveChatOptions = {};
+    private apiKey: string | null = null;
+
+    constructor() {
+        this.apiKey = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined) || null;
+    }
+
+    async connect(options: LiveChatOptions) {
+        this.options = options;
+        if (!this.apiKey) {
+            this.options.onError?.('Gemini API Key not found');
+            return;
+        }
+
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BiDiGenerateContent?key=${this.apiKey}`;
+
+        this.ws = new WebSocket(url);
+        this.ws.binaryType = 'arraybuffer';
+
+        this.ws.onopen = () => {
+            console.log('[GeminiLive] Connected');
+            this.sendSetup();
+        };
+
+        this.ws.onmessage = (event) => {
+            this.handleMessage(event);
+        };
+
+        this.ws.onerror = (error) => {
+            console.error('[GeminiLive] Error:', error);
+            this.options.onError?.(error);
+        };
+
+        this.ws.onclose = () => {
+            console.log('[GeminiLive] Closed');
+            this.options.onClose?.();
+        };
+    }
+
+    private sendSetup() {
+        const setup = {
+            setup: {
+                model: 'models/gemini-2.5-flash-native-audio-dialog',
+                generation_config: {
+                    response_modalities: ['AUDIO']
+                }
+            }
+        };
+        this.ws?.send(JSON.stringify(setup));
+    }
+
+    sendAudio(pcmData: Int16Array) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
+        const message = {
+            realtime_input: {
+                media_chunks: [
+                    {
+                        mime_type: 'audio/pcm;rate=16000',
+                        data: base64Audio
+                    }
+                ]
+            }
+        };
+        this.ws.send(JSON.stringify(message));
+    }
+
+    sendText(text: string) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+        const message = {
+            realtime_input: {
+                text_chunks: [text]
+            }
+        };
+        this.ws.send(JSON.stringify(message));
+    }
+
+    private handleMessage(event: MessageEvent) {
+        try {
+            const response = JSON.parse(event.data);
+            console.log('[GeminiLive] Response:', response);
+
+            if (response.serverContent?.modelTurn?.parts) {
+                for (const part of response.serverContent.modelTurn.parts) {
+                    if (part.text) {
+                        this.options.onMessage?.(part.text);
+                    }
+                    if (part.inlineData?.mimeType?.startsWith('audio/')) {
+                        const binary = atob(part.inlineData.data);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                        const audioData = new Int16Array(bytes.buffer);
+                        this.options.onAudio?.(audioData);
+                    }
+                }
+            }
+
+            if (response.toolCall) {
+                // Handle tool calls here if needed
+            }
+        } catch (e) {
+            console.error('[GeminiLive] Parse error:', e);
+        }
+    }
+
+    disconnect() {
+        this.ws?.close();
+        this.ws = null;
+    }
+}
+
+export const geminiLiveService = new GeminiLiveService();
