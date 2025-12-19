@@ -20,7 +20,7 @@ class GeminiLiveService {
             return;
         }
 
-        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BiDiGenerateContent?key=${key}`;
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
 
         this.ws = new WebSocket(url);
         this.ws.binaryType = 'arraybuffer';
@@ -54,6 +54,7 @@ class GeminiLiveService {
                 }
             }
         };
+        console.log('[GeminiLive] Sending setup:', setup);
         this.ws?.send(JSON.stringify(setup));
     }
 
