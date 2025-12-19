@@ -21,11 +21,12 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
-  'gemini-2.5-flash-native-audio-dialog', // Native audio specialist
-  'gemini-3-flash',          // Latest Flash (shown in AI Studio)
-  'gemini-2.5-flash-lite',   // Very efficient 2.5
-  'gemini-2.5-flash',        // Standard 2.5
-  'gemini-2.0-flash',        // Fallback 2.0
+  'gemini-2.0-flash',        // Most stable and powerful for current tasks
+  'gemini-1.5-flash',        // Reliable fallback
+  'gemini-1.5-flash-8b',     // Super fast fallback
+  'gemini-2.5-flash-native-audio-preview-12-2025', // Attempt current preview if exists
+  'gemini-3-flash-preview',  // Attempt experimental preview if exists
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash-lite-preview-02-05',
 ];
 

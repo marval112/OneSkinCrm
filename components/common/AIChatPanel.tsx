@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { processCommand, Command, CommandResponse } from '../../services/aiCommandService';
 import { ToastContext } from '../../contexts/ToastContext';
