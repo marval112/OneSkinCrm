@@ -11,20 +11,16 @@ export interface LiveChatOptions {
 class GeminiLiveService {
     private ws: WebSocket | null = null;
     private options: LiveChatOptions = {};
-    private apiKey: string | null = null;
-
-    constructor() {
-        this.apiKey = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined) || null;
-    }
-
     async connect(options: LiveChatOptions) {
         this.options = options;
-        if (!this.apiKey) {
+        const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined) || null;
+
+        if (!key) {
             this.options.onError?.('Gemini API Key not found');
             return;
         }
 
-        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BiDiGenerateContent?key=${this.apiKey}`;
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BiDiGenerateContent?key=${key}`;
 
         this.ws = new WebSocket(url);
         this.ws.binaryType = 'arraybuffer';
