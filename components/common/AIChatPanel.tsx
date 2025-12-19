@@ -335,7 +335,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
               <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
                 {activeIsListening ? (language === 'es' ? 'Voz Activa (Sigue hablando...)' : 'Live Voice (Keep speaking...)') : (language === 'es' ? 'Toca para iniciar sesión de voz' : 'Tap to start voice session')}
               </p>
-              {inputValue && !isListening && (
+              {inputValue && !activeIsListening && (
                 <div className="mt-4 w-full flex items-center gap-2">
                   <div className="flex-1 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 italic">
                     "{inputValue}"
