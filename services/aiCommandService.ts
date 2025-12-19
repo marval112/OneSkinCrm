@@ -61,6 +61,67 @@ const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
                         company: { type: Type.STRING, description: 'The company name of the customer.' },
                     },
                 },
+            },
+            {
+                name: 'navigate',
+                description: 'Navigate to a specific screen/page in the application.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        screen: { type: Type.STRING, description: 'The destination screen (e.g., "leads", "customers", "deals", "dashboard", "alerts", "calendar").' },
+                    },
+                    required: ['screen'],
+                },
+            },
+            {
+                name: 'create_lead',
+                description: 'Create a new lead with provided information.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        name: { type: Type.STRING },
+                        company: { type: Type.STRING },
+                        email: { type: Type.STRING },
+                        phone: { type: Type.STRING },
+                    },
+                    required: ['name'],
+                },
+            },
+            {
+                name: 'create_deal',
+                description: 'Create a new business opportunity (deal).',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        value: { type: Type.NUMBER },
+                        lead_id: { type: Type.NUMBER },
+                    },
+                    required: ['title'],
+                },
+            },
+            {
+                name: 'create_alert',
+                description: 'Create a reminder or alert for the user.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        message: { type: Type.STRING, description: 'The content of the alert.' },
+                    },
+                    required: ['message'],
+                },
+            },
+            {
+                name: 'initiate_call',
+                description: 'Start an audio or video call with a team member.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        member: { type: Type.STRING, description: 'Name of the team member to call.' },
+                        type: { type: Type.STRING, enum: ['audio', 'video'], description: 'Type of the call.' },
+                    },
+                    required: ['member', 'type'],
+                },
             }
         ]
     }
@@ -107,12 +168,11 @@ export const processCommand = async (prompt: string, context?: string, userName?
         - Help with sales and business development strategies`;
 
         const response = await generateWithFallback(ai, {
-            model: 'gemini-2.5-flash', // This will be overridden by fallback logic
+            model: 'gemini-2.5-flash-native-audio-dialog',
             contents: prompt,
             config: {
-                // Removed tools to prevent function calling loop
-                // AI will respond with text analysis instead
-                systemInstruction
+                systemInstruction,
+                tools, // Re-enable tools for structured actions
             }
         });
 
