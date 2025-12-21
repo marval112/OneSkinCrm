@@ -32,70 +32,83 @@ const MODEL_PRIORITY = [
  * conversational filler or markdown backticks.
  */
 function extractJSON<T>(text: string): T | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const logFailure = (reason: string) => {
+    console.error(`[extractJSON] ${reason}. Text preview: ${trimmed.substring(0, 300)}`);
+  };
+
+  const unwrap = (val: any): any => {
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      const keys = Object.keys(val);
+      if (keys.length === 0) return val;
+
+      // If it's an object with only one key and that key is an array, return the array
+      if (keys.length === 1 && Array.isArray(val[keys[0]])) {
+        console.log(`[extractJSON] Unwrapped array from property: ${keys[0]}`);
+        return val[keys[0]];
+      }
+
+      // Common wrapper keys
+      for (const key of ['tasks', 'items', 'data', 'suggestions', 'leads', 'deals', 'result', 'response']) {
+        if (Array.isArray(val[key])) {
+          console.log(`[extractJSON] Found array in property: ${key}`);
+          return val[key];
+        }
+      }
+    }
+    return val;
+  };
+
   try {
     // 1. Try direct parse
-    return JSON.parse(text.trim());
-  } catch (e) {
-    // 2. Try to find JSON block between backticks
-    const match = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/```\s*([\s\S]*?)\s*```/);
-    if (match && match[1]) {
-      try {
-        return JSON.parse(match[1].trim());
-      } catch (e2) {
-        // Continue to step 3
-      }
+    const direct = JSON.parse(trimmed);
+    if (direct) {
+      console.log("[extractJSON] Direct parse success.");
+      return unwrap(direct);
     }
+  } catch (e) { /* continue */ }
 
-    // 3. Try to find the first { and last }
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
-      try {
-        return JSON.parse(text.substring(start, end + 1));
-      } catch (e3) {
-        // Continue to step 4
-      }
-    }
-
-    // 4. Try to find the first [ and last ]
-    const startArr = text.indexOf('[');
-    const endArr = text.lastIndexOf(']');
-    if (startArr !== -1 && endArr !== -1 && endArr > startArr) {
-      try {
-        return JSON.parse(text.substring(startArr, endArr + 1));
-      } catch (e4) {
-        // Continue to step 5
-      }
-    }
-
-    // 5. Detect and fix NDJSON or mixed text/JSON
-    // Find all potential JSON objects/arrays in the text
-    const jsonMatches = text.match(/\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}|\[(?:[^[\]]|\[(?:[^[\]]|\[[^[\]]*\])*\])*\]/g);
-
-    if (jsonMatches && jsonMatches.length > 0) {
-      // Try to parse each match
-      for (const m of jsonMatches) {
-        try {
-          const parsed = JSON.parse(m);
-          // If we are looking for an array and found one, return it
-          if (Array.isArray(parsed)) return parsed as any;
-          // If we found a valid object and it looks like a single item we might need
-          if (jsonMatches.length === 1) return parsed;
-        } catch (e5) { /* ignore */ }
-      }
-
-      // If multiple objects found and no array, try to join them into an array
-      try {
-        const objects = jsonMatches.map(m => {
-          try { return JSON.parse(m); } catch { return null; }
-        }).filter(Boolean);
-        if (objects.length > 1) return objects as any;
-      } catch (e6) { /* ignore */ }
-    }
-
-    console.error("[extractJSON] Failed to parse JSON from text:", text.substring(0, 500));
-    return null;
+  // 2. Try to find JSON block between backticks
+  const mdMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (mdMatch && mdMatch[1]) {
+    try {
+      const parsed = JSON.parse(mdMatch[1].trim());
+      console.log("[extractJSON] Markdown block parse success.");
+      return unwrap(parsed);
+    } catch (e2) { /* continue */ }
   }
+
+  // 3. Robust Regex Extraction
+  // Find balanced { } or [ ] blocks
+  const blocks = trimmed.match(/\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}|\[(?:[^[\]]|\[(?:[^[\]]|\[[^[\]]*\])*\])*\]/g);
+  if (blocks) {
+    for (const block of blocks) {
+      try {
+        const parsed = JSON.parse(block);
+        console.log("[extractJSON] Regex block parse success.");
+        return unwrap(parsed);
+      } catch (e3) { /* continue */ }
+    }
+  }
+
+  // 4. NDJSON collection (multiple { } objects in the text)
+  const objectMatches = trimmed.match(/\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g);
+  if (objectMatches && objectMatches.length > 1) {
+    try {
+      const objects = objectMatches.map(m => {
+        try { return JSON.parse(m); } catch { return null; }
+      }).filter(Boolean);
+      if (objects.length > 1) {
+        console.log(`[extractJSON] Collected ${objects.length} objects into array.`);
+        return objects as any;
+      }
+    } catch (e4) { /* continue */ }
+  }
+
+  logFailure("Failed to extract valid JSON");
+  return null;
 }
 
 const OPENROUTER_MODELS = [
@@ -265,7 +278,7 @@ export const summarizeLead = async (lead: Lead, activities: ActivityLog[] = []):
     Recent activity:\n${recent || '(no activity)'}
   `;
   try {
-    const response = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt });
+    const response = await generateWithFallback(client, { contents: prompt });
     return response.text;
   } catch (e) {
     console.error('summarizeLead error', e);
@@ -324,7 +337,7 @@ export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog
     Output JSON: {"subject": string, "body": string}.
   `;
   try {
-    const response = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } });
+    const response = await generateWithFallback(client, { contents: prompt, config: { responseMimeType: 'application/json' } });
     const obj = extractJSON<{ subject: string; body: string }>(response.text);
     if (obj && obj.subject && obj.body) return obj;
     throw new Error('Invalid email JSON');
@@ -374,7 +387,7 @@ export const proposeAgenda = async (tasks: { id: number; type: string; due_date?
   }
   const prompt = `Create a day agenda starting at 09:00 with 45-min slots for these tasks. Return JSON array of {"id": number, "start": "HH:MM"}. Prioritize overdue and due today tasks first.
 Tasks: ${JSON.stringify(tasks.slice(0, 40))}`;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<AgendaItem[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
+  try { const r = await generateWithFallback(client, { contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<AgendaItem[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
 };
 
 export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []): Promise<string> => {
@@ -394,7 +407,7 @@ export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []):
     Title: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
     Recent activity:\n${recent || '(none)'}
   `;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
+  try { const r = await generateWithFallback(client, { contents: prompt }); return r.text; } catch { return 'Could not generate strategy.'; }
 };
 
 export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = []): Promise<SuggestedTask[]> => {
@@ -409,7 +422,7 @@ export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = [
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<SuggestedTask[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
+  try { const r = await generateWithFallback(client, { contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<SuggestedTask[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
 };
 
 export const generateDashboardInsights = async (payload: any): Promise<string> => {
@@ -422,7 +435,7 @@ export const generateDashboardInsights = async (payload: any): Promise<string> =
     
     Data: ${JSON.stringify(payload).slice(0, 5000)}
   `;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
+  try { const r = await generateWithFallback(client, { contents: prompt }); return r.text; } catch { return 'No se pudieron generar insights.'; }
 };
 
 export const suggestDealStage = async (deal: Deal, activities: ActivityLog[] = []): Promise<DealStage | null> => {
@@ -438,7 +451,7 @@ Deal: ${deal.title} • Current: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
   try {
-    const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } });
+    const r = await generateWithFallback(client, { contents: prompt, config: { responseMimeType: 'application/json' } });
     const obj = extractJSON<{ stage: string }>(r.text);
     const s = String(obj?.stage || '');
     const map: Record<string, DealStage> = {
@@ -677,7 +690,6 @@ export const draftCommercialEmail = async (
 
   try {
     const response = await generateWithFallback(client, {
-      model: 'gemini-2.5-flash-lite',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
