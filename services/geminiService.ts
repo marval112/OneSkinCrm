@@ -1,7 +1,7 @@
 
 
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKey, loadGeminiApiKey } from './aiSettingsService';
+import { getGeminiApiKey, loadGeminiApiKey, loadOpenRouterApiKey } from './aiSettingsService';
 import { generateWithOpenRouter } from './openRouterService';
 import type { Lead, Customer, ActivityLog, Deal } from '../types';
 import { DealStage } from '../types';
