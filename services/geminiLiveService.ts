@@ -20,7 +20,7 @@ class GeminiLiveService {
             return;
         }
 
-        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${key}`;
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
 
         this.ws = new WebSocket(url);
         this.ws.binaryType = 'arraybuffer';
@@ -48,7 +48,7 @@ class GeminiLiveService {
     private sendSetup() {
         const setup = {
             setup: {
-                model: 'models/gemini-2.0-flash',
+                model: 'models/gemini-2.0-flash-exp',
                 generationConfig: {
                     responseModalities: ['AUDIO']
                 }
