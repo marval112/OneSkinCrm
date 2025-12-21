@@ -24,20 +24,17 @@ function getClient() {
 const MODEL_PRIORITY = [
   'gemini-2.0-flash-exp',
   'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
 ];
 
 const OPENROUTER_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
-  'deepseek/deepseek-r1:free',
-  'mistralai/mistral-small-24b-instruct-2501:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'qwen/qwen-2.5-72b-instruct:free',
+  'xiaomi/mimo-v2-flash:free',
+  'mistralai/devstral-2512:free',
+  'nex-agi/deepseek-v3.1-nex-n1:free',
 ];
 
 const OPENROUTER_VISION_MODELS = [
-  'google/gemini-2.0-flash-exp:free', // Gemini 2.0 Flash handles vision well
-  'qwen/qwen-2.5-vl-72b-instruct:free',
+  'xiaomi/mimo-v2-flash:free', // Using these as fallback for vision too
+  'nex-agi/deepseek-v3.1-nex-n1:free',
 ];
 
 export async function generateWithFallback(client: any, params: any) {
