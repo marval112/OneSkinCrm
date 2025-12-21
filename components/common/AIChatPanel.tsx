@@ -66,9 +66,8 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   }, [language, user]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [inputMode, setInputMode] = useState<'text' | 'voice'>(() => {
-    return (localStorage.getItem('oneskin_ai_input_mode') as 'text' | 'voice') || 'text';
-  });
+  const [inputMode, setInputMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('oneskin_ai_input_mode') as 'text' | 'voice') || 'text');
+  const [forceOpenRouter, setForceOpenRouter] = useState<boolean>(() => localStorage.getItem('oneskin_force_openrouter') === 'true');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Standard Voice Input (for transcription in text mode)
@@ -125,6 +124,10 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     if (isSTTListening) stopListening();
     if (isLiveListening) stopLive();
   }, [inputMode, isSTTListening, isLiveListening, stopListening, stopLive]);
+
+  useEffect(() => {
+    localStorage.setItem('oneskin_force_openrouter', String(forceOpenRouter));
+  }, [forceOpenRouter]);
 
   useEffect(() => {
     if (initialMessage) {
@@ -318,6 +321,18 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
                 <button key={cmd} onClick={() => handleSuggestionClick(cmd)} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">{cmd}</button>
               ))}
             </div>
+            {/* Fallback Mode Toggle */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Manual Fallback</span>
+              <button
+                onClick={() => setForceOpenRouter(!forceOpenRouter)}
+                className={`w-8 h-4 rounded-full relative transition-all duration-200 ${forceOpenRouter ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                title={forceOpenRouter ? "Forcing OpenRouter (Free Models)" : "Using Default Priority (Gemini first)"}
+              >
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200 ${forceOpenRouter ? 'left-4.5' : 'left-0.5'}`} style={{ left: forceOpenRouter ? '1.1rem' : '0.125rem' }}></div>
+              </button>
+            </div>
+
             {/* Input Mode Toggle */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
               <button
