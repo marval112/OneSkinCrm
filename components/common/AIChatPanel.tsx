@@ -245,13 +245,20 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       const sellerName = user?.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : undefined;
       const response = await processCommand(text, context, sellerName, language);
       handleCommandResponse(response);
+
+      // If we are in "voice-emulated" mode, speak the result
+      if (inputMode === 'voice' && forceOpenRouter) {
+        if (response.type === 'text') {
+          speak(response.data);
+        }
+      }
     } catch (error) {
       const errorMessage: Message = { id: Date.now() + 1, text: "Sorry, something went wrong.", sender: 'ai' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, location.pathname, language, user]);
+  }, [isLoading, location.pathname, language, user, inputMode, forceOpenRouter, speak]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSendMessage(suggestion);
@@ -259,10 +266,20 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   const toggleVoiceInput = () => {
     if (inputMode === 'voice') {
-      if (isLiveListening) {
-        stopLive();
+      if (forceOpenRouter) {
+        // Manual Fallback: Use standard STT instead of Gemini Live
+        if (isSTTListening) {
+          stopListening();
+        } else {
+          startListening();
+        }
       } else {
-        startLive();
+        // Normal Mode: Use Gemini Live
+        if (isLiveListening) {
+          stopLive();
+        } else {
+          startLive();
+        }
       }
     } else {
       if (isSTTListening) {
