@@ -94,6 +94,17 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     },
     onCommand: (command, args) => {
       handleCommandResponse({ type: 'command', data: { command: command as Command, args } });
+    },
+    onError: (err) => {
+      const msg = typeof err === 'string' ? err : JSON.stringify(err);
+      if (msg.toLowerCase().includes('quota') || msg.includes('429') || msg.includes('1011')) {
+        const quotaMsg = language === 'es'
+          ? "He agotado mi cuota de voz de Gemini por ahora, pero aquí sigo para ayudarte por texto (usando modelos gratuitos de OpenRouter si es necesario). ✨"
+          : "I've run out of Gemini voice quota for now, but I'm still here to help you via text (switching to OpenRouter free models if needed). ✨";
+
+        setMessages(prev => [...prev, { id: Date.now(), text: quotaMsg, sender: 'ai' }]);
+        setInputMode('text');
+      }
     }
   });
 

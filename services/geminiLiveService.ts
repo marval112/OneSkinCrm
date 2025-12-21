@@ -41,6 +41,9 @@ class GeminiLiveService {
 
         this.ws.onclose = (event) => {
             console.log(`[GeminiLive] Closed. Code: ${event.code}, Reason: ${event.reason}`);
+            if (event.code === 1011 || event.reason.includes('quota') || event.reason.includes('plan')) {
+                this.options.onError?.(`Quota exceeded: ${event.reason}`);
+            }
             this.options.onClose?.();
         };
     }

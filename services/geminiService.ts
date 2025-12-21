@@ -29,13 +29,16 @@ const MODEL_PRIORITY = [
 ];
 
 const OPENROUTER_MODELS = [
-  'xiaomi/mimo-v2-flash:free',
-  'nex-agi/deepseek-v3.1-nex-n1:free',
-  'tngtech/deepseek-r1t2-chimera:free',
+  'google/gemini-2.0-flash-exp:free',
+  'deepseek/deepseek-r1:free',
+  'mistralai/mistral-small-24b-instruct-2501:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen-2.5-72b-instruct:free',
 ];
 
 const OPENROUTER_VISION_MODELS = [
-  'nvidia/nemotron-nano-12b-v2-vl:free', // Vision specialized
+  'google/gemini-2.0-flash-exp:free', // Gemini 2.0 Flash handles vision well
+  'qwen/qwen-2.5-vl-72b-instruct:free',
 ];
 
 export async function generateWithFallback(client: any, params: any) {
@@ -56,9 +59,11 @@ export async function generateWithFallback(client: any, params: any) {
       const msg = error.message || '';
       const status = error.status || (error.response ? error.response.status : 0);
       const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota');
+      const isServiceUnavailable = status === 503 || msg.includes('503') || msg.includes('overloaded');
       const isNotFound = status === 404 || msg.includes('404') || msg.includes('not found');
-      if (isQuota || isNotFound) {
-        console.warn(`Model ${model} failed (${isQuota ? 'Quota' : 'Not Found'}). Trying next...`);
+
+      if (isQuota || isServiceUnavailable || isNotFound) {
+        console.warn(`Model ${model} failed (${isQuota ? 'Quota' : isServiceUnavailable ? 'Overloaded' : 'Not Found'}). Trying next...`);
         continue;
       }
       throw error;
