@@ -23,8 +23,8 @@ function getClient() {
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
   'gemini-2.0-flash-exp',
-  'gemini-1.5-flash-latest',
   'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
 ];
 
 /**
@@ -68,6 +68,7 @@ function extractJSON<T>(text: string): T | null {
       }
     }
 
+    console.error("[extractJSON] Failed to parse JSON from text:", text.substring(0, 500));
     return null;
   }
 }
@@ -203,7 +204,6 @@ export const getCustomerInsights = async (customer: Customer): Promise<string> =
 
   try {
     const response = await generateWithFallback(client, {
-      model: 'gemini-2.5-flash-lite',
       contents: prompt,
     });
     return response.text;
@@ -262,7 +262,6 @@ Recent activity:\n${recent || '(none)'}
 `;
   try {
     const response = await generateWithFallback(client, {
-      model: 'gemini-2.5-flash-lite',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
@@ -322,7 +321,6 @@ Recent activity:\n${recent || '(none)'}
 `;
   try {
     const response = await generateWithFallback(client, {
-      model: 'gemini-2.5-flash-lite',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
@@ -549,7 +547,6 @@ export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lea
     };
 
     const response = await generateWithFallback(client, {
-      model: 'gemini-2.5-flash-lite',
       contents: { parts: [imagePart, textPart] },
       config: {
         responseMimeType: 'application/json',
@@ -599,7 +596,6 @@ export const generateProspects = async (query: string): Promise<any[]> => {
 
   try {
     const response = await generateWithFallback(client, {
-      model: 'gemini-2.5-flash-lite',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
