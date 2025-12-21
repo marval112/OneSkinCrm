@@ -23,8 +23,54 @@ function getClient() {
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
   'gemini-2.0-flash-exp',
+  'gemini-1.5-flash-latest',
   'gemini-1.5-flash',
 ];
+
+/**
+ * Robustly extracts and parses JSON from a string that might contain 
+ * conversational filler or markdown backticks.
+ */
+function extractJSON<T>(text: string): T | null {
+  try {
+    // 1. Try direct parse
+    return JSON.parse(text.trim());
+  } catch (e) {
+    // 2. Try to find JSON block between backticks
+    const match = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/```\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      try {
+        return JSON.parse(match[1].trim());
+      } catch (e2) {
+        // Continue to step 3
+      }
+    }
+
+    // 3. Try to find the first { and last }
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      try {
+        return JSON.parse(text.substring(start, end + 1));
+      } catch (e3) {
+        // Continue to step 4
+      }
+    }
+
+    // 4. Try to find the first [ and last ]
+    const startArr = text.indexOf('[');
+    const endArr = text.lastIndexOf(']');
+    if (startArr !== -1 && endArr !== -1 && endArr > startArr) {
+      try {
+        return JSON.parse(text.substring(startArr, endArr + 1));
+      } catch (e4) {
+        // Nothing worked
+      }
+    }
+
+    return null;
+  }
+}
 
 const OPENROUTER_MODELS = [
   'xiaomi/mimo-v2-flash:free',
@@ -120,13 +166,9 @@ export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoni
       }
     });
 
-    const text = response.text.trim();
-    // Simple check to see if it's a JSON string
-    if (text.startsWith('{') && text.endsWith('}')) {
-      const result = JSON.parse(text);
-      if (typeof result.score === 'number' && typeof result.reasoning === 'string') {
-        return result;
-      }
+    const result = extractJSON<{ score: number, reasoning: string }>(response.text);
+    if (result && typeof result.score === 'number' && typeof result.reasoning === 'string') {
+      return result;
     }
     throw new Error("Invalid JSON response from AI");
 
@@ -224,9 +266,8 @@ Recent activity:\n${recent || '(none)'}
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
-    const text = response.text.trim();
-    const arr = JSON.parse(text);
-    if (Array.isArray(arr)) return arr as SuggestedTask[];
+    const arr = extractJSON<SuggestedTask[]>(response.text);
+    if (Array.isArray(arr)) return arr;
     throw new Error('Invalid response');
   } catch (e) {
     console.error('suggestLeadTasks error', e);
@@ -253,8 +294,7 @@ export const draftLeadFollowUpEmail = async (lead: Lead, activities: ActivityLog
   `;
   try {
     const response = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } });
-    const text = response.text.trim();
-    const obj = JSON.parse(text);
+    const obj = extractJSON<{ subject: string; body: string }>(response.text);
     if (obj && obj.subject && obj.body) return obj;
     throw new Error('Invalid email JSON');
   } catch (e) {
@@ -286,9 +326,8 @@ Recent activity:\n${recent || '(none)'}
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
-    const text = response.text.trim();
-    const arr = JSON.parse(text);
-    if (Array.isArray(arr)) return arr as SuggestedTask[];
+    const arr = extractJSON<SuggestedTask[]>(response.text);
+    if (Array.isArray(arr)) return arr;
     throw new Error('Invalid response');
   } catch (e) {
     console.error('suggestCustomerTasks error', e);
@@ -305,7 +344,7 @@ export const proposeAgenda = async (tasks: { id: number; type: string; due_date?
   }
   const prompt = `Create a day agenda starting at 09:00 with 45-min slots for these tasks. Return JSON array of {"id": number, "start": "HH:MM"}. Prioritize overdue and due today tasks first.
 Tasks: ${JSON.stringify(tasks.slice(0, 40))}`;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as AgendaItem[]; throw new Error('bad'); } catch { return []; }
+  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<AgendaItem[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
 };
 
 export const summarizeDeal = async (deal: Deal, activities: ActivityLog[] = []): Promise<string> => {
@@ -340,7 +379,7 @@ export const suggestDealTasks = async (deal: Deal, activities: ActivityLog[] = [
 Deal: ${deal.title} • Stage: ${deal.status} • Value: €${deal.value}
 Recent activity:\n${recent || '(none)'}
 `;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as SuggestedTask[]; throw new Error('bad'); } catch { return []; }
+  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<SuggestedTask[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
 };
 
 export const generateDashboardInsights = async (payload: any): Promise<string> => {
@@ -370,7 +409,7 @@ Recent activity:\n${recent || '(none)'}
 `;
   try {
     const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } });
-    const obj = JSON.parse(r.text.trim());
+    const obj = extractJSON<{ stage: string }>(r.text);
     const s = String(obj?.stage || '');
     const map: Record<string, DealStage> = {
       'Qualification': DealStage.QUALIFICATION,
@@ -399,7 +438,7 @@ Recent activity:\n${recent || '(none)'}
 `;
   try {
     const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } });
-    const obj = JSON.parse(r.text.trim());
+    const obj = extractJSON<{ dueDays: number; stage?: string }>(r.text);
     const d = Number(obj?.dueDays);
     const s = String(obj?.stage || '');
     const map: Record<string, DealStage> = {
@@ -449,7 +488,7 @@ export const draftCustomerFollowUpEmail = async (customer: Customer, activities:
     
     Output JSON {"subject","body"}.
   `;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const obj = JSON.parse(r.text.trim()); if (obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject: 'Seguimiento', body: 'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
+  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const obj = extractJSON<{ subject: string; body: string }>(r.text); if (obj && obj.subject && obj.body) return obj; throw new Error('bad'); } catch { return { subject: 'Seguimiento', body: 'Hola,\n\nQuería compartir novedades y coordinar próximos pasos.\n\nSaludos,' }; }
 };
 
 export const prioritizeTasks = async (tasks: { id: number; type: string; due_date?: string | null; title?: string }[]): Promise<number[]> => {
@@ -467,7 +506,7 @@ export const prioritizeTasks = async (tasks: { id: number; type: string; due_dat
   const prompt = `Rank these tasks from highest to lowest priority for a sales rep. Consider proximity of due date and potential revenue impact inferred from title/type. Return ONLY a JSON array with the ordered ids.
 Tasks: ${JSON.stringify(sample)}
 `;
-  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = JSON.parse(r.text.trim()); if (Array.isArray(arr)) return arr as number[]; throw new Error('bad'); } catch { return tasks.map(t => t.id); }
+  try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<number[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return tasks.map(t => t.id); }
 };
 
 export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lead>> => {
@@ -517,9 +556,8 @@ export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lea
       },
     });
 
-    const text = response.text.trim();
-    if (text.startsWith('{') && text.endsWith('}')) {
-      const result = JSON.parse(text);
+    const result = extractJSON<{ name: string; company: string; email: string; phone: string; country: string }>(response.text);
+    if (result) {
       return {
         name: result.name || '',
         company: result.company || '',
@@ -568,8 +606,7 @@ export const generateProspects = async (query: string): Promise<any[]> => {
       },
     });
 
-    const text = response.text.trim();
-    const result = JSON.parse(text);
+    const result = extractJSON<any[]>(response.text);
     if (Array.isArray(result)) {
       return result;
     }
@@ -619,9 +656,8 @@ export const draftCommercialEmail = async (
       },
     });
 
-    const text = response.text.trim();
-    const result = JSON.parse(text);
-    if (result.subject && result.body) {
+    const result = extractJSON<{ subject: string; body: string }>(response.text);
+    if (result && result.subject && result.body) {
       return result;
     }
     throw new Error("Invalid JSON response");
