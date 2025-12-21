@@ -43,50 +43,54 @@ const OPENROUTER_VISION_MODELS = [
 
 export async function generateWithFallback(client: any, params: any) {
   let lastError;
-  const attemptedModels: string[] = [];
 
   // Helper to check if vision is requested
   const isVisionTask = params.contents?.parts?.some((p: any) => p.inlineData) || false;
 
   // 1. Try Gemini Models first
-  return {
-    text: result.text || (result.response ? result.response.text() : ""),
-    response: result
-  };
-} catch (error: any) {
-  lastError = error;
-  const msg = error.message || '';
-  const status = error.status || (error.response ? error.response.status : 0);
-  const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('limit') || msg.includes('exhausted');
-  const isServiceUnavailable = status === 503 || msg.includes('503') || msg.includes('overloaded');
-  const isNotFound = status === 404 || msg.includes('404') || msg.includes('not found');
+  for (const model of MODEL_PRIORITY) {
+    try {
+      const currentParams = { ...params, model };
+      const result = await client.models.generateContent(currentParams);
+      // Normalize response to match OpenRouter/Custom format helper
+      return {
+        text: result.text || (result.response ? result.response.text() : ""),
+        response: result
+      };
+    } catch (error: any) {
+      lastError = error;
+      const msg = error.message || '';
+      const status = error.status || (error.response ? error.response.status : 0);
+      const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('limit') || msg.includes('exhausted');
+      const isServiceUnavailable = status === 503 || msg.includes('503') || msg.includes('overloaded');
+      const isNotFound = status === 404 || msg.includes('404') || msg.includes('not found');
 
-  if (isQuota || isServiceUnavailable || isNotFound) {
-    console.warn(`[AI Fallback] Gemini Model ${model} failed (${isQuota ? 'Quota' : isServiceUnavailable ? 'Overloaded' : 'Not Found'}). Trying next Gemini...`);
-    continue;
+      if (isQuota || isServiceUnavailable || isNotFound) {
+        console.warn(`[AI Fallback] Gemini Model ${model} failed (${isQuota ? 'Quota' : isServiceUnavailable ? 'Overloaded' : 'Not Found'}). Trying next Gemini...`);
+        continue;
+      }
+      throw error;
+    }
   }
-  throw error;
-}
-}
 
-// 2. Select OpenRouter priority based on task type
-const openRouterList = isVisionTask
-  ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
-  : OPENROUTER_MODELS;
+  // 2. Select OpenRouter priority based on task type
+  const openRouterList = isVisionTask
+    ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
+    : OPENROUTER_MODELS;
 
-// 3. Try OpenRouter Models as fallback
-for (const model of openRouterList) {
-  try {
-    console.warn(`Gemini failed. Trying OpenRouter model: ${model}${isVisionTask ? ' (Vision Task)' : ''}`);
-    const result = await generateWithOpenRouter({ ...params, model });
-    return result;
-  } catch (error: any) {
-    lastError = error;
-    console.warn(`OpenRouter model ${model} failed. Trying next...`);
+  // 3. Try OpenRouter Models as fallback
+  for (const model of openRouterList) {
+    try {
+      console.warn(`Gemini failed. Trying OpenRouter model: ${model}${isVisionTask ? ' (Vision Task)' : ''}`);
+      const result = await generateWithOpenRouter({ ...params, model });
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`OpenRouter model ${model} failed. Trying next...`);
+    }
   }
-}
 
-throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
+  throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
 }
 
 export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoning: string; }> => {
