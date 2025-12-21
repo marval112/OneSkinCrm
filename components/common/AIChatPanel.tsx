@@ -99,12 +99,16 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
       console.error('[GeminiLive] Error reported to panel:', msg);
 
-      if (msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan')) {
-        const quotaMsg = language === 'es'
-          ? "🎤 **Cuota de voz excedida.**\n\nNo te preocupes, he activado el **Modo Texto de emergencia** usando modelos gratuitos para que podamos seguir hablando. ¡Dime qué necesitas! ✨"
-          : "🎤 **Voice quota exceeded.**\n\nDon't worry, I've activated **Emergency Text Mode** using free models so we can continue our conversation. How can I help? ✨";
+      const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
 
-        setMessages(prev => [...prev, { id: Date.now(), text: quotaMsg, sender: 'ai' }]);
+      if (isQuota) {
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          sender: 'ai',
+          text: language === 'es'
+            ? "🎤 **Cuota de voz excedida.** No te preocupes, he activado el **Modo Texto de emergencia** usando modelos gratuitos para que podamos seguir hablando. ¡Dime qué necesitas! ✨"
+            : "🎤 **Voice quota exceeded.** No worries, I've activated **Emergency Text Mode** using free models so we can keep talking. Tell me what you need! ✨",
+        }]);
         setInputMode('text');
         stopLive();
       } else {
