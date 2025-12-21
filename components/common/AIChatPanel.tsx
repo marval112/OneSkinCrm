@@ -96,14 +96,19 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       handleCommandResponse({ type: 'command', data: { command: command as Command, args } });
     },
     onError: (err) => {
-      const msg = typeof err === 'string' ? err : JSON.stringify(err);
-      if (msg.toLowerCase().includes('quota') || msg.includes('429') || msg.includes('1011')) {
+      const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+      console.error('[GeminiLive] Error reported to panel:', msg);
+
+      if (msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan')) {
         const quotaMsg = language === 'es'
-          ? "He agotado mi cuota de voz de Gemini por ahora, pero aquí sigo para ayudarte por texto (usando modelos gratuitos de OpenRouter si es necesario). ✨"
-          : "I've run out of Gemini voice quota for now, but I'm still here to help you via text (switching to OpenRouter free models if needed). ✨";
+          ? "🎤 **Cuota de voz excedida.**\n\nNo te preocupes, he activado el **Modo Texto de emergencia** usando modelos gratuitos para que podamos seguir hablando. ¡Dime qué necesitas! ✨"
+          : "🎤 **Voice quota exceeded.**\n\nDon't worry, I've activated **Emergency Text Mode** using free models so we can continue our conversation. How can I help? ✨";
 
         setMessages(prev => [...prev, { id: Date.now(), text: quotaMsg, sender: 'ai' }]);
         setInputMode('text');
+        stopLive();
+      } else {
+        showToast?.(language === 'es' ? "Error en la conexión de voz." : "Voice connection error.", 'danger');
       }
     }
   });
