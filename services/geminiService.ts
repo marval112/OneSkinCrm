@@ -22,9 +22,9 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
-  'gemini-2.0-flash-exp',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
+  'models/gemini-2.0-flash-exp',
+  'models/gemini-1.5-flash',
+  'models/gemini-1.5-flash-8b',
 ];
 
 /**
@@ -64,6 +64,18 @@ function extractJSON<T>(text: string): T | null {
       try {
         return JSON.parse(text.substring(startArr, endArr + 1));
       } catch (e4) {
+        // Continue to step 5
+      }
+    }
+
+    // 5. Detect and fix NDJSON (Multiple {}{}{} objects on newlines)
+    // Common with smaller free models that ignore "strict array" instruction
+    const parts = text.split('\n').map(p => p.trim()).filter(p => p.startsWith('{') && p.endsWith('}'));
+    if (parts.length > 1) {
+      try {
+        const joined = `[${parts.join(',')}]`;
+        return JSON.parse(joined);
+      } catch (e5) {
         // Nothing worked
       }
     }
