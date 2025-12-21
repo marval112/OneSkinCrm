@@ -13,6 +13,12 @@ class GeminiLiveService {
     private options: LiveChatOptions = {};
     async connect(options: LiveChatOptions) {
         this.options = options;
+        const forceOpenRouter = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'true';
+        if (forceOpenRouter) {
+            options.onError?.('MANUAL_FALLBACK');
+            return;
+        }
+
         const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined) || null;
 
         if (!key) {

@@ -99,14 +99,19 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       console.error('[GeminiLive] Error reported to panel:', msg);
 
       const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
+      const isManual = msg === 'MANUAL_FALLBACK';
 
-      if (isQuota) {
+      if (isQuota || isManual) {
         setMessages(prev => [...prev, {
           id: Date.now(),
           sender: 'ai',
-          text: language === 'es'
-            ? "🎤 **Cuota de voz excedida.** No te preocupes, he activado el **Modo Texto de emergencia** usando modelos gratuitos para que podamos seguir hablando. ¡Dime qué necesitas! ✨"
-            : "🎤 **Voice quota exceeded.** No worries, I've activated **Emergency Text Mode** using free models so we can keep talking. Tell me what you need! ✨",
+          text: isManual
+            ? (language === 'es'
+              ? "🛡️ **Modo Manual Activo.** Usando modelos de respaldo de OpenRouter para evitar problemas de cuota Gemini."
+              : "🛡️ **Manual Mode Active.** Using OpenRouter fallback models to bypass Gemini quota issues.")
+            : (language === 'es'
+              ? "🎤 **Cuota de voz excedida.** No te preocupes, he activado el **Modo Texto de emergencia** usando modelos gratuitos para que podamos seguir hablando. ¡Dime qué necesitas! ✨"
+              : "🎤 **Voice quota exceeded.** No worries, I've activated **Emergency Text Mode** using free models so we can keep talking. Tell me what you need! ✨"),
         }]);
         setInputMode('text');
         stopLive();

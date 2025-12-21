@@ -15,7 +15,7 @@ void loadGeminiApiKey();
 void loadOpenRouterApiKey();
 
 function getClient() {
-  const key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
+  const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
   if (!key) return null;
   return new GoogleGenAI({ apiKey: key });
 }
@@ -68,16 +68,29 @@ function extractJSON<T>(text: string): T | null {
       }
     }
 
-    // 5. Detect and fix NDJSON (Multiple {}{}{} objects on newlines)
-    // Common with smaller free models that ignore "strict array" instruction
-    const parts = text.split('\n').map(p => p.trim()).filter(p => p.startsWith('{') && p.endsWith('}'));
-    if (parts.length > 1) {
-      try {
-        const joined = `[${parts.join(',')}]`;
-        return JSON.parse(joined);
-      } catch (e5) {
-        // Nothing worked
+    // 5. Detect and fix NDJSON or mixed text/JSON
+    // Find all potential JSON objects/arrays in the text
+    const jsonMatches = text.match(/\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}|\[(?:[^[\]]|\[(?:[^[\]]|\[[^[\]]*\])*\])*\]/g);
+
+    if (jsonMatches && jsonMatches.length > 0) {
+      // Try to parse each match
+      for (const m of jsonMatches) {
+        try {
+          const parsed = JSON.parse(m);
+          // If we are looking for an array and found one, return it
+          if (Array.isArray(parsed)) return parsed as any;
+          // If we found a valid object and it looks like a single item we might need
+          if (jsonMatches.length === 1) return parsed;
+        } catch (e5) { /* ignore */ }
       }
+
+      // If multiple objects found and no array, try to join them into an array
+      try {
+        const objects = jsonMatches.map(m => {
+          try { return JSON.parse(m); } catch { return null; }
+        }).filter(Boolean);
+        if (objects.length > 1) return objects as any;
+      } catch (e6) { /* ignore */ }
     }
 
     console.error("[extractJSON] Failed to parse JSON from text:", text.substring(0, 500));
