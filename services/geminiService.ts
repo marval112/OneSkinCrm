@@ -128,57 +128,57 @@ export async function generateWithFallback(client: any, params: any) {
   // Helper to check if vision is requested
   const isVisionTask = params.contents?.parts?.some((p: any) => p.inlineData) || false;
 
-  // Check for manual fallback override
-  const forceOpenRouter = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'true';
+  // Check for manual fallback override (In normal mode, we now prioritize OpenRouter)
+  const forceGemini = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'false';
 
-  // 1. Try Gemini Models first (unless forced to OpenRouter)
-  if (!forceOpenRouter) {
-    for (const model of MODEL_PRIORITY) {
+  // 1. Try OpenRouter Models first by default (as requested by user)
+  if (!forceGemini) {
+    const openRouterList = isVisionTask
+      ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
+      : OPENROUTER_MODELS;
+
+    for (const model of openRouterList) {
       try {
-        const currentParams = { ...params, model };
-        const result = await client.models.generateContent(currentParams);
-        // Normalize response to match OpenRouter/Custom format helper
-        return {
-          text: result.text || (result.response ? result.response.text() : ""),
-          response: result
-        };
+        console.log(`[AI] Attempting OpenRouter model: ${model}`);
+        const result = await generateWithOpenRouter({ ...params, model });
+        return result;
       } catch (error: any) {
         lastError = error;
-        const msg = error.message || '';
-        const status = error.status || (error.response ? error.response.status : 0);
-        const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('limit') || msg.includes('exhausted');
-        const isServiceUnavailable = status === 503 || msg.includes('503') || msg.includes('overloaded');
-        const isNotFound = status === 404 || msg.includes('404') || msg.includes('not found');
-
-        if (isQuota || isServiceUnavailable || isNotFound) {
-          console.warn(`[AI Fallback] Gemini Model ${model} failed (${isQuota ? 'Quota' : isServiceUnavailable ? 'Overloaded' : 'Not Found'}). Trying next Gemini...`);
-          continue;
-        }
-        throw error;
+        console.warn(`[AI Fallback] OpenRouter Model ${model} failed. Trying next...`);
+        continue;
       }
     }
-  } else {
-    console.log("[AI] Forced OpenRouter fallback mode active.");
   }
 
-  // 2. Select OpenRouter priority based on task type
-  const openRouterList = isVisionTask
-    ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
-    : OPENROUTER_MODELS;
-
-  // 3. Try OpenRouter Models as fallback
-  for (const model of openRouterList) {
+  // 2. Try Gemini Models as secondary/fallback
+  for (const model of MODEL_PRIORITY) {
     try {
-      console.warn(`Gemini failed. Trying OpenRouter model: ${model}${isVisionTask ? ' (Vision Task)' : ''}`);
-      const result = await generateWithOpenRouter({ ...params, model });
-      return result;
+      console.log(`[AI] Attempting Gemini model: ${model}`);
+      const currentParams = { ...params, model };
+      const result = await client.models.generateContent(currentParams);
+      return {
+        text: result.text || (result.response ? result.response.text() : ""),
+        response: result
+      };
     } catch (error: any) {
       lastError = error;
-      console.warn(`OpenRouter model ${model} failed. Trying next...`);
+      const msg = error.message || '';
+      const status = error.status || (error.response ? error.response.status : 0);
+      const isQuota = status === 429 || msg.includes('429');
+      const isNotFound = status === 404 || msg.includes('404');
+
+      if (isQuota || isNotFound) {
+        console.warn(`[AI Fallback] Gemini Model ${model} failed. Trying next...`);
+        continue;
+      }
+      throw error;
     }
   }
+  console.warn(`OpenRouter model ${model} failed. Trying next...`);
+}
+  }
 
-  throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
+throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
 }
 
 export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoning: string; }> => {

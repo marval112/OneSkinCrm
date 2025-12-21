@@ -237,8 +237,33 @@ export const bulkDeleteDeals = async (ids: number[]): Promise<void> => {
 };
 
 // --- Countries ---
-export const getCountries = async (): Promise<Country[]> => {
-    const { data, error } = await supabase.from('countries').select('*').order('name', { ascending: true });
-    if (error) throw error;
-    return data as Country[];
-};
+
+// --- Proactive Context ---
+export async function getProactiveBriefingContext(user: User): Promise<string> {
+    try {
+        const [leads, deals, tasks] = await Promise.all([
+            getLeads(user),
+            getDeals(user),
+            supabase.from('tasks').select('*').eq('user_id', user.id).eq('status', 'Pending')
+        ]);
+
+        const pendingLeads = leads.filter(l => l.status !== 'Won' && l.status !== 'Lost');
+        const openDeals = deals.filter(d => d.status !== 'Closed Won' && d.status !== 'Closed Lost');
+        const pendingTasks = tasks.data || [];
+
+        // Summarize
+        let context = `RESUMEN DE CARTERA PARA EL COMERCIAL:\n`;
+        context += `- Leads pendientes: ${pendingLeads.length}\n`;
+        context += `- Oportunidades abiertas: ${openDeals.length} (Valor total: €${openDeals.reduce((sum, d) => sum + Number(d.value || 0), 0).toLocaleString()})\n`;
+        context += `- Tareas pendientes: ${pendingTasks.length}\n`;
+
+        if (pendingLeads.length > 0) {
+            context += `Próximos Leads relevantes: ${pendingLeads.slice(0, 3).map(l => l.name).join(', ')}\n`;
+        }
+
+        return context;
+    } catch (error) {
+        console.error('Error gathering proactive context:', error);
+        return "Error al recopilar datos de la cartera.";
+    }
+}
