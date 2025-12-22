@@ -22,9 +22,9 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
+  'models/gemini-2.5-flash-lite',
   'models/gemini-2.5-flash',
   'models/gemini-3-flash',
-  'models/gemini-2.5-flash-lite',
   'models/gemini-2.0-flash-exp',
 ];
 
@@ -182,9 +182,10 @@ export async function generateWithFallback(client: any, params: any) {
       const status = error.status || (error.response ? error.response.status : 0);
       const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED');
       const isNotFound = status === 404 || msg.includes('404');
+      const isOverloaded = status === 503 || msg.includes('503') || msg.includes('overloaded') || msg.includes('UNAVAILABLE');
 
-      if (isQuota || isNotFound) {
-        console.warn(`[AI Fallback] Gemini Model ${modelId} failed (${isQuota ? 'Quota' : 'Not Found'}). Trying next Gemini...`);
+      if (isQuota || isNotFound || isOverloaded) {
+        console.warn(`[AI Fallback] Gemini Model ${modelId} failed (${isQuota ? 'Quota' : isNotFound ? 'Not Found' : 'Overloaded'}). Trying next Gemini...`);
         continue;
       }
       throw error;
