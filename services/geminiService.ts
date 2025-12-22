@@ -25,7 +25,7 @@ const MODEL_PRIORITY = [
   'models/gemini-2.5-flash-lite',
   'models/gemini-2.5-flash',
   'models/gemini-2.0-flash-exp',
-  'models/gemini-3-flash',
+  // Removed 'models/gemini-3-flash' - model does not exist
 ];
 
 /**
