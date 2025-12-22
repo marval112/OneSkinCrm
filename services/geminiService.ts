@@ -155,8 +155,13 @@ export async function generateWithFallback(client: any, params: any) {
   for (const model of MODEL_PRIORITY) {
     try {
       console.log(`[AI] Attempting Gemini model: ${model}`);
-      const currentParams = { ...params, model };
-      const result = await client.models.generateContent(currentParams);
+      // The @google/genai SDK expects model in the top-level config or via helper
+      // If client is GoogleGenAI instance, use generateContent directly
+      const result = await client.generateContent({
+        ...params,
+        model: model
+      });
+
       return {
         text: result.text || (result.response ? result.response.text() : ""),
         response: result
@@ -165,21 +170,18 @@ export async function generateWithFallback(client: any, params: any) {
       lastError = error;
       const msg = error.message || '';
       const status = error.status || (error.response ? error.response.status : 0);
-      const isQuota = status === 429 || msg.includes('429');
+      const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED');
       const isNotFound = status === 404 || msg.includes('404');
 
       if (isQuota || isNotFound) {
-        console.warn(`[AI Fallback] Gemini Model ${model} failed. Trying next...`);
+        console.warn(`[AI Fallback] Gemini Model ${model} failed (${isQuota ? 'Quota' : 'Not Found'}). Trying next Gemini...`);
         continue;
       }
       throw error;
     }
   }
-  console.warn(`OpenRouter model ${model} failed. Trying next...`);
-}
-  }
 
-throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
+  throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
 }
 
 export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoning: string; }> => {
