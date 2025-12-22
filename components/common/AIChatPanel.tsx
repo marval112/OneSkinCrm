@@ -81,7 +81,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     isListening: isLiveListening,
     isConnected: isLiveConnected,
     error: liveError
-  }, useMemo(() => ({
+  } = useGeminiLive(useMemo(() => ({
     onMessage: (text: string) => {
       setMessages(prev => {
         const last = prev[prev.length - 1];
