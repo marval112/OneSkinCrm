@@ -74,20 +74,60 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   // 1. Core State & Navigation hooks
   const { showToast } = useContext(ToastContext) || {};
   const navigate = useNavigate();
+  // handlersRef breaks circular dependency between GeminiLive and its callbacks
+  const handlersRef = useRef<{ handleCommandResponse?: (r: CommandResponse) => void }>({});
 
-  // 2. Speak Utility
+  // 2. Gemini Live Hook (Defined early with stable stable wrappers)
+  const {
+    start: startLive,
+    stop: stopLive,
+    isListening: isLiveListening,
+    isConnected: isLiveConnected,
+    error: liveError
+  } = useGeminiLive(useMemo(() => ({
+    onMessage: (text: string) => {
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
+          return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+        }
+        return [...prev, { id: Date.now(), text, sender: 'ai' }];
+      });
+    },
+    onCommand: (command: string, args: any) => {
+      handlersRef.current.handleCommandResponse?.({ type: 'command', data: { command: command as Command, args } });
+    },
+    onError: (err: any) => {
+      const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+      const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
+      const isManual = msg === 'MANUAL_FALLBACK';
+
+      if (isQuota || isManual) {
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          sender: 'ai',
+          text: isManual
+            ? (language === 'es' ? "🛡️ **Modo Manual Activo.** Usando modelos de respaldo." : "🛡️ **Manual Mode Active.** Using fallback models.")
+            : (language === 'es' ? "🎤 **Cuota de voz excedida.**" : "🎤 **Voice quota exceeded.**"),
+        }]);
+        setInputMode('text');
+      } else {
+        showToast?.(language === 'es' ? "Error en la conexión de voz." : "Voice connection error.", 'danger');
+      }
+    }
+  }), [language, showToast]));
+
+  // 3. Speak Utility (now has access to isLiveConnected)
   const speak = useCallback((text: string) => {
-    // Only speak via TTS if NOT in Live Mode (Live Mode has native audio out)
     if (inputMode === 'voice' && isLiveConnected) return;
     if (!('speechSynthesis' in window)) return;
-
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === 'es' ? 'es-ES' : language === 'pt' ? 'pt-BR' : 'en-US';
     window.speechSynthesis.speak(utterance);
   }, [inputMode, language, isLiveConnected]);
 
-  // 3. Command Responder
+  // 4. Command Responder (now has access to speak)
   const handleCommandResponse = useCallback((response: CommandResponse) => {
     let aiText = '';
     if (response.type === 'text') {
@@ -137,49 +177,13 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     speak(aiText);
   }, [language, navigate, showToast, speak]);
 
-  // 4. Voice Input (Standard)
+  // Keep ref updated
+  handlersRef.current.handleCommandResponse = handleCommandResponse;
+
+  // 5. Voice Input (Standard)
   const { isListening: isSTTListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
 
-  // 5. Gemini Live Hook
-  const {
-    start: startLive,
-    stop: stopLive,
-    isListening: isLiveListening,
-    isConnected: isLiveConnected,
-    error: liveError
-  } = useGeminiLive(useMemo(() => ({
-    onMessage: (text: string) => {
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
-          return [...prev.slice(0, -1), { ...last, text: last.text + text }];
-        }
-        return [...prev, { id: Date.now(), text, sender: 'ai' }];
-      });
-    },
-    onCommand: (command: string, args: any) => {
-      handleCommandResponse({ type: 'command', data: { command: command as Command, args } });
-    },
-    onError: (err: any) => {
-      const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
-      const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
-      const isManual = msg === 'MANUAL_FALLBACK';
 
-      if (isQuota || isManual) {
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          sender: 'ai',
-          text: isManual
-            ? (language === 'es' ? "🛡️ **Modo Manual Activo.** Usando modelos de respaldo." : "🛡️ **Manual Mode Active.** Using fallback models.")
-            : (language === 'es' ? "🎤 **Cuota de voz excedida.**" : "🎤 **Voice quota exceeded.**"),
-        }]);
-        setInputMode('text');
-        // Note: we'll call stopLive() via a ref or just omit the direct reference if it's too circular
-      } else {
-        showToast?.(language === 'es' ? "Error en la conexión de voz." : "Voice connection error.", 'danger');
-      }
-    }
-  }), [language, handleCommandResponse, showToast]));
 
   const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
 
