@@ -17,7 +17,8 @@ void loadOpenRouterApiKey();
 function getClient() {
   const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
   if (!key) return null;
-  return new GoogleGenAI({ apiKey: key });
+  // @ts-ignore - Some versions of the new SDK take just the string
+  return new GoogleGenAI(key);
 }
 
 // Model priority for automatic fallback to maximize free tier usage
@@ -152,21 +153,28 @@ export async function generateWithFallback(client: any, params: any) {
   }
 
   // 2. Try Gemini Models as secondary/fallback
-  for (const model of MODEL_PRIORITY) {
+  for (const modelId of MODEL_PRIORITY) {
     try {
-      console.log(`[AI] Attempting Gemini model: ${model}`);
-      // Standard @google/genai SDK pattern:
-      const genModel = client.getGenerativeModel({
-        model: model,
-        systemInstruction: params.config?.systemInstruction,
-        tools: params.config?.tools
+      // Strip 'models/' prefix for the new SDK if present
+      const cleanModelId = modelId.replace('models/', '');
+      console.log(`[AI] Attempting Gemini model: ${cleanModelId}`);
+
+      // Map contents strictly for the new SDK
+      let contents = params.contents;
+      if (typeof contents === 'string') {
+        contents = [{ role: 'user', parts: [{ text: contents }] }];
+      } else if (typeof params === 'string') {
+        contents = [{ role: 'user', parts: [{ text: params }] }];
+      }
+
+      const result = await client.models.generateContent({
+        model: cleanModelId,
+        contents: contents,
+        config: params.config
       });
 
-      const result = await genModel.generateContent(params.contents || params);
-      const sdkResponse = await result.response;
-
       return {
-        text: sdkResponse.text() || "",
+        text: result.text || result.response?.text() || "",
         response: result
       };
     } catch (error: any) {
@@ -177,7 +185,7 @@ export async function generateWithFallback(client: any, params: any) {
       const isNotFound = status === 404 || msg.includes('404');
 
       if (isQuota || isNotFound) {
-        console.warn(`[AI Fallback] Gemini Model ${model} failed (${isQuota ? 'Quota' : 'Not Found'}). Trying next Gemini...`);
+        console.warn(`[AI Fallback] Gemini Model ${modelId} failed (${isQuota ? 'Quota' : 'Not Found'}). Trying next Gemini...`);
         continue;
       }
       throw error;

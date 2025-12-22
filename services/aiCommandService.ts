@@ -135,7 +135,8 @@ async function getClient(): Promise<GoogleGenAI | null> {
         await loadGeminiApiKey();
         key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
     }
-    return key ? new GoogleGenAI({ apiKey: key }) : null;
+    // @ts-ignore
+    return key ? new GoogleGenAI(key) : null;
 }
 
 import { AI_SALES_MENTOR_PROMPT } from './aiPersona';
