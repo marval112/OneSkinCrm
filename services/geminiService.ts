@@ -24,8 +24,8 @@ function getClient() {
 const MODEL_PRIORITY = [
   'models/gemini-2.5-flash-lite',
   'models/gemini-2.5-flash',
-  'models/gemini-3-flash',
   'models/gemini-2.0-flash-exp',
+  'models/gemini-3-flash',
 ];
 
 /**
@@ -192,7 +192,13 @@ export async function generateWithFallback(client: any, params: any) {
     }
   }
 
-  throw lastError || new Error("All AI models failed (Gemini & OpenRouter)");
+  // 3. Final Last-Ditch effort with OpenRouter if we haven't already returned
+  try {
+    console.log(`[AI] Final effort: Attempting OpenRouter fallback...`);
+    return await generateWithOpenRouter({ ...params, model: 'google/gemini-2.0-flash-exp:free' });
+  } catch (finalError) {
+    throw lastError || finalError || new Error("All AI models failed (Gemini & OpenRouter)");
+  }
 }
 
 export const getLeadScore = async (lead: Lead): Promise<{ score: number; reasoning: string; }> => {

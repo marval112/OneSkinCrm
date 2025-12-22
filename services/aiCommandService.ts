@@ -204,12 +204,16 @@ export const processCommand = async (prompt: string, context?: string, userName?
 
         if (isQuota) {
             const warningIcon = "⏳";
+            const advice = language === 'es' ? 'Puedes activar "Forzar OpenRouter" en Configuración para seguir usando la IA.' :
+                language === 'pt' ? 'Você pode ativar "Forçar OpenRouter" em Configuração para continuar usando a IA.' :
+                    'You can enable "Force OpenRouter" in Settings to continue using AI.';
+
             if (language === 'es') {
-                return { type: 'text', data: `${warningIcon} **Límite de uso diario alcanzado**\n\nHas consumido tu cuota gratuita de IA por hoy. Por favor, intenta de nuevo más tarde o revisa tu plan.` };
+                return { type: 'text', data: `${warningIcon} **Límite de uso alcanzado**\n\nHas consumido tu cuota gratuita de Gemini por hoy. ${advice}` };
             } else if (language === 'pt') {
-                return { type: 'text', data: `${warningIcon} **Limite de uso diário atingido**\n\nVocê atingiu sua cota gratuita de IA por hoje. Por favor, tente novamente mais tarde ou verifique seu plano.` };
+                return { type: 'text', data: `${warningIcon} **Limite de uso atingido**\n\nVocê atingiu sua cota gratuita do Gemini por hoje. ${advice}` };
             }
-            return { type: 'text', data: `${warningIcon} **Daily usage limit reached**\n\nYou have used your free AI quota for today. Please try again later or check your plan.` };
+            return { type: 'text', data: `${warningIcon} **Usage limit reached**\n\nYou have used your free Gemini quota for today. ${advice}` };
         }
 
         return { type: 'text', data: `Error details: ${error.message || JSON.stringify(error)}` };
