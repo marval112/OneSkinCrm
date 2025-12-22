@@ -123,76 +123,143 @@ const OPENROUTER_VISION_MODELS = [
   'nex-agi/deepseek-v3.1-nex-n1:free',
 ];
 
+// Quota management helpers
+const QUOTA_STORAGE_KEY = 'oneskin_gemini_quota_exhausted';
+const QUOTA_TIMESTAMP_KEY = 'oneskin_gemini_quota_timestamp';
+const QUOTA_RESET_HOURS = 24; // Gemini quota resets daily
+
+function isGeminiQuotaExhausted(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const exhausted = localStorage.getItem(QUOTA_STORAGE_KEY) === 'true';
+  const timestamp = localStorage.getItem(QUOTA_TIMESTAMP_KEY);
+
+  if (!exhausted || !timestamp) return false;
+
+  // Check if quota should have reset (after 24 hours)
+  const exhaustedTime = new Date(timestamp).getTime();
+  const now = Date.now();
+  const hoursSinceExhaustion = (now - exhaustedTime) / (1000 * 60 * 60);
+
+  if (hoursSinceExhaustion >= QUOTA_RESET_HOURS) {
+    console.log('[AI] Gemini quota should have reset. Clearing exhaustion flag.');
+    clearGeminiQuotaExhaustion();
+    return false;
+  }
+
+  return true;
+}
+
+function markGeminiQuotaExhausted(): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem(QUOTA_STORAGE_KEY, 'true');
+  localStorage.setItem(QUOTA_TIMESTAMP_KEY, new Date().toISOString());
+  console.warn('[AI] Gemini quota exhausted. Switching to OpenRouter permanently until reset.');
+
+  // Show user notification if toast context is available
+  if (typeof window !== 'undefined' && (window as any).showQuotaExhaustedNotification) {
+    (window as any).showQuotaExhaustedNotification();
+  }
+}
+
+function clearGeminiQuotaExhaustion(): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.removeItem(QUOTA_STORAGE_KEY);
+  localStorage.removeItem(QUOTA_TIMESTAMP_KEY);
+  console.log('[AI] Gemini quota exhaustion flag cleared.');
+}
+
+// Export for use in Settings
+export { isGeminiQuotaExhausted, clearGeminiQuotaExhaustion };
+
 export async function generateWithFallback(client: any, params: any) {
   let lastError;
+  let geminiQuotaHit = false;
 
   // Helper to check if vision is requested
   const isVisionTask = params.contents?.parts?.some((p: any) => p.inlineData) || false;
 
-  // Check for manual fallback override (In normal mode, we now prioritize OpenRouter)
+  // Check if Gemini quota was previously exhausted
+  const quotaExhausted = isGeminiQuotaExhausted();
+
+  // Check for manual fallback override
   const forceGemini = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'false';
 
-  // 1. Try OpenRouter Models first by default (as requested by user)
-  if (!forceGemini) {
-    const openRouterList = isVisionTask
-      ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
-      : OPENROUTER_MODELS;
+  // Determine if we should try Gemini first
+  const shouldTryGemini = !quotaExhausted && forceGemini;
 
-    for (const model of openRouterList) {
+  // 1. Try Gemini Models first if quota is not exhausted and user prefers Gemini
+  if (shouldTryGemini && client) {
+    for (const modelId of MODEL_PRIORITY) {
       try {
-        console.log(`[AI] Attempting OpenRouter model: ${model}`);
-        const result = await generateWithOpenRouter({ ...params, model });
-        return result;
+        // Strip 'models/' prefix for the new SDK if present
+        const cleanModelId = modelId.replace('models/', '');
+        console.log(`[AI] Attempting Gemini model: ${cleanModelId}`);
+
+        // Map contents strictly for the new SDK
+        let contents = params.contents;
+        if (typeof contents === 'string') {
+          contents = [{ role: 'user', parts: [{ text: contents }] }];
+        } else if (typeof params === 'string') {
+          contents = [{ role: 'user', parts: [{ text: params }] }];
+        }
+
+        const result = await client.models.generateContent({
+          model: cleanModelId,
+          contents: contents,
+          config: params.config
+        });
+
+        return {
+          text: result.text || result.response?.text() || "",
+          response: result
+        };
       } catch (error: any) {
         lastError = error;
-        console.warn(`[AI Fallback] OpenRouter Model ${model} failed. Trying next...`);
-        continue;
+        const msg = error.message || '';
+        const status = error.status || (error.response ? error.response.status : 0);
+        const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED');
+        const isNotFound = status === 404 || msg.includes('404');
+        const isOverloaded = status === 503 || msg.includes('503') || msg.includes('overloaded') || msg.includes('UNAVAILABLE');
+
+        if (isQuota) {
+          console.warn(`[AI Fallback] Gemini Model ${modelId} quota exhausted. Marking for automatic OpenRouter fallback.`);
+          geminiQuotaHit = true;
+          break; // Stop trying Gemini models
+        } else if (isNotFound || isOverloaded) {
+          console.warn(`[AI Fallback] Gemini Model ${modelId} failed (${isNotFound ? 'Not Found' : 'Overloaded'}). Trying next Gemini...`);
+          continue;
+        }
+        throw error;
       }
+    }
+
+    // If we hit quota, mark it for future requests
+    if (geminiQuotaHit) {
+      markGeminiQuotaExhausted();
     }
   }
 
-  // 2. Try Gemini Models as secondary/fallback
-  for (const modelId of MODEL_PRIORITY) {
+  // 2. Try OpenRouter Models (either as primary or fallback)
+  const openRouterList = isVisionTask
+    ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
+    : OPENROUTER_MODELS;
+
+  for (const model of openRouterList) {
     try {
-      // Strip 'models/' prefix for the new SDK if present
-      const cleanModelId = modelId.replace('models/', '');
-      console.log(`[AI] Attempting Gemini model: ${cleanModelId}`);
-
-      // Map contents strictly for the new SDK
-      let contents = params.contents;
-      if (typeof contents === 'string') {
-        contents = [{ role: 'user', parts: [{ text: contents }] }];
-      } else if (typeof params === 'string') {
-        contents = [{ role: 'user', parts: [{ text: params }] }];
-      }
-
-      const result = await client.models.generateContent({
-        model: cleanModelId,
-        contents: contents,
-        config: params.config
-      });
-
-      return {
-        text: result.text || result.response?.text() || "",
-        response: result
-      };
+      console.log(`[AI] Attempting OpenRouter model: ${model}${quotaExhausted || geminiQuotaHit ? ' (Gemini quota exhausted)' : ''}`);
+      const result = await generateWithOpenRouter({ ...params, model });
+      return result;
     } catch (error: any) {
       lastError = error;
-      const msg = error.message || '';
-      const status = error.status || (error.response ? error.response.status : 0);
-      const isQuota = status === 429 || msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED');
-      const isNotFound = status === 404 || msg.includes('404');
-      const isOverloaded = status === 503 || msg.includes('503') || msg.includes('overloaded') || msg.includes('UNAVAILABLE');
-
-      if (isQuota || isNotFound || isOverloaded) {
-        console.warn(`[AI Fallback] Gemini Model ${modelId} failed (${isQuota ? 'Quota' : isNotFound ? 'Not Found' : 'Overloaded'}). Trying next Gemini...`);
-        continue;
-      }
-      throw error;
+      console.warn(`[AI Fallback] OpenRouter Model ${model} failed. Trying next...`);
+      continue;
     }
   }
 
-  // 3. Final Last-Ditch effort with OpenRouter if we haven't already returned
+  // 3. Final Last-Ditch effort with OpenRouter free model
   try {
     console.log(`[AI] Final effort: Attempting OpenRouter fallback...`);
     return await generateWithOpenRouter({ ...params, model: 'google/gemini-2.0-flash-exp:free' });

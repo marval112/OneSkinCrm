@@ -1,7 +1,53 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setGeminiApiKey, getGeminiApiKey, loadGeminiApiKey } from '../../services/aiSettingsService';
+import { isGeminiQuotaExhausted, clearGeminiQuotaExhaustion } from '../../services/geminiService';
 import { ToastContext } from '../../contexts/ToastContext';
+
+// Quota Status Indicator Component
+function QuotaStatusIndicator() {
+  const [quotaExhausted, setQuotaExhausted] = useState(false);
+  const toast = useContext(ToastContext);
+
+  useEffect(() => {
+    setQuotaExhausted(isGeminiQuotaExhausted());
+  }, []);
+
+  const handleResetQuota = () => {
+    clearGeminiQuotaExhaustion();
+    setQuotaExhausted(false);
+    toast?.showToast('Gemini quota flag cleared. Will retry Gemini on next request.', 'success');
+  };
+
+  if (!quotaExhausted) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+        <span className="text-slate-600 dark:text-slate-400">Gemini API: Active</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm">
+        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+        <span className="text-slate-600 dark:text-slate-400">Gemini API: Quota Exhausted</span>
+      </div>
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+        <p className="text-xs text-amber-800 dark:text-amber-200 mb-2">
+          🔄 Automatically using OpenRouter fallback. Gemini quota resets daily (24 hours).
+        </p>
+        <button
+          onClick={handleResetQuota}
+          className="text-xs px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md transition"
+        >
+          Retry Gemini Now
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function Settings() {
   const navigate = useNavigate();
@@ -59,6 +105,11 @@ function Settings() {
           </div>
         </div>
         <p className="mt-2 text-xs text-slate-500">La clave se guarda de forma centralizada en la base de datos (Supabase).</p>
+
+        {/* Quota Status Indicator */}
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <QuotaStatusIndicator />
+        </div>
       </div>
     </div>
   );
