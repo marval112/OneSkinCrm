@@ -22,10 +22,10 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
-  'models/gemini-2.5-flash-native-audio-preview-12-2025',
+  'models/gemini-3-flash',
+  'models/gemini-2.5-flash',
+  'models/gemini-2.5-flash-lite',
   'models/gemini-2.0-flash-exp',
-  'models/gemini-1.5-flash',
-  'models/gemini-1.5-flash-8b',
 ];
 
 /**
