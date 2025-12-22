@@ -98,12 +98,12 @@ export function useGeminiLive(options: LiveChatOptions) {
             });
             setIsConnected(true);
 
-            // 2. Setup Audio
+            // 2. Setup Audio - Use 24kHz to match Gemini Live output
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             streamRef.current = stream;
 
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-                sampleRate: 16000, // Re-sample to 16kHz
+                sampleRate: 24000, // Changed from 16000 to 24000 to match output
             });
             audioContextRef.current = audioContext;
 

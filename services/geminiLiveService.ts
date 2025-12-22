@@ -29,7 +29,7 @@ class GeminiLiveService {
 
         try {
             const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1alpha' });
-            
+
             const model = 'models/gemini-2.5-flash-native-audio-preview-12-2025';
 
             const config = {
@@ -114,7 +114,7 @@ class GeminiLiveService {
                 {
                     parts: [{
                         inlineData: {
-                            mimeType: 'audio/pcm;rate=16000',
+                            mimeType: 'audio/pcm;rate=24000', // Updated from 16000 to 24000
                             data: base64Audio
                         }
                     }]

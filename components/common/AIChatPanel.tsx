@@ -98,21 +98,53 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       handlersRef.current.handleCommandResponse?.({ type: 'command', data: { command: command as Command, args } });
     },
     onError: (err: any) => {
-      const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
-      const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
-      const isManual = msg === 'MANUAL_FALLBACK';
+      // Handle different error types with specific messages
+      let errorMessage = '';
+      let shouldFallbackToText = false;
 
-      if (isQuota || isManual) {
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          sender: 'ai',
-          text: isManual
-            ? (language === 'es' ? "🛡️ **Modo Manual Activo.** Usando modelos de respaldo." : "🛡️ **Manual Mode Active.** Using fallback models.")
-            : (language === 'es' ? "🎤 **Cuota de voz excedida.**" : "🎤 **Voice quota exceeded.**"),
-        }]);
+      if (typeof err === 'object' && err.type) {
+        // Structured error from geminiLiveService
+        if (err.type === 'quota') {
+          errorMessage = language === 'es'
+            ? '🎤 **Cuota de voz excedida.** Cambiando a modo texto.'
+            : '🎤 **Voice quota exceeded.** Switching to text mode.';
+          shouldFallbackToText = true;
+        } else if (err.type === 'config') {
+          errorMessage = language === 'es'
+            ? '⚙️ **Función de voz no disponible.** Por favor, verifica la configuración.'
+            : '⚙️ **Voice feature unavailable.** Please check settings.';
+          shouldFallbackToText = true;
+        } else {
+          errorMessage = err.message || (language === 'es' ? 'Error en la conexión de voz.' : 'Voice connection error.');
+        }
+      } else {
+        // Legacy error handling
+        const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+        const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
+        const isManual = msg === 'MANUAL_FALLBACK';
+
+        if (isQuota || isManual) {
+          errorMessage = isManual
+            ? (language === 'es' ? '🛡️ **Modo Manual Activo.** Usando modelos de respaldo.' : '🛡️ **Manual Mode Active.** Using fallback models.')
+            : (language === 'es' ? '🎤 **Cuota de voz excedida.** Cambiando a modo texto.' : '🎤 **Voice quota exceeded.** Switching to text mode.');
+          shouldFallbackToText = true;
+        } else {
+          errorMessage = language === 'es' ? 'Error en la conexión de voz.' : 'Voice connection error.';
+        }
+      }
+
+      // Display error message to user
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        sender: 'ai',
+        text: errorMessage,
+      }]);
+
+      // Fallback to text mode if needed
+      if (shouldFallbackToText) {
         setInputMode('text');
       } else {
-        showToast?.(language === 'es' ? "Error en la conexión de voz." : "Voice connection error.", 'danger');
+        showToast?.(errorMessage, 'danger');
       }
     }
   }), [language, showToast]));
