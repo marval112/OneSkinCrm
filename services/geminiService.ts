@@ -155,15 +155,18 @@ export async function generateWithFallback(client: any, params: any) {
   for (const model of MODEL_PRIORITY) {
     try {
       console.log(`[AI] Attempting Gemini model: ${model}`);
-      // The @google/genai SDK expects model in the top-level config or via helper
-      // If client is GoogleGenAI instance, use generateContent directly
-      const result = await client.generateContent({
-        ...params,
-        model: model
+      // Standard @google/genai SDK pattern:
+      const genModel = client.getGenerativeModel({
+        model: model,
+        systemInstruction: params.config?.systemInstruction,
+        tools: params.config?.tools
       });
 
+      const result = await genModel.generateContent(params.contents || params);
+      const sdkResponse = await result.response;
+
       return {
-        text: result.text || (result.response ? result.response.text() : ""),
+        text: sdkResponse.text() || "",
         response: result
       };
     } catch (error: any) {
