@@ -12,6 +12,8 @@ export interface LiveChatOptions {
 class GeminiLiveService {
     private session: any = null; // Typing as any to avoid strict versioning issues in browser
     private options: LiveChatOptions = {};
+    private retryCount: number = 0;
+    private maxRetries: number = 2;
 
     async connect(options: LiveChatOptions) {
         this.options = options;
@@ -28,16 +30,20 @@ class GeminiLiveService {
         }
 
         try {
-            const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1alpha' });
+            // Use v1beta for better stability with native audio preview
+            const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1beta' });
 
             const model = 'models/gemini-2.5-flash-native-audio-preview-12-2025';
 
+            // Restructured config with generationConfig for proper audio setup
             const config = {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: {
-                            voiceName: 'Charon',
+                generationConfig: {
+                    responseModalities: [Modality.AUDIO],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: 'Charon',
+                            }
                         }
                     }
                 },
@@ -49,6 +55,7 @@ class GeminiLiveService {
             };
 
             console.log('[GeminiLive] Connecting to:', model);
+            console.log('[GeminiLive] Using API version: v1beta');
 
             // @ts-ignore - Using the live property from the SDK
             this.session = await ai.live.connect({
@@ -57,6 +64,7 @@ class GeminiLiveService {
                 callbacks: {
                     onopen: () => {
                         console.log('[GeminiLive] Native Session Opened Successfully');
+                        this.retryCount = 0; // Reset retry count on successful connection
                     },
                     onmessage: (message: any) => {
                         console.log('[GeminiLive] Message received:', JSON.stringify(message).substring(0, 200));
@@ -65,18 +73,55 @@ class GeminiLiveService {
                     onerror: (e: any) => {
                         console.error('[GeminiLive] SDK Error detail:', e);
                         if (e.message) console.error('[GeminiLive] SDK Error Message:', e.message);
-                        this.options.onError?.(e);
+
+                        // Classify error type
+                        const errorStr = JSON.stringify(e).toLowerCase();
+                        const isQuotaError = errorStr.includes('quota') ||
+                            errorStr.includes('429') ||
+                            errorStr.includes('1011') ||
+                            errorStr.includes('resource_exhausted');
+                        const isConfigError = errorStr.includes('1007') ||
+                            errorStr.includes('precondition');
+
+                        if (isQuotaError) {
+                            console.warn('[GeminiLive] Quota exhausted - triggering fallback');
+                            this.options.onError?.({ type: 'quota', message: 'Voice quota exceeded' });
+                        } else if (isConfigError) {
+                            console.error('[GeminiLive] Configuration error - check API settings');
+                            this.options.onError?.({ type: 'config', message: 'Voice configuration error' });
+                        } else {
+                            this.options.onError?.(e);
+                        }
                     },
                     onclose: (e: any) => {
                         console.warn('[GeminiLive] Session Closed detail:', e);
                         if (e.code) console.warn('[GeminiLive] Close Code:', e.code);
                         if (e.reason) console.warn('[GeminiLive] Close Reason:', e.reason);
+
+                        // Handle specific close codes
+                        if (e.code === 1007) {
+                            console.error('[GeminiLive] Precondition check failed - verify API configuration');
+                            this.options.onError?.({ type: 'config', message: 'Voice feature unavailable. Please check settings.' });
+                        } else if (e.code === 1011) {
+                            console.warn('[GeminiLive] Server error - quota or internal issue');
+                            this.options.onError?.({ type: 'quota', message: 'Voice quota exceeded' });
+                        }
+
                         this.options.onClose?.();
                     }
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('[GeminiLive] Connection Error:', error);
+
+            // Retry logic for transient failures
+            if (this.retryCount < this.maxRetries && !error.message?.includes('quota')) {
+                this.retryCount++;
+                console.log(`[GeminiLive] Retrying connection (${this.retryCount}/${this.maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * this.retryCount)); // Exponential backoff
+                return this.connect(options);
+            }
+
             this.options.onError?.(error);
         }
     }
