@@ -47,23 +47,29 @@ class GeminiLiveService {
                 }
             };
 
-            // @ts-ignore - Using the live property from the snippet
+            console.log('[GeminiLive] Connecting to:', model);
+
+            // @ts-ignore - Using the live property from the SDK
             this.session = await ai.live.connect({
                 model,
                 config,
                 callbacks: {
                     onopen: () => {
-                        console.log('[GeminiLive] Native Session Opened');
+                        console.log('[GeminiLive] Native Session Opened Successfully');
                     },
-                    onmessage: (message: LiveServerMessage) => {
+                    onmessage: (message: any) => {
+                        console.log('[GeminiLive] Message received:', JSON.stringify(message).substring(0, 200));
                         this.handleLiveMessage(message);
                     },
                     onerror: (e: any) => {
-                        console.error('[GeminiLive] SDK Error:', e);
+                        console.error('[GeminiLive] SDK Error detail:', e);
+                        if (e.message) console.error('[GeminiLive] SDK Error Message:', e.message);
                         this.options.onError?.(e);
                     },
                     onclose: (e: any) => {
-                        console.log('[GeminiLive] Session Closed', e);
+                        console.warn('[GeminiLive] Session Closed detail:', e);
+                        if (e.code) console.warn('[GeminiLive] Close Code:', e.code);
+                        if (e.reason) console.warn('[GeminiLive] Close Reason:', e.reason);
                         this.options.onClose?.();
                     }
                 }
