@@ -130,13 +130,12 @@ const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
 // --- SERVICE ---
 
 async function getClient(): Promise<GoogleGenAI | null> {
-    let key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
+    let key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
     if (!key) {
         await loadGeminiApiKey();
-        key = getGeminiApiKey() || (process.env.API_KEY as string | undefined);
+        key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
     }
-    // @ts-ignore
-    return key ? new GoogleGenAI(key) : null;
+    return key ? new GoogleGenAI({ apiKey: key }) : null;
 }
 
 import { AI_SALES_MENTOR_PROMPT } from './aiPersona';

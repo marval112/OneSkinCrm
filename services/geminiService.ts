@@ -17,8 +17,7 @@ void loadOpenRouterApiKey();
 function getClient() {
   const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
   if (!key) return null;
-  // @ts-ignore - Some versions of the new SDK take just the string
-  return new GoogleGenAI(key);
+  return new GoogleGenAI({ apiKey: key });
 }
 
 // Model priority for automatic fallback to maximize free tier usage
