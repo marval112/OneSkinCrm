@@ -81,10 +81,9 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     isListening: isLiveListening,
     isConnected: isLiveConnected,
     error: liveError
-  } = useGeminiLive({
-    onMessage: (text) => {
+  }, useMemo(() => ({
+    onMessage: (text: string) => {
       setMessages(prev => {
-        // Check if last message is AI and update it or add new
         const last = prev[prev.length - 1];
         if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
           return [...prev.slice(0, -1), { ...last, text: last.text + text }];
@@ -92,10 +91,10 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
         return [...prev, { id: Date.now(), text, sender: 'ai' }];
       });
     },
-    onCommand: (command, args) => {
+    onCommand: (command: string, args: any) => {
       handleCommandResponse({ type: 'command', data: { command: command as Command, args } });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
       console.error('[GeminiLive] Error reported to panel:', msg);
 
@@ -120,15 +119,15 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
         showToast?.(language === 'es' ? "Error en la conexión de voz." : "Voice connection error.", 'danger');
       }
     }
-  });
+  }), [language, handleCommandResponse, showToast, stopLive]));
 
   const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
 
   useEffect(() => {
     localStorage.setItem('oneskin_ai_input_mode', inputMode);
-    // Stop any active listening when switching modes
-    if (isSTTListening) stopListening();
-    if (isLiveListening) stopLive();
+    // Stop any active listening when switching modes, but ONLY if they belong to the mode being deactivated
+    if (inputMode === 'text' && isLiveListening) stopLive();
+    if (inputMode === 'voice' && isSTTListening) stopListening();
   }, [inputMode, isSTTListening, isLiveListening, stopListening, stopLive]);
 
   useEffect(() => {
