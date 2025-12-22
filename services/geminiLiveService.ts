@@ -29,7 +29,7 @@ class GeminiLiveService {
 
         try {
             const ai = new GoogleGenAI({ apiKey: key });
-            const model = 'gemini-2.5-flash-native-audio-dialog';
+            const model = 'models/gemini-2.5-flash-native-audio-dialog';
 
             const config = {
                 responseModalities: [Modality.AUDIO],
@@ -63,7 +63,7 @@ class GeminiLiveService {
                         this.options.onError?.(e);
                     },
                     onclose: (e: any) => {
-                        console.log('[GeminiLive] Session Closed');
+                        console.log('[GeminiLive] Session Closed', e);
                         this.options.onClose?.();
                     }
                 }

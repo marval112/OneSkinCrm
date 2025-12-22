@@ -22,8 +22,8 @@ function getClient() {
 
 // Model priority for automatic fallback to maximize free tier usage
 const MODEL_PRIORITY = [
-  'models/gemini-3-flash',
   'models/gemini-2.5-flash',
+  'models/gemini-3-flash',
   'models/gemini-2.5-flash-lite',
   'models/gemini-2.0-flash-exp',
 ];
