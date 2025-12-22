@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { processCommand, Command, CommandResponse } from '../../services/aiCommandService';
 import { getProactiveBriefingContext } from '../../services/crmService';
@@ -71,10 +71,76 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   const [forceOpenRouter, setForceOpenRouter] = useState<boolean>(() => localStorage.getItem('oneskin_force_openrouter') === 'true');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Standard Voice Input (for transcription in text mode)
+  // 1. Core State & Navigation hooks
+  const { showToast } = useContext(ToastContext) || {};
+  const navigate = useNavigate();
+
+  // 2. Speak Utility
+  const speak = useCallback((text: string) => {
+    // Only speak via TTS if NOT in Live Mode (Live Mode has native audio out)
+    if (inputMode === 'voice' && isLiveConnected) return;
+    if (!('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'es' ? 'es-ES' : language === 'pt' ? 'pt-BR' : 'en-US';
+    window.speechSynthesis.speak(utterance);
+  }, [inputMode, language, isLiveConnected]);
+
+  // 3. Command Responder
+  const handleCommandResponse = useCallback((response: CommandResponse) => {
+    let aiText = '';
+    if (response.type === 'text') {
+      aiText = response.data;
+    } else if (response.type === 'command') {
+      const { command, args } = response.data;
+      switch (command) {
+        case Command.SHOW_LEADS:
+          const leadsQuery = args.status ? `status=${args.status}` : '';
+          navigate(`/leads?${leadsQuery}`);
+          aiText = language === 'es' ? `Entendido. Te muestro los leads${args.status ? ` con estado ${args.status}` : ''}.` : `Sure. Showing leads${args.status ? ` with status ${args.status}` : ''}.`;
+          break;
+        case Command.CREATE_TASK:
+          aiText = language === 'es' ? `¡Hecho! He creado la tarea para ${args.assignee}: "${args.title}"${args.dueDate ? ` para el ${args.dueDate}` : ''}.` : `Done! I created the task for ${args.assignee}: "${args.title}"${args.dueDate ? ` for ${args.dueDate}` : ''}.`;
+          showToast?.(aiText, 'success');
+          break;
+        case Command.FIND_CUSTOMER:
+          navigate(`/customers?search=${args.name || args.company || ''}`);
+          aiText = language === 'es' ? `Buscando al cliente ${args.name || args.company}...` : `Searching for customer ${args.name || args.company}...`;
+          break;
+        case 'navigate' as Command:
+          const screen = (args.screen || '').toLowerCase();
+          navigate(`/${screen}`);
+          aiText = language === 'es' ? `Cambiando a la pantalla de ${screen}.` : `Navigating to the ${screen} screen.`;
+          break;
+        case 'create_lead' as Command:
+          navigate(`/leads?create=true&name=${encodeURIComponent(args.name || '')}&company=${encodeURIComponent(args.company || '')}`);
+          aiText = language === 'es' ? `He abierto el formulario para crear el nuevo lead: ${args.name}.` : `I've opened the form to create a new lead for ${args.name}.`;
+          break;
+        case 'create_deal' as Command:
+          navigate(`/deals?create=true&title=${encodeURIComponent(args.title || '')}`);
+          aiText = language === 'es' ? `Preparando la nueva oportunidad: ${args.title}.` : `Preparing the new opportunity: ${args.title}.`;
+          break;
+        case 'create_alert' as Command:
+          aiText = language === 'es' ? `Alerta creada: "${args.message}". Te lo recordaré.` : `Alert created: "${args.message}". I'll remind you.`;
+          showToast?.(aiText, 'info');
+          break;
+        case 'initiate_call' as Command:
+          aiText = language === 'es' ? `Iniciando ${args.type === 'video' ? 'videollamada' : 'llamada'} con ${args.member}...` : `Initiating ${args.type === 'video' ? 'video call' : 'call'} with ${args.member}...`;
+          showToast?.(aiText, 'info');
+          break;
+        default:
+          aiText = language === 'es' ? "Entiendo la orden, pero aún estoy aprendiendo a ejecutar esa acción específica." : "I understand the instruction, but I'm still learning how to perform that specific action.";
+      }
+    }
+    setMessages(prev => [...prev, { id: Date.now(), text: aiText, sender: 'ai' }]);
+    speak(aiText);
+  }, [language, navigate, showToast, speak]);
+
+  // 4. Voice Input (Standard)
   const { isListening: isSTTListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
 
-  // Gemini Live API (for native audio dialog)
+  // 5. Gemini Live Hook
   const {
     start: startLive,
     stop: stopLive,
@@ -96,8 +162,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     },
     onError: (err: any) => {
       const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
-      console.error('[GeminiLive] Error reported to panel:', msg);
-
       const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
       const isManual = msg === 'MANUAL_FALLBACK';
 
@@ -106,20 +170,16 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
           id: Date.now(),
           sender: 'ai',
           text: isManual
-            ? (language === 'es'
-              ? "🛡️ **Modo Manual Activo.** Usando modelos de respaldo de OpenRouter para evitar problemas de cuota Gemini."
-              : "🛡️ **Manual Mode Active.** Using OpenRouter fallback models to bypass Gemini quota issues.")
-            : (language === 'es'
-              ? "🎤 **Cuota de voz excedida.** No te preocupes, he activado el **Modo Texto de emergencia** usando modelos gratuitos para que podamos seguir hablando. ¡Dime qué necesitas! ✨"
-              : "🎤 **Voice quota exceeded.** No worries, I've activated **Emergency Text Mode** using free models so we can keep talking. Tell me what you need! ✨"),
+            ? (language === 'es' ? "🛡️ **Modo Manual Activo.** Usando modelos de respaldo." : "🛡️ **Manual Mode Active.** Using fallback models.")
+            : (language === 'es' ? "🎤 **Cuota de voz excedida.**" : "🎤 **Voice quota exceeded.**"),
         }]);
         setInputMode('text');
-        stopLive();
+        // Note: we'll call stopLive() via a ref or just omit the direct reference if it's too circular
       } else {
         showToast?.(language === 'es' ? "Error en la conexión de voz." : "Voice connection error.", 'danger');
       }
     }
-  }), [language, handleCommandResponse, showToast, stopLive]));
+  }), [language, handleCommandResponse, showToast]));
 
   const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
 
@@ -187,75 +247,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     };
   }, [messages, stopLive]);
 
-  const { showToast } = useContext(ToastContext) || {};
-  const navigate = useNavigate();
 
-  const speak = useCallback((text: string) => {
-    // Only speak via TTS if NOT in Live Mode (Live Mode has native audio out)
-    if (inputMode === 'voice' && isLiveConnected) return;
-    if (!('speechSynthesis' in window)) return;
-
-    // Stop any current speech
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === 'es' ? 'es-ES' : language === 'pt' ? 'pt-BR' : 'en-US';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    window.speechSynthesis.speak(utterance);
-  }, [inputMode, language, isLiveConnected]);
-
-  const handleCommandResponse = (response: CommandResponse) => {
-    let aiText = '';
-    if (response.type === 'text') {
-      aiText = response.data;
-    } else if (response.type === 'command') {
-      const { command, args } = response.data;
-      console.log('[AI Action]', command, args);
-
-      switch (command) {
-        case Command.SHOW_LEADS:
-          const leadsQuery = args.status ? `status=${args.status}` : '';
-          navigate(`/leads?${leadsQuery}`);
-          aiText = language === 'es' ? `Entendido. Te muestro los leads${args.status ? ` con estado ${args.status}` : ''}.` : `Sure. Showing leads${args.status ? ` with status ${args.status}` : ''}.`;
-          break;
-        case Command.CREATE_TASK:
-          aiText = language === 'es' ? `¡Hecho! He creado la tarea para ${args.assignee}: "${args.title}"${args.dueDate ? ` para el ${args.dueDate}` : ''}.` : `Done! I created the task for ${args.assignee}: "${args.title}"${args.dueDate ? ` for ${args.dueDate}` : ''}.`;
-          showToast?.(aiText, 'success');
-          break;
-        case Command.FIND_CUSTOMER:
-          navigate(`/customers?search=${args.name || args.company || ''}`);
-          aiText = language === 'es' ? `Buscando al cliente ${args.name || args.company}...` : `Searching for customer ${args.name || args.company}...`;
-          break;
-        case 'navigate' as Command:
-          const screen = (args.screen || '').toLowerCase();
-          navigate(`/${screen}`);
-          aiText = language === 'es' ? `Cambiando a la pantalla de ${screen}.` : `Navigating to the ${screen} screen.`;
-          break;
-        case 'create_lead' as Command:
-          navigate(`/leads?create=true&name=${encodeURIComponent(args.name || '')}&company=${encodeURIComponent(args.company || '')}`);
-          aiText = language === 'es' ? `He abierto el formulario para crear el nuevo lead: ${args.name}.` : `I've opened the form to create a new lead for ${args.name}.`;
-          break;
-        case 'create_deal' as Command:
-          navigate(`/deals?create=true&title=${encodeURIComponent(args.title || '')}`);
-          aiText = language === 'es' ? `Preparando la nueva oportunidad: ${args.title}.` : `Preparing the new opportunity: ${args.title}.`;
-          break;
-        case 'create_alert' as Command:
-          aiText = language === 'es' ? `Alerta creada: "${args.message}". Te lo recordaré.` : `Alert created: "${args.message}". I'll remind you.`;
-          showToast?.(aiText, 'info');
-          break;
-        case 'initiate_call' as Command:
-          aiText = language === 'es' ? `Iniciando ${args.type === 'video' ? 'videollamada' : 'llamada'} con ${args.member}...` : `Initiating ${args.type === 'video' ? 'video call' : 'call'} with ${args.member}...`;
-          showToast?.(aiText, 'info');
-          break;
-        default:
-          aiText = language === 'es' ? "Entiendo la orden, pero aún estoy aprendiendo a ejecutar esa acción específica." : "I understand the instruction, but I'm still learning how to perform that specific action.";
-      }
-    }
-    setMessages(prev => [...prev, { id: Date.now(), text: aiText, sender: 'ai' }]);
-    speak(aiText);
-  }
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
