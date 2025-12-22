@@ -28,7 +28,7 @@ class GeminiLiveService {
         }
 
         try {
-            const ai = new GoogleGenAI({ apiKey: key });
+            const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1alpha' });
             const model = 'gemini-2.5-flash-native-audio-dialog';
 
             const config = {
