@@ -1,6 +1,7 @@
 import React from 'react';
 import {
     OPENROUTER_FREE_MODELS,
+    SCANNER_VISION_MODELS,
     getPreferredOpenRouterModel,
     setPreferredOpenRouterModel,
     isGeminiQuotaExhausted
@@ -9,6 +10,7 @@ import { useTranslation } from '../../services/i18nService';
 
 interface ModelSelectorProps {
     visionOnly?: boolean;
+    scannerOnly?: boolean;
     compact?: boolean;
     className?: string;
 }
@@ -19,7 +21,7 @@ const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, compact = false, className = '' }) => {
+const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, scannerOnly = false, compact = false, className = '' }) => {
     const { language } = useTranslation();
     const [selectedModel, setSelectedModel] = React.useState<string>(getPreferredOpenRouterModel(visionOnly));
     const quotaExhausted = isGeminiQuotaExhausted();
@@ -29,10 +31,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, compa
         return null;
     }
 
-    // Filter models based on vision requirement
-    const availableModels = visionOnly
-        ? OPENROUTER_FREE_MODELS.filter(m => m.supportsVision)
-        : OPENROUTER_FREE_MODELS;
+    // Filter models based on requirements
+    let availableModels = OPENROUTER_FREE_MODELS;
+
+    if (scannerOnly) {
+        // Use limited scanner-specific models (4 best for OCR)
+        availableModels = OPENROUTER_FREE_MODELS.filter(m => SCANNER_VISION_MODELS.includes(m.id));
+    } else if (visionOnly) {
+        // Use all vision-capable models
+        availableModels = OPENROUTER_FREE_MODELS.filter(m => m.supportsVision);
+    }
 
     const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newModel = e.target.value;
