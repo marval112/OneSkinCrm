@@ -249,6 +249,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             <div className="flex items-center gap-2">
               <img src={sidebarLogoUrl} alt={brandName} className="h-8 object-contain" onError={({ currentTarget }) => { (currentTarget as HTMLImageElement).src = '/dashboard/logo_white.png'; }} />
               <span className="text-lg font-bold text-white">{brandName}</span>
+              <span className="text-xs align-middle font-light text-white/60">v{(import.meta.env.VITE_COMMIT_HASH || '1.0').substring(0, 7)}</span>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white p-2">
               <XMarkIcon className="h-8 w-8" />
