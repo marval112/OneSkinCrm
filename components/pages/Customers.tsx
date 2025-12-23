@@ -294,6 +294,7 @@ function Customers() {
   const [customerDeals, setCustomerDeals] = useState<Deal[]>([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
+  const [showInsightModal, setShowInsightModal] = useState(false);
 
   const fetchTimeline = useCallback(async (customerId: number) => {
     setTimelineLoading(true);
@@ -508,8 +509,9 @@ function Customers() {
     toastContext?.showToast('Generating AI summary...', 'info');
     try {
       const summary = await summarizeCustomer(customer);
+      setAiSummary(summary);
+      setShowInsightModal(true);
       toastContext?.showToast('AI summary generated!', 'success');
-      // You could show the summary in a modal or detail panel
       console.log('AI Summary:', summary);
     } catch (error) {
       toastContext?.showToast('Failed to generate AI summary', 'danger');
@@ -1104,6 +1106,32 @@ function Customers() {
         onSave={handleSaveDeal}
         customer={selectedEntityForDeal || undefined}
       />
+
+      {
+        showInsightModal && (
+          <Modal title={t('aiAssistant.summaryTitle') || 'AI Customer Insights'} onClose={() => setShowInsightModal(false)}>
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-4 text-purple-600 dark:text-purple-400">
+                <SparklesIcon className="w-6 h-6" />
+                <h3 className="font-semibold text-lg">{t('aiAssistant.summaryHeading') || 'Customer Summary'}</h3>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-600">
+                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                  {aiSummary}
+                </p>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowInsightModal(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  {t('common.close') || 'Close'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
     </div >
   );
 }

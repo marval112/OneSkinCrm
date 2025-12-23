@@ -383,6 +383,8 @@ function Leads() {
     toastContext?.showToast('Generating AI summary...', 'info');
     try {
       const summary = await summarizeLead(lead);
+      setAiSummary(summary);
+      setShowInsightModal(true);
       toastContext?.showToast('AI summary generated!', 'success');
       console.log('AI Summary:', summary);
     } catch (error) {
@@ -432,6 +434,7 @@ function Leads() {
   const [qDealExpectedClose, setQDealExpectedClose] = useState<string>(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16));
   const [qDealNotes, setQDealNotes] = useState('');
   const [scanError, setScanError] = useState<{ message: string; modelUsed: string; imageData: string } | null>(null);
+  const [showInsightModal, setShowInsightModal] = useState(false);
 
   const openTimeline = async (lead: Lead) => {
     setTimelineLead(lead);
@@ -874,7 +877,7 @@ function Leads() {
                           </button>
                         )}
                         <button
-                          onClick={() => openChat(`Analyze this lead: ${lead.name} from ${lead.company || 'Unknown Company'}`)}
+                          onClick={() => handleAISummary(lead)}
                           className="text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-500 p-1"
                           title="AI Insight">
                           <SparklesIcon className="h-5 w-5" />
@@ -1631,6 +1634,31 @@ function Leads() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   {t('common.retry') || 'Retry Scan'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        showInsightModal && (
+          <Modal title={t('aiAssistant.summaryTitle') || 'AI Lead Insights'} onClose={() => setShowInsightModal(false)}>
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-4 text-purple-600 dark:text-purple-400">
+                <SparklesIcon className="w-6 h-6" />
+                <h3 className="font-semibold text-lg">{t('aiAssistant.summaryHeading') || 'Lead Summary'}</h3>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-600">
+                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                  {aiSummary}
+                </p>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowInsightModal(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  {t('common.close') || 'Close'}
                 </button>
               </div>
             </div>
