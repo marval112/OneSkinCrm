@@ -744,11 +744,11 @@ function Customers() {
       ) : view === 'kanban' ? (
         <CustomersKanbanView customers={customers} onUpdateCustomer={handleUpdateCustomer} onEmailCustomer={setEmailingCustomer} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex flex-wrap gap-4">
           {Object.values(Segment).map(segment => {
             const segmentCustomers = sortedCustomers.filter(customer => customer.segment === segment);
             return (
-              <div key={segment} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
+              <div key={segment} className="flex-1 min-w-[300px] bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">{segment}</h3>
                   <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">{segmentCustomers.length}</span>
