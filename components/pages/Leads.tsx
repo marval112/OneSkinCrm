@@ -20,7 +20,6 @@ import ImportModal from '../common/ImportModal';
 import { parseCSV, importLeads } from '../../services/importService';
 import { listActivitiesForLead, logActivity } from '../../services/activityService';
 import { summarizeLead, suggestLeadTasks, draftLeadFollowUpEmail } from '../../services/geminiService';
-import { createDeal } from '../../services/crmService';
 import { createTask, listTasksForLead, completeTask, updateTask } from '../../services/tasksService';
 import { TaskType, TaskStatus, Task } from '../../types';
 import type { ActivityLog } from '../../types';
@@ -151,12 +150,16 @@ const LeadForm = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const countryPromise = typeof getCountries === 'function' ? getCountries() : Promise.resolve([]);
+        const usersPromise = typeof getUsers === 'function' ? getUsers() : Promise.resolve([]);
+
         const [countryData, usersData] = await Promise.all([
-          getCountries(),
-          getUsers() // Assuming getUsers is imported from userService
+          countryPromise,
+          usersPromise
         ]);
-        setCountries(countryData);
-        setUsers(usersData);
+
+        if (Array.isArray(countryData)) setCountries(countryData);
+        if (Array.isArray(usersData)) setUsers(usersData);
 
         if (!lead?.country && countryData.length > 0) {
           setFormData(prev => ({ ...prev, country: countryData.find(c => c.code === 'ES')?.name || countryData[0].name }));
