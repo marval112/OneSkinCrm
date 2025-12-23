@@ -1615,7 +1615,7 @@ function Leads() {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   {t('leads.tryDifferentModel') || 'Try with a different AI model'}
                 </label>
-                <ModelSelector visionOnly />
+                <ModelSelector scannerOnly />
               </div>
 
               <div className="flex justify-end gap-3 mt-6">

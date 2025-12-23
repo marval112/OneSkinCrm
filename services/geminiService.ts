@@ -128,12 +128,22 @@ export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
   { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1:free', name: 'NVIDIA Nemotron Nano 8B', supportsVision: false },
   { id: 'google/gemini-2.5-pro-exp-03-25:free', name: 'Google Gemini 2.5 Pro Exp', supportsVision: true },
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
+  { id: 'google/gemma-3-27b-it:free', name: 'Google Gemma 3 27B IT', supportsVision: true },
   { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1', supportsVision: false },
 ];
 
 // Default OpenRouter models when Gemini quota is exhausted
 export const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-oss-20b:free';
 export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.0-flash-exp:free';
+
+// Limited set of models for business card scanning (vision tasks)
+// These are more reliable for OCR and extraction tasks
+export const SCANNER_VISION_MODELS: string[] = [
+  'google/gemini-2.0-flash-exp:free',
+  'google/gemma-3-27b-it:free',
+  'openai/gpt-oss-20b:free',
+  'mistralai/devstral-2512:free',
+];
 
 // Legacy arrays for backward compatibility
 const OPENROUTER_MODELS = OPENROUTER_FREE_MODELS.map(m => m.id);
