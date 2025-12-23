@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import ModelSelector from './ModelSelector';
 
 interface CameraScannerProps {
     onCapture: (imageDataUrl: string) => void;
@@ -67,7 +68,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
         <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
             <video ref={videoRef} autoPlay playsInline className="absolute top-0 left-0 w-full h-full object-cover"></video>
             <canvas ref={canvasRef} className="hidden"></canvas>
-            
+
             {/* Overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-[90%] max-w-lg aspect-[1.7/1] border-4 border-dashed border-white/70 rounded-lg shadow-lg"></div>
@@ -76,7 +77,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
 
             {error && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/80 text-white p-4 rounded-lg">{error}</div>}
-            
+
             {/* Controls */}
             <div className="absolute bottom-0 left-0 w-full p-4 bg-black/30 flex justify-center">
                 <button
@@ -87,7 +88,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
                     <CameraIcon className="w-10 h-10 text-slate-700" />
                 </button>
             </div>
-            
+
+            {/* Model Selector for Vision */}
+            <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg p-2">
+                <ModelSelector visionOnly compact />
+            </div>
+
             {/* Close Button */}
             <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white" aria-label="Close scanner">
                 <XMarkIcon className="h-8 w-8" />

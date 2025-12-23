@@ -7,7 +7,10 @@ Sistema de gestión de relaciones con clientes (CRM) con capacidades de prospect
 - 🔍 **Prospecting Inteligente**: Búsqueda de prospectos usando Google y LinkedIn vía SerpAPI
 - 👥 **Gestión de Clientes**: CRUD completo de clientes y contactos
 - 📊 **Dashboard**: Visualización de métricas y KPIs
-- 🤖 **IA Integrada**: Asistente con Gemini AI
+- 🤖 **IA Integrada**: Asistente con Gemini AI + fallback automático a OpenRouter
+  - Selector de modelos gratuitos de OpenRouter cuando la cuota de Gemini se agota
+  - 8+ modelos free disponibles (OpenAI GPT OSS, Xiaomi MiMo, Mistral, DeepSeek, etc.)
+  - Selección automática de modelos con capacidad de visión para escáner de tarjetas
 - 🎨 **Personalización**: Temas y branding customizable
 - 📧 **Reportes**: Generación y envío automático de reportes
 
@@ -32,10 +35,17 @@ npm install
 Crea un archivo `.env.local` con:
 
 ```env
-GEMINI_API_KEY=tu_clave_gemini
+VITE_GEMINI_API_KEY=tu_clave_gemini
+VITE_OPENROUTER_API_KEY=tu_clave_openrouter  # Opcional: fallback automático cuando Gemini se agote
 SUPABASE_URL=https://mobyfwaiqixcaenijfim.supabase.co
 SUPABASE_ANON_KEY=tu_clave_supabase
 ```
+
+**Nota sobre OpenRouter:**
+- OpenRouter se activa automáticamente cuando la cuota de Gemini se agota (error 429)
+- El modelo por defecto es `openai/gpt-oss-20b:free`
+- El usuario puede seleccionar otros modelos gratuitos desde la interfaz
+- Obtén tu clave gratuita en [openrouter.ai](https://openrouter.ai/)
 
 ### 3. Configurar SerpAPI Key en Supabase
 
@@ -103,9 +113,30 @@ npm run preview  # Preview del build
 - **Frontend**: React 19 + TypeScript + Vite
 - **Backend**: Vercel Serverless Functions
 - **Base de Datos**: Supabase (PostgreSQL)
-- **IA**: Google Gemini
+- **IA**: 
+  - Google Gemini (primario)
+  - OpenRouter (fallback automático con 8+ modelos gratuitos)
 - **APIs**: SerpAPI para prospecting
 - **Deployment**: Vercel
+
+## Modelos de IA Disponibles
+
+### Gemini (Primario)
+- `gemini-2.5-flash-lite` (por defecto)
+- `gemini-2.5-flash`
+- `gemini-2.0-flash-exp`
+
+### OpenRouter Free Models (Fallback automático)
+- `openai/gpt-oss-20b:free` ⭐ (por defecto)
+- `xiaomi/mimo-v2-flash:free` (con visión)
+- `mistralai/devstral-2512:free`
+- `mistralai/mistral-small-3.1-24b-instruct:free`
+- `nex-agi/deepseek-v3.1-nex-n1:free`
+- `meta-llama/llama-4-maverick:free`
+- `nvidia/llama-3.1-nemotron-nano-8b-v1:free`
+- `google/gemini-2.5-pro-exp-03-25:free` (con visión)
+
+El selector de modelos aparece automáticamente cuando la cuota de Gemini se agota.
 
 ## Documentación
 

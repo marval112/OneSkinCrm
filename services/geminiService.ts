@@ -112,16 +112,31 @@ function extractJSON<T>(text: string): T | null {
   return null;
 }
 
-const OPENROUTER_MODELS = [
-  'xiaomi/mimo-v2-flash:free',
-  'mistralai/devstral-2512:free',
-  'nex-agi/deepseek-v3.1-nex-n1:free',
+// OpenRouter Free Models with metadata
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+  supportsVision: boolean;
+}
+
+export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
+  { id: 'openai/gpt-oss-20b:free', name: 'OpenAI GPT OSS 20B', supportsVision: false },
+  { id: 'xiaomi/mimo-v2-flash:free', name: 'Xiaomi MiMo V2 Flash', supportsVision: true },
+  { id: 'mistralai/devstral-2512:free', name: 'Mistral Devstral 2512', supportsVision: false },
+  { id: 'nex-agi/deepseek-v3.1-nex-n1:free', name: 'DeepSeek V3.1 Nex N1', supportsVision: false },
+  { id: 'meta-llama/llama-4-maverick:free', name: 'Llama 4 Maverick', supportsVision: false },
+  { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1:free', name: 'NVIDIA Nemotron Nano 8B', supportsVision: false },
+  { id: 'google/gemini-2.5-pro-exp-03-25:free', name: 'Google Gemini 2.5 Pro Exp', supportsVision: true },
+  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1', supportsVision: false },
 ];
 
-const OPENROUTER_VISION_MODELS = [
-  'xiaomi/mimo-v2-flash:free', // Using these as fallback for vision too
-  'nex-agi/deepseek-v3.1-nex-n1:free',
-];
+// Default OpenRouter model when Gemini quota is exhausted
+export const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-oss-20b:free';
+
+// Legacy arrays for backward compatibility
+const OPENROUTER_MODELS = OPENROUTER_FREE_MODELS.map(m => m.id);
+const OPENROUTER_VISION_MODELS = OPENROUTER_FREE_MODELS.filter(m => m.supportsVision).map(m => m.id);
+
 
 // Quota management helpers
 const QUOTA_STORAGE_KEY = 'oneskin_gemini_quota_exhausted';
@@ -171,7 +186,35 @@ function clearGeminiQuotaExhaustion(): void {
   console.log('[AI] Gemini quota exhaustion flag cleared.');
 }
 
-// Export for use in Settings
+// OpenRouter Model Preference Management
+const PREFERRED_OPENROUTER_MODEL_KEY = 'oneskin_preferred_openrouter_model';
+
+export function getPreferredOpenRouterModel(): string {
+  if (typeof window === 'undefined') return DEFAULT_OPENROUTER_MODEL;
+
+  const preferred = localStorage.getItem(PREFERRED_OPENROUTER_MODEL_KEY);
+
+  // Validate that the stored model still exists in our list
+  if (preferred && OPENROUTER_FREE_MODELS.some(m => m.id === preferred)) {
+    return preferred;
+  }
+
+  return DEFAULT_OPENROUTER_MODEL;
+}
+
+export function setPreferredOpenRouterModel(modelId: string): void {
+  if (typeof window === 'undefined') return;
+
+  // Validate model exists
+  if (OPENROUTER_FREE_MODELS.some(m => m.id === modelId)) {
+    localStorage.setItem(PREFERRED_OPENROUTER_MODEL_KEY, modelId);
+    console.log(`[AI] Preferred OpenRouter model set to: ${modelId}`);
+  } else {
+    console.warn(`[AI] Invalid model ID: ${modelId}. Not saving preference.`);
+  }
+}
+
+// Export for use in Settings and UI components
 export { isGeminiQuotaExhausted, clearGeminiQuotaExhaustion };
 
 export async function generateWithFallback(client: any, params: any) {
@@ -247,7 +290,14 @@ export async function generateWithFallback(client: any, params: any) {
     ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
     : OPENROUTER_MODELS;
 
-  for (const model of openRouterList) {
+  // Prioritize user's preferred model if set
+  const preferredModel = getPreferredOpenRouterModel();
+  const orderedOpenRouterList = [
+    preferredModel,
+    ...openRouterList.filter(model => model !== preferredModel)
+  ];
+
+  for (const model of orderedOpenRouterList) {
     try {
       console.log(`[AI] Attempting OpenRouter model: ${model}${quotaExhausted || geminiQuotaHit ? ' (Gemini quota exhausted)' : ''}`);
       const result = await generateWithOpenRouter({ ...params, model });

@@ -12,6 +12,7 @@ import { useTranslation } from '../../services/i18nService';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { getBrandName, getBrandLogoUrl } from '../../services/brandingService';
 import { generateDashboardInsights } from '../../services/geminiService';
+import ModelSelector from '../common/ModelSelector';
 
 // --- ICONS ---
 const UserPlusIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg>;
@@ -1025,7 +1026,7 @@ function Dashboard() {
               <CustomTooltip
                 formatter={(value: number) => `€${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               />
-              <Legend />
+              <Legend wrapperStyle={{ color: 'rgb(100 116 139)' }} />
               {(() => {
                 const currentYear = new Date().getFullYear();
                 const years = [currentYear - 2, currentYear - 1, currentYear];
@@ -1337,10 +1338,15 @@ function Dashboard() {
           ))}
         </ul>
       </div>
+
+      {/* AI Insights */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-base mb-2">AI Insights</h3>
-          <button className="text-xs underline text-slate-600" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-base">AI Insights</h3>
+          <div className="flex items-center gap-3">
+            <ModelSelector compact />
+            <button className="text-xs underline text-slate-600 dark:text-slate-400" onClick={() => navigate('/settings/documentation')}>{t('common.howAiHelps')}</button>
+          </div>
         </div>
         <div className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">{aiInsights || '...'}</div>
         <div className="mt-3 flex flex-wrap gap-2">

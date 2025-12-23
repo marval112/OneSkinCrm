@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../services/i18nService';
 import useVoiceInput from '../../hooks/useVoiceInput';
 import { useGeminiLive } from '../../hooks/useGeminiLive';
+import ModelSelector from './ModelSelector';
 
 interface Message {
   id: number;
@@ -68,7 +69,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [inputMode, setInputMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('oneskin_ai_input_mode') as 'text' | 'voice') || 'text');
-  const [forceOpenRouter, setForceOpenRouter] = useState<boolean>(() => localStorage.getItem('oneskin_force_openrouter') === 'true');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. Core State & Navigation hooks
@@ -227,10 +227,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   }, [inputMode, isSTTListening, isLiveListening, stopListening, stopLive]);
 
   useEffect(() => {
-    localStorage.setItem('oneskin_force_openrouter', String(forceOpenRouter));
-  }, [forceOpenRouter]);
-
-  useEffect(() => {
     const triggerBriefing = async () => {
       if (messages.length === 0 && user && !isLoading) {
         setIsLoading(true);
@@ -301,20 +297,13 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       const sellerName = user?.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : undefined;
       const response = await processCommand(text, context, sellerName, language);
       handleCommandResponse(response);
-
-      // If we are in "voice-emulated" mode, speak the result
-      if (inputMode === 'voice' && forceOpenRouter) {
-        if (response.type === 'text') {
-          speak(response.data);
-        }
-      }
     } catch (error) {
       const errorMessage: Message = { id: Date.now() + 1, text: "Sorry, something went wrong.", sender: 'ai' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, location.pathname, language, user, inputMode, forceOpenRouter, speak]);
+  }, [isLoading, location.pathname, language, user, inputMode, speak]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSendMessage(suggestion);
@@ -322,20 +311,11 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   const toggleVoiceInput = () => {
     if (inputMode === 'voice') {
-      if (forceOpenRouter) {
-        // Manual Fallback: Use standard STT instead of Gemini Live
-        if (isSTTListening) {
-          stopListening();
-        } else {
-          startListening();
-        }
+      // Use Gemini Live
+      if (isLiveListening) {
+        stopLive();
       } else {
-        // Normal Mode: Use Gemini Live
-        if (isLiveListening) {
-          stopLive();
-        } else {
-          startLive();
-        }
+        startLive();
       }
     } else {
       if (isSTTListening) {
@@ -357,11 +337,14 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl flex flex-col w-full max-w-2xl h-full max-h-[80vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center">
-            <SparklesIcon className="w-6 h-6 text-primary mr-2" />
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-              {language === 'es' ? 'Tu Mentor de Ventas' : language === 'pt' ? 'Seu Mentor de Vendas' : 'AI Sales Mentor'}
-            </h3>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center">
+              <SparklesIcon className="w-6 h-6 text-primary mr-2" />
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+                {language === 'es' ? 'Tu Mentor de Ventas' : language === 'pt' ? 'Seu Mentor de Vendas' : 'AI Sales Mentor'}
+              </h3>
+            </div>
+            <ModelSelector compact className="ml-auto" />
           </div>
           <button onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
             <XMarkIcon className="w-6 h-6" />
@@ -398,17 +381,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
               {messages.length <= 1 && suggestedCommands.map(cmd => (
                 <button key={cmd} onClick={() => handleSuggestionClick(cmd)} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">{cmd}</button>
               ))}
-            </div>
-            {/* Fallback Mode Toggle */}
-            <div className="flex items-center gap-1.5 ml-auto">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Manual Fallback</span>
-              <button
-                onClick={() => setForceOpenRouter(!forceOpenRouter)}
-                className={`w-8 h-4 rounded-full relative transition-all duration-200 ${forceOpenRouter ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                title={forceOpenRouter ? "Forcing OpenRouter (Free Models)" : "Using Default Priority (Gemini first)"}
-              >
-                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200 ${forceOpenRouter ? 'left-4.5' : 'left-0.5'}`} style={{ left: forceOpenRouter ? '1.1rem' : '0.125rem' }}></div>
-              </button>
             </div>
 
             {/* Input Mode Toggle */}
