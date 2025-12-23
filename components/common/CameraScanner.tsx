@@ -37,8 +37,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
     const [isProcessing, setIsProcessing] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const MAX_ATTEMPTS = 20; // 20 attempts at 3 seconds each = 60 seconds max
-    const SCAN_INTERVAL = 3000; // 3 seconds between scans
+    const MAX_ATTEMPTS = 12; // 12 attempts at 5 seconds each = 60 seconds max
+    const SCAN_INTERVAL = 5000; // 5 seconds between scans (safe for 15 RPM limit)
 
     // Start camera with autofocus
     useEffect(() => {
