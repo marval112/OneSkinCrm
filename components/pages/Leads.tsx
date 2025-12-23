@@ -428,6 +428,7 @@ function Leads() {
   const [qDealProbability, setQDealProbability] = useState<number>(50);
   const [qDealExpectedClose, setQDealExpectedClose] = useState<string>(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16));
   const [qDealNotes, setQDealNotes] = useState('');
+  const [scanError, setScanError] = useState<{ message: string; modelUsed: string; imageData: string } | null>(null);
 
   const openTimeline = async (lead: Lead) => {
     setTimelineLead(lead);
@@ -649,8 +650,36 @@ function Leads() {
       const extractedData = await scanBusinessCard(base64Image);
       toastContext?.showToast('Information extracted!', 'success');
       handleOpenCreateModal(extractedData);
-    } catch (error) {
-      toastContext?.showToast('Failed to scan card. Please try again.', 'danger');
+      setScanError(null); // Clear any previous errors
+    } catch (error: any) {
+      // Show enhanced error dialog with model info
+      const modelUsed = error?.modelUsed || 'Unknown Model';
+      const errorMessage = error?.message || 'Failed to scan card. Please try again.';
+      setScanError({
+        message: errorMessage,
+        modelUsed: modelUsed,
+        imageData: base64Image
+      });
+    }
+  };
+
+  const handleRetryScan = async () => {
+    if (!scanError) return;
+
+    toastContext?.showToast('Retrying scan...', 'info');
+    try {
+      const extractedData = await scanBusinessCard(scanError.imageData);
+      toastContext?.showToast('Information extracted!', 'success');
+      handleOpenCreateModal(extractedData);
+      setScanError(null);
+    } catch (error: any) {
+      const modelUsed = error?.modelUsed || 'Unknown Model';
+      const errorMessage = error?.message || 'Failed to scan card. Please try again.';
+      setScanError({
+        message: errorMessage,
+        modelUsed: modelUsed,
+        imageData: scanError.imageData
+      });
     }
   };
 
@@ -1557,6 +1586,59 @@ function Leads() {
         onSave={handleSaveLeadDeal}
         lead={selectedLeadForDeal || undefined}
       />
+
+      {/* Scan Error Dialog with Model Selector and Retry */}
+      {
+        scanError && (
+          <Modal title={t('leads.scanError') || 'Scan Error'} onClose={() => setScanError(null)}>
+            <div className="p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                    {t('leads.scanFailed') || 'Failed to extract information'}
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {scanError.message}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    {t('leads.modelUsed') || 'Model used'}: <span className="font-mono font-semibold">{scanError.modelUsed}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  {t('leads.tryDifferentModel') || 'Try with a different AI model'}
+                </label>
+                <ModelSelector visionOnly />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setScanError(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-600 border border-slate-300 dark:border-slate-500 rounded-md hover:bg-slate-50 dark:hover:bg-slate-500 transition-colors"
+                >
+                  {t('common.cancel') || 'Cancel'}
+                </button>
+                <button
+                  onClick={handleRetryScan}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-hover transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {t('common.retry') || 'Retry Scan'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
     </div >
   );
 }

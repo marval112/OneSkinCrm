@@ -770,9 +770,24 @@ export const scanBusinessCard = async (base64Image: string): Promise<Partial<Lea
     }
     throw new Error("Invalid JSON response from AI");
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error scanning business card with AI:", error);
-    throw new Error("Could not extract information from the business card due to an AI service error.");
+
+    // Determine which model was attempted
+    let modelAttempted = 'Unknown';
+    if (isGeminiQuotaExhausted()) {
+      const preferredModel = getPreferredOpenRouterModel(true); // Vision task
+      const modelInfo = OPENROUTER_FREE_MODELS.find(m => m.id === preferredModel);
+      modelAttempted = modelInfo?.name || preferredModel;
+    } else {
+      modelAttempted = 'Gemini';
+    }
+
+    // Create enhanced error with model information
+    const enhancedError = new Error(`Failed to scan card with ${modelAttempted}. Please try again.`);
+    (enhancedError as any).modelUsed = modelAttempted;
+    (enhancedError as any).originalError = error;
+    throw enhancedError;
   }
 };
 
