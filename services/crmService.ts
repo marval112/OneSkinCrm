@@ -238,7 +238,7 @@ export const bulkDeleteDeals = async (ids: number[]): Promise<void> => {
 
 // --- Countries ---
 export const getCountries = async (): Promise<Country[]> => {
-    return db.list('countries');
+    return db.getAll('countries');
 };
 
 // --- Proactive Context ---
