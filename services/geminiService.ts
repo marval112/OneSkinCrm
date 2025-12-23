@@ -120,9 +120,8 @@ export interface OpenRouterModel {
 }
 
 export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
-  // User requested Mistral Small as specific fallback
+  // User requested ONLY Gemini 2.0 Flash Exp for all fallbacks
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
-  { id: 'mistralai/pixtral-12b:free', name: 'Mistral Pixtral 12B', supportsVision: true },
 ];
 
 // Default OpenRouter models when Gemini quota is exhausted
@@ -131,7 +130,7 @@ export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.0-flash-exp:free
 
 // Scanner-specific models (best for OCR and business card extraction)
 export const SCANNER_VISION_MODELS: string[] = [
-  'mistralai/pixtral-12b:free', // Vision-capable Mistral model for fallback
+  'google/gemini-2.0-flash-exp:free', // Strictly only this model
 ];
 
 // Legacy arrays for backward compatibility
