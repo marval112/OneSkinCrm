@@ -21,7 +21,7 @@ const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, compact = false, className = '' }) => {
     const { language } = useTranslation();
-    const [selectedModel, setSelectedModel] = React.useState<string>(getPreferredOpenRouterModel());
+    const [selectedModel, setSelectedModel] = React.useState<string>(getPreferredOpenRouterModel(visionOnly));
     const quotaExhausted = isGeminiQuotaExhausted();
 
     // Don't render if Gemini is still active
@@ -37,7 +37,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, compa
     const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newModel = e.target.value;
         setSelectedModel(newModel);
-        setPreferredOpenRouterModel(newModel);
+        setPreferredOpenRouterModel(newModel, visionOnly);
     };
 
     const getLabel = () => {

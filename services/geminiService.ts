@@ -127,11 +127,13 @@ export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
   { id: 'meta-llama/llama-4-maverick:free', name: 'Llama 4 Maverick', supportsVision: false },
   { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1:free', name: 'NVIDIA Nemotron Nano 8B', supportsVision: false },
   { id: 'google/gemini-2.5-pro-exp-03-25:free', name: 'Google Gemini 2.5 Pro Exp', supportsVision: true },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
   { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1', supportsVision: false },
 ];
 
-// Default OpenRouter model when Gemini quota is exhausted
+// Default OpenRouter models when Gemini quota is exhausted
 export const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-oss-20b:free';
+export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.0-flash-exp:free';
 
 // Legacy arrays for backward compatibility
 const OPENROUTER_MODELS = OPENROUTER_FREE_MODELS.map(m => m.id);
@@ -188,27 +190,48 @@ function clearGeminiQuotaExhaustion(): void {
 
 // OpenRouter Model Preference Management
 const PREFERRED_OPENROUTER_MODEL_KEY = 'oneskin_preferred_openrouter_model';
+const PREFERRED_OPENROUTER_VISION_MODEL_KEY = 'oneskin_preferred_openrouter_vision_model';
 
-export function getPreferredOpenRouterModel(): string {
-  if (typeof window === 'undefined') return DEFAULT_OPENROUTER_MODEL;
+export function getPreferredOpenRouterModel(visionTask: boolean = false): string {
+  if (typeof window === 'undefined') {
+    return visionTask ? DEFAULT_OPENROUTER_VISION_MODEL : DEFAULT_OPENROUTER_MODEL;
+  }
 
-  const preferred = localStorage.getItem(PREFERRED_OPENROUTER_MODEL_KEY);
+  const storageKey = visionTask ? PREFERRED_OPENROUTER_VISION_MODEL_KEY : PREFERRED_OPENROUTER_MODEL_KEY;
+  const defaultModel = visionTask ? DEFAULT_OPENROUTER_VISION_MODEL : DEFAULT_OPENROUTER_MODEL;
+  const preferred = localStorage.getItem(storageKey);
 
   // Validate that the stored model still exists in our list
   if (preferred && OPENROUTER_FREE_MODELS.some(m => m.id === preferred)) {
-    return preferred;
+    // For vision tasks, ensure the model supports vision
+    if (visionTask) {
+      const model = OPENROUTER_FREE_MODELS.find(m => m.id === preferred);
+      if (model && model.supportsVision) {
+        return preferred;
+      }
+    } else {
+      return preferred;
+    }
   }
 
-  return DEFAULT_OPENROUTER_MODEL;
+  return defaultModel;
 }
 
-export function setPreferredOpenRouterModel(modelId: string): void {
+export function setPreferredOpenRouterModel(modelId: string, visionTask: boolean = false): void {
   if (typeof window === 'undefined') return;
 
   // Validate model exists
-  if (OPENROUTER_FREE_MODELS.some(m => m.id === modelId)) {
-    localStorage.setItem(PREFERRED_OPENROUTER_MODEL_KEY, modelId);
-    console.log(`[AI] Preferred OpenRouter model set to: ${modelId}`);
+  const model = OPENROUTER_FREE_MODELS.find(m => m.id === modelId);
+  if (model) {
+    // For vision tasks, ensure the model supports vision
+    if (visionTask && !model.supportsVision) {
+      console.warn(`[AI] Model ${modelId} does not support vision. Not saving preference.`);
+      return;
+    }
+
+    const storageKey = visionTask ? PREFERRED_OPENROUTER_VISION_MODEL_KEY : PREFERRED_OPENROUTER_MODEL_KEY;
+    localStorage.setItem(storageKey, modelId);
+    console.log(`[AI] Preferred OpenRouter ${visionTask ? 'vision ' : ''}model set to: ${modelId}`);
   } else {
     console.warn(`[AI] Invalid model ID: ${modelId}. Not saving preference.`);
   }
@@ -290,8 +313,8 @@ export async function generateWithFallback(client: any, params: any) {
     ? [...OPENROUTER_VISION_MODELS, ...OPENROUTER_MODELS]
     : OPENROUTER_MODELS;
 
-  // Prioritize user's preferred model if set
-  const preferredModel = getPreferredOpenRouterModel();
+  // Prioritize user's preferred model if set (use vision-specific preference for vision tasks)
+  const preferredModel = getPreferredOpenRouterModel(isVisionTask);
   const orderedOpenRouterList = [
     preferredModel,
     ...openRouterList.filter(model => model !== preferredModel)
