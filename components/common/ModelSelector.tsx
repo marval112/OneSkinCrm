@@ -13,6 +13,7 @@ interface ModelSelectorProps {
     scannerOnly?: boolean;
     compact?: boolean;
     className?: string;
+    forceShow?: boolean; // Force show even if Gemini quota is not exhausted (for error dialogs)
 }
 
 const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -21,13 +22,13 @@ const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, scannerOnly = false, compact = false, className = '' }) => {
+const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, scannerOnly = false, compact = false, className = '', forceShow = false }) => {
     const { language } = useTranslation();
     const [selectedModel, setSelectedModel] = React.useState<string>(getPreferredOpenRouterModel(visionOnly));
     const quotaExhausted = isGeminiQuotaExhausted();
 
-    // Don't render if Gemini is still active
-    if (!quotaExhausted) {
+    // Don't render if Gemini is still active (unless forceShow is true, e.g., in error dialogs)
+    if (!quotaExhausted && !forceShow) {
         return null;
     }
 
