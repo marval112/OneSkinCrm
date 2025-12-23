@@ -35,11 +35,10 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
     const [status, setStatus] = useState<ScanStatus>('idle');
     const [attemptCount, setAttemptCount] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
-    const animationFrameRef = useRef<number | null>(null);
-    const lastScanTimeRef = useRef<number>(0);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const MAX_ATTEMPTS = 100; // Allow more attempts with continuous scanning
-    const MIN_SCAN_INTERVAL = 500; // Minimum 500ms between API calls to avoid spam
+    const MAX_ATTEMPTS = 20; // 20 attempts at 3 seconds each = 60 seconds max
+    const SCAN_INTERVAL = 3000; // 3 seconds between scans
 
     // Start camera with autofocus
     useEffect(() => {
@@ -101,15 +100,17 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
     // Perform scan (separate function for reuse)
     const performScan = async (imageData: string, isManual: boolean = false) => {
+        if (isProcessing) return; // Prevent concurrent scans
+
         setIsProcessing(true);
 
         try {
             const extractedData = await scanBusinessCard(imageData);
 
-            // Success!
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-                animationFrameRef.current = null;
+            // Success! Stop scanning
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
             }
 
             setStatus('success');
@@ -130,42 +131,33 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
         }
     };
 
-    // Continuous auto-scan logic
+    // Auto-scan with controlled intervals
     useEffect(() => {
         if (!videoRef.current || error) return;
 
         let isActive = true;
         let attempts = 0;
 
-        const continuousScan = () => {
-            if (!isActive || status === 'success' || status === 'timeout') {
-                return;
-            }
+        const scanFrame = async () => {
+            if (!isActive || isProcessing) return;
 
-            const now = Date.now();
-            const timeSinceLastScan = now - lastScanTimeRef.current;
-
-            // Only scan if enough time has passed and not currently processing
-            if (timeSinceLastScan >= MIN_SCAN_INTERVAL && !isProcessing && attempts < MAX_ATTEMPTS) {
-                attempts++;
-                setAttemptCount(attempts);
-                setStatus('scanning');
-                lastScanTimeRef.current = now;
-
-                const imageData = captureCurrentFrame();
-                if (imageData) {
-                    performScan(imageData, false);
-                }
-            }
-
-            // Check for timeout
             if (attempts >= MAX_ATTEMPTS) {
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
                 setStatus('timeout');
                 return;
             }
 
-            // Continue loop
-            animationFrameRef.current = requestAnimationFrame(continuousScan);
+            attempts++;
+            setAttemptCount(attempts);
+            setStatus('scanning');
+
+            const imageData = captureCurrentFrame();
+            if (imageData) {
+                await performScan(imageData, false);
+            }
         };
 
         // Wait for video to be ready
@@ -174,10 +166,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
                 // Start scanning after brief delay for camera stabilization
                 setTimeout(() => {
                     if (isActive) {
-                        lastScanTimeRef.current = Date.now();
-                        animationFrameRef.current = requestAnimationFrame(continuousScan);
+                        // First scan immediately
+                        scanFrame();
+                        // Then schedule subsequent scans every 3 seconds
+                        intervalRef.current = setInterval(scanFrame, SCAN_INTERVAL);
                     }
-                }, 1000);
+                }, 1500);
             } else {
                 videoRef.current?.addEventListener('loadedmetadata', startAutoScan);
             }
@@ -187,12 +181,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
         return () => {
             isActive = false;
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-                animationFrameRef.current = null;
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
             }
         };
-    }, [captureCurrentFrame, error, isProcessing, status]);
+    }, [captureCurrentFrame, error]);
 
     const getStatusText = () => {
         switch (status) {
@@ -282,7 +276,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
                         setStatus('idle');
                         setAttemptCount(0);
                         setIsProcessing(false);
-                        lastScanTimeRef.current = 0;
+                        window.location.reload(); // Easiest way to restart
                     }}
                     className="absolute bottom-32 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
