@@ -295,17 +295,9 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
 export default CameraScanner;
 
-interface CameraScannerProps {
-    onCapture: (imageDataUrl: string) => void;
-    onClose: () => void;
-}
-
-type ScanStatus = 'idle' | 'scanning' | 'success' | 'timeout' | 'error';
-
-const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
+<svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+</svg>
 );
 
 const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
