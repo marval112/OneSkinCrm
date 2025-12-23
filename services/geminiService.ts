@@ -120,24 +120,16 @@ export interface OpenRouterModel {
 }
 
 export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
-  { id: 'openai/gpt-oss-20b:free', name: 'OpenAI GPT OSS 20B', supportsVision: false },
-  { id: 'xiaomi/mimo-v2-flash:free', name: 'Xiaomi MiMo V2 Flash', supportsVision: true },
-  { id: 'mistralai/devstral-2512:free', name: 'Mistral Devstral 2512', supportsVision: false },
-  { id: 'nex-agi/deepseek-v3.1-nex-n1:free', name: 'DeepSeek V3.1 Nex N1', supportsVision: false },
-  { id: 'meta-llama/llama-4-maverick:free', name: 'Llama 4 Maverick', supportsVision: false },
-  { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1:free', name: 'NVIDIA Nemotron Nano 8B', supportsVision: false },
-  { id: 'google/gemini-2.5-pro-exp-03-25:free', name: 'Google Gemini 2.5 Pro Exp', supportsVision: true },
+  // Vision-capable models ONLY (verified to support image input)
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
   { id: 'google/gemma-3-27b-it:free', name: 'Google Gemma 3 27B IT', supportsVision: true },
-  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1', supportsVision: false },
 ];
 
 // Default OpenRouter models when Gemini quota is exhausted
-export const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-oss-20b:free';
+export const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.0-flash-exp:free';
 export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.0-flash-exp:free';
 
-// Limited set of models for business card scanning (vision tasks)
-// These are more reliable for OCR and extraction tasks
+// Scanner-specific models (best for OCR and business card extraction)
 export const SCANNER_VISION_MODELS: string[] = [
   'google/gemini-2.0-flash-exp:free',
   'google/gemma-3-27b-it:free',
