@@ -131,10 +131,8 @@ export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.0-flash-exp:free
 
 // Scanner-specific models (best for OCR and business card extraction)
 export const SCANNER_VISION_MODELS: string[] = [
-  'google/gemini-2.0-flash-exp:free',
-  'google/gemma-3-27b-it:free',
-  'openai/gpt-oss-20b:free',
-  'mistralai/devstral-2512:free',
+  'google/gemini-2.0-flash-exp:free', // best performance
+  // 'google/gemma-3-27b-it:free', // Disabled: Rate limiting and JSON mode issues
 ];
 
 // Legacy arrays for backward compatibility
