@@ -233,10 +233,10 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
             {/* Status Text */}
             <p className={`absolute top-1/4 px-4 py-2 rounded-md font-medium transition-colors ${status === 'success' ? 'bg-green-500/90 text-white' :
-                    status === 'processing' ? 'bg-yellow-500/90 text-white' :
-                        status === 'scanning' ? 'bg-blue-500/90 text-white' :
-                            status === 'timeout' || status === 'error' ? 'bg-red-500/90 text-white' :
-                                'bg-black/60 text-white/90'
+                status === 'processing' ? 'bg-yellow-500/90 text-white' :
+                    status === 'scanning' ? 'bg-blue-500/90 text-white' :
+                        status === 'timeout' || status === 'error' ? 'bg-red-500/90 text-white' :
+                            'bg-black/60 text-white/90'
                 }`}>
                 {getStatusText()}
             </p>
@@ -256,8 +256,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
                     onClick={handleManualCapture}
                     disabled={isProcessing || status === 'success'}
                     className={`w-20 h-20 rounded-full flex items-center justify-center border-4 border-white/50 ring-2 ring-black/30 transition-all ${isProcessing || status === 'success'
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-white hover:bg-slate-100 active:bg-slate-200'
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-white hover:bg-slate-100 active:bg-slate-200'
                         }`}
                     aria-label="Manual capture"
                 >
@@ -294,8 +294,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 };
 
 export default CameraScanner;
-import ModelSelector from './ModelSelector';
-import { scanBusinessCard } from '../../services/geminiService';
 
 interface CameraScannerProps {
     onCapture: (imageDataUrl: string) => void;
