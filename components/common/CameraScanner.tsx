@@ -3,7 +3,7 @@ import ModelSelector from './ModelSelector';
 import { scanBusinessCard } from '../../services/geminiService';
 
 interface CameraScannerProps {
-    onCapture: (imageDataUrl: string) => void;
+    onCapture: (data: any) => void;
     onClose: () => void;
 }
 
@@ -117,7 +117,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
             // Show success animation briefly, then proceed
             setTimeout(() => {
-                onCapture(imageData);
+                onCapture(extractedData);
             }, 800);
         } catch (err) {
             setIsProcessing(false);

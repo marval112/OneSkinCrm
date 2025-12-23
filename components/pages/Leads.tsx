@@ -643,24 +643,20 @@ function Leads() {
     toastContext?.showToast(t('leads.exportSuccess'), 'success');
   }
 
-  const handleScanComplete = async (base64Image: string) => {
+  const handleScanComplete = (extractedData: any) => {
     setIsScannerOpen(false);
-    try {
-      const extractedData = await scanBusinessCard(base64Image);
-      toastContext?.showToast('Information extracted!', 'success');
-      handleOpenCreateModal(extractedData);
-      setScanError(null); // Clear any previous errors
-    } catch (error: any) {
-      // Show enhanced error dialog with model info
-      const modelUsed = error?.modelUsed || 'Unknown Model';
-      const errorMessage = error?.message || 'Failed to scan card. Please try again.';
-      setScanError({
-        message: errorMessage,
-        modelUsed: modelUsed,
-        imageData: base64Image
-      });
+
+    // Check if we actually got data (it should be an object with fields)
+    if (!extractedData) {
+      toastContext?.showToast('Failed to process card data', 'error');
+      return;
     }
+
+    toastContext?.showToast('Card scanned successfully!', 'success');
+    handleOpenCreateModal(extractedData);
+    setScanError(null);
   };
+
 
   const handleRetryScan = async () => {
     if (!scanError) return;
