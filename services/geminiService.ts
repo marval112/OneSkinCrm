@@ -122,7 +122,6 @@ export interface OpenRouterModel {
 export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
   // Vision-capable models ONLY (verified to support image input)
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
-  { id: 'google/gemma-3-27b-it:free', name: 'Google Gemma 3 27B IT', supportsVision: true },
 ];
 
 // Default OpenRouter models when Gemini quota is exhausted
@@ -326,7 +325,14 @@ export async function generateWithFallback(client: any, params: any) {
       return result;
     } catch (error: any) {
       lastError = error;
-      console.warn(`[AI Fallback] OpenRouter Model ${model} failed. Trying next...`);
+      const isRateLimit = error?.status === 429 || error?.message?.includes('429');
+      console.warn(`[AI Fallback] OpenRouter Model ${model} failed. ${isRateLimit ? 'Rate limited, waiting...' : 'Trying next...'}`);
+
+      // If rate limited, wait 2 seconds before trying next model to avoid spamming
+      if (isRateLimit) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
       continue;
     }
   }
