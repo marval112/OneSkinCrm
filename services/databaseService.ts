@@ -71,8 +71,8 @@ const handleResilientOperation = async (error: any, table: DbTable, itemData: an
 
 // --- PUBLIC API (CRUD OPERATIONS) ---
 
-export const getAll = async <T>(table: DbTable): Promise<T[]> => {
-    const { data, error } = await supabase.from(table).select('*').order('id', { ascending: false });
+export const getAll = async <T>(table: DbTable, orderBy: string = 'id', ascending: boolean = false): Promise<T[]> => {
+    const { data, error } = await supabase.from(table).select('*').order(orderBy, { ascending });
     if (error) {
         console.error(`[DB Error] Table: ${table}, Code: ${error.code}, Message: ${error.message}, Details: ${error.details}`);
         throw error;
