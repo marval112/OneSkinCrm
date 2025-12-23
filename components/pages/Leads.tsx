@@ -645,7 +645,6 @@ function Leads() {
 
   const handleScanComplete = async (base64Image: string) => {
     setIsScannerOpen(false);
-    toastContext?.showToast('Scanning business card...', 'info');
     try {
       const extractedData = await scanBusinessCard(base64Image);
       toastContext?.showToast('Information extracted!', 'success');
