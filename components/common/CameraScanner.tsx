@@ -78,22 +78,28 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
     useEffect(() => {
         if (!videoRef.current || error) return;
 
+        let isActive = true; // Prevent state updates after unmount
+
         // Wait for video to be ready, then start scanning
         const startAutoScan = () => {
             let attempts = 0;
 
             const scanFrame = async () => {
+                if (!isActive) return; // Component unmounted, stop
+
                 if (attempts >= MAX_ATTEMPTS) {
                     if (intervalRef.current) {
                         clearInterval(intervalRef.current);
                     }
-                    setStatus('timeout');
+                    if (isActive) setStatus('timeout');
                     return;
                 }
 
                 attempts++;
-                setAttemptCount(attempts);
-                setStatus('scanning');
+                if (isActive) {
+                    setAttemptCount(attempts);
+                    setStatus('scanning');
+                }
 
                 try {
                     const imageData = captureCurrentFrame();
@@ -118,10 +124,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
                 }
             };
 
-            // Start scanning after 1 second delay (let camera stabilize)
+            // Start scanning after 1.5 second delay (let camera stabilize)
             setTimeout(() => {
-                intervalRef.current = setInterval(scanFrame, 1000);
-            }, 1000);
+                if (isActive) {
+                    intervalRef.current = setInterval(scanFrame, 3000); // 3 seconds between scans
+                }
+            }, 1500);
         };
 
         // Wait for video to have metadata
@@ -132,8 +140,10 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
         }
 
         return () => {
+            isActive = false; // Mark as inactive
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
+                intervalRef.current = null;
             }
         };
     }, [captureCurrentFrame, onCapture, error, MAX_ATTEMPTS]);
@@ -172,9 +182,9 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
 
             {/* Status Text */}
             <p className={`absolute top-1/4 px-4 py-2 rounded-md font-medium transition-colors ${status === 'success' ? 'bg-green-500/90 text-white' :
-                    status === 'scanning' ? 'bg-blue-500/90 text-white' :
-                        status === 'timeout' ? 'bg-red-500/90 text-white' :
-                            'bg-black/60 text-white/90'
+                status === 'scanning' ? 'bg-blue-500/90 text-white' :
+                    status === 'timeout' ? 'bg-red-500/90 text-white' :
+                        'bg-black/60 text-white/90'
                 }`}>
                 {getStatusText()}
             </p>
