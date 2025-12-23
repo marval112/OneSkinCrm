@@ -131,79 +131,30 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
         }
     };
 
-    // Auto-scan with controlled intervals
+    // Auto-scan removed. Manual capture only.
     useEffect(() => {
         if (!videoRef.current || error) return;
-
-        let isActive = true;
-        let attempts = 0;
-
-        const scanFrame = async () => {
-            if (!isActive || isProcessing) return;
-
-            if (attempts >= MAX_ATTEMPTS) {
-                if (intervalRef.current) {
-                    clearInterval(intervalRef.current);
-                    intervalRef.current = null;
-                }
-                setStatus('timeout');
-                return;
-            }
-
-            attempts++;
-            setAttemptCount(attempts);
-            setStatus('scanning');
-
-            const imageData = captureCurrentFrame();
-            if (imageData) {
-                await performScan(imageData, false);
-            }
-        };
-
-        // Wait for video to be ready
-        const startAutoScan = () => {
-            if (videoRef.current && videoRef.current.readyState >= 2) {
-                // Start scanning after brief delay for camera stabilization
-                setTimeout(() => {
-                    if (isActive) {
-                        // First scan immediately
-                        scanFrame();
-                        // Then schedule subsequent scans every 3 seconds
-                        intervalRef.current = setInterval(scanFrame, SCAN_INTERVAL);
-                    }
-                }, 1500);
-            } else {
-                videoRef.current?.addEventListener('loadedmetadata', startAutoScan);
-            }
-        };
-
-        startAutoScan();
-
         return () => {
-            isActive = false;
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
         };
-    }, [captureCurrentFrame, error]);
+    }, [error]);
 
     const getStatusText = () => {
         switch (status) {
             case 'idle':
-                return 'Position the business card inside the frame';
-            case 'scanning':
-                return `Auto-scanning... (${attemptCount}/${MAX_ATTEMPTS})`;
+                return 'Position card and tap Capture';
+            case 'scanning': // Kept for types, but unused in manual mode usually
             case 'processing':
                 return 'Processing...';
             case 'success':
                 return '✓ Card detected!';
-            case 'timeout':
-                return 'Unable to detect card. Please try manual capture.';
             case 'error':
-                return 'Scan failed. Retrying...';
+                return 'Scan failed. Please try again.';
             default:
-                return 'Position the business card inside the frame';
+                return 'Position card and tap Capture';
         }
     };
 
@@ -245,15 +196,15 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onCapture, onClose }) => 
             {error && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/80 text-white p-4 rounded-lg">{error}</div>}
 
             {/* Manual Capture Button */}
-            <div className="absolute bottom-0 left-0 w-full p-4 bg-black/30 flex justify-center">
+            <div className="absolute bottom-0 left-0 w-full p-6 bg-black/30 flex justify-center pb-8">
                 <button
                     onClick={handleManualCapture}
                     disabled={isProcessing || status === 'success'}
                     className={`w-20 h-20 rounded-full flex items-center justify-center border-4 border-white/50 ring-2 ring-black/30 transition-all ${isProcessing || status === 'success'
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-white hover:bg-slate-100 active:bg-slate-200'
+                        ? 'bg-gray-400 cursor-not-allowed scale-95'
+                        : 'bg-white hover:bg-slate-100 active:scale-105 shadow-xl'
                         }`}
-                    aria-label="Manual capture"
+                    aria-label="Capture"
                 >
                     <CameraIcon className="w-10 h-10 text-slate-700" />
                 </button>
