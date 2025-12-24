@@ -5,7 +5,6 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'r
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import AIChatPanel from './components/common/AIChatPanel';
-import GlobalAIChat from './components/common/GlobalAIChat';
 import AINudgeTray from './components/common/AINudgeTray';
 import Toast from './components/common/Toast';
 import { ToastContext } from './contexts/ToastContext';
@@ -78,7 +77,6 @@ const MainLayout = () => {
         </main>
       </div>
       {isChatPanelOpen && <AIChatPanel onClose={closeChat} />}
-      <GlobalAIChat />
       <AINudgeTray />
       <IncomingCallModal />
     </div>
