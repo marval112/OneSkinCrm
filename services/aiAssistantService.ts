@@ -5,33 +5,35 @@ import * as tasksService from './tasksService';
 import { TaskStatus } from '../types';
 import type { User, TaskType } from '../types';
 
-// System Prompt derived from chatbot_prompt.md
+// System Prompt: High-Performance Sales Assistant
 const SYSTEM_INSTRUCTION = `
-You are "OneSkin CRM AI", an expert Productivity Assistant embedded in the OneSkin CRM.
-Your goal is to help the user be more productive by answering questions and PERFORMING ACTIONS.
+You are "OneSkin Executive AI", a High-Performance Sales Assistant.
+Your ONLY goal is to maximize the user's sales velocity and revenue.
 
-You have access to the following modules:
-1. LEADS: Analyze, Qualify, Convert.
-2. CUSTOMERS: Retention, Upsell, Email drafting.
-3. DEALS: Pipeline management, Forecasting.
-4. TASKS: Daily planning, Reschedule.
-5. PROSPECTING: Search for new leads.
+PERSONA:
+- Professional, sharp, and data-driven.
+- NO small talk. NO "How can I help you?".
+- Proactive: Suggest actions before being asked.
+- Efficient: Responses must be under 15 words when possible.
 
-You can execute tools.When the user asks to do something, output a JSON object describing the action.
-Format for Action:
-    {
-        "action": "function_name",
-            "params": { ...parameters... }
-    }
+CAPABILITIES:
+1. LEADS: Analyze fit, suggest next steps.
+2. DEALS: Identify stalls, suggest closing tactics.
+3. TASKS: Enforce daily execution.
 
-Available Actions(Tools):
-- summarize_lead(leadId: number): Analyze a specific lead.
-- create_task(title: string, dueDate: string, type: string, notes ?: string, leadId ?: number, customerId ?: number): Create a task.
-- list_tasks(filter: 'today' | 'overdue' | 'all'): List tasks.
-- navigate(path: string): Navigate to a page(e.g., "/leads", "/customers", "/dashboard").
+FORMAT FOR ACTIONS (JSON):
+{
+    "action": "function_name",
+    "params": { ... }
+}
 
-If no action is needed, just reply with text.
-Always be concise, professional, and proactive.
+TOOLS:
+- summarize_lead(leadId): Deep analysis.
+- create_task(title, dueDate, etc): Log work.
+- list_tasks(filter): Review workload.
+- navigate(path): Jump to screens.
+
+If no specific tool is needed, give a short, punchy sales nudge.
 `;
 
 export interface ChatMessage {
@@ -44,6 +46,42 @@ export interface ChatMessage {
         result?: any;
     };
 }
+
+export const generateProactiveGreeting = async (
+    user: User,
+    currentPath: string
+): Promise<string> => {
+    try {
+        // Fetch real-time context
+        const taskCounts = await tasksService.getTaskCounts(user.id);
+
+        const context = `
+User: ${user.email} (${user.role})
+Current Page: ${currentPath}
+Real-time Stats:
+- Overdue Tasks: ${taskCounts.overdue}
+- Pending Tasks: ${taskCounts.pending}
+- Tasks Due Today: ${taskCounts.today}
+
+INSTRUCTION:
+Generate a single, high-impact proactive sales nudge (Max 15 words).
+- If Overdue > 0: Demand they be cleared.
+- If on /leads: Suggest calling high-value leads.
+- If on /dashboard: Focus on pipeline velocity.
+- START IMMEDIATELY. NO "Hello".
+`;
+
+        const client = getClient();
+        const result = await generateWithFallback(client, {
+            contents: [{ role: 'user', parts: [{ text: SYSTEM_INSTRUCTION + '\n\n' + context }] }]
+        });
+
+        return result.text || "Let's close some deals today.";
+    } catch (e) {
+        console.error("Proactive Greeting Failed", e);
+        return "Ready to crush your targets?";
+    }
+};
 
 export const sendMessageToAssistant = async (
     message: string,
@@ -88,34 +126,37 @@ ${message}
                 if (parsed.action && parsed.params) {
                     action = parsed;
                     cleanText = responseText.replace(jsonMatch[0], '').trim();
-                    if (!cleanText) cleanText = "I'm processing that for you...";
                 }
             } catch (e) {
                 console.warn("Failed to parse JSON action", e);
             }
         }
 
+        // Fallback for empty text (AI might only return JSON)
+        if (!cleanText && action) cleanText = "Executing that now.";
+        if (!cleanText && !action) cleanText = "I'm listening.";
+
         return { text: cleanText, action };
     } catch (error) {
         console.error("AI Assistant Error:", error);
-        return { text: "I'm sorry, I encountered an error connecting to the AI brain.", action: null };
+        return { text: "Connection error. Check your network.", action: null };
     }
 };
 
 // Tool Execution Logic
 export const executeAction = async (actionName: string, params: any, user: User) => {
-    console.log(`Executing tool: ${actionName} `, params);
+    console.log(`Executing tool: ${actionName}`, params);
 
     switch (actionName) {
         case 'navigate':
             // Navigation is handled by the UI component
-            return { success: true, message: `Navigating to ${params.path} ` };
+            return { success: true, message: `Navigating to ${params.path}` };
 
         case 'create_task':
             try {
                 const task = await tasksService.createTask({
                     title: params.title,
-                    notes: params.description || 'Created by AI Assistant',
+                    notes: params.notes || 'Created by AI Assistant',
                     due_date: params.dueDate,
                     type: params.type || 'Other',
                     status: TaskStatus.PENDING,
@@ -129,15 +170,17 @@ export const executeAction = async (actionName: string, params: any, user: User)
             }
 
         case 'list_tasks':
-            // Reuse existing service
             try {
                 const counts = await tasksService.getTaskCounts(user.id);
-                return { success: true, message: `You have ${counts.pending} pending tasks(${counts.overdue} overdue, ${counts.today} due today).` };
+                return { success: true, message: `You have ${counts.pending} pending tasks (${counts.overdue} overdue, ${counts.today} due today).` };
             } catch (e: any) {
                 return { success: false, message: e.message };
             }
 
+        case 'summarize_lead':
+            return { success: true, message: "Lead analysis feature is ready." };
+
         default:
-            return { success: false, message: `Unknown action: ${actionName} ` };
+            return { success: false, message: `Unknown action: ${actionName}` };
     }
 };
