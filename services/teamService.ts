@@ -71,7 +71,7 @@ export const sendMessage = async (
     conversationId: number,
     senderId: number,
     message: string,
-    type: 'text' | 'call' | 'video_call' = 'text'
+    type: 'text' | 'call' | 'video_call' | 'call_end' | 'system' = 'text'
 ): Promise<TeamMessage> => {
     const { data, error } = await supabase
         .from('team_messages')
@@ -102,6 +102,10 @@ export const sendMessage = async (
 
 export const sendCallSignal = async (conversationId: number, senderId: number, link: string, type: 'call' | 'video_call'): Promise<TeamMessage> => {
     return sendMessage(conversationId, senderId, link, type);
+};
+
+export const sendCallEndSignal = async (conversationId: number, senderId: number): Promise<TeamMessage> => {
+    return sendMessage(conversationId, senderId, 'Call ended', 'call_end');
 };
 
 // Get messages for a conversation

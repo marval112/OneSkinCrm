@@ -54,10 +54,6 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const pollMessages = async () => {
             try {
                 // Fetch unread messages for the user
-                // This is a simplified check. Ideally, we'd query for messages NOT in read_by array.
-                // For now, let's just listen to the latest message in conversations the user is part of.
-
-                // Real-time subscription would be better, but sticking to polling as per previous pattern
                 const { data: conversations, error } = await supabase
                     .from('team_conversations')
                     .select('id, participant_ids')
@@ -65,60 +61,70 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (error || !conversations) return;
 
+                let totalUnread = 0;
+
                 for (const conv of conversations) {
+                    // Optimized query: Look for the latest message in this conversation NOT read by user
                     const { data: msgs } = await supabase
                         .from('team_messages')
                         .select('*')
                         .eq('conversation_id', conv.id)
-                        .order('created_at', { ascending: false })
-                        .limit(1);
+                        .not('read_by', 'cs', `{${user.id}}`)
+                        .order('created_at', { ascending: false });
 
                     if (msgs && msgs.length > 0) {
+                        totalUnread += msgs.length;
                         const latestMsg = msgs[0] as TeamMessage;
 
-                        // Check if it's a new message we haven't processed yet
-                        if (lastMessageIdRef.current && latestMsg.id <= lastMessageIdRef.current) {
-                            continue;
-                        }
-
-                        // If sender is self, ignore
+                        // Skip if sender is self (should already be filterable by read_by, but keep for safety)
                         if (latestMsg.sender_id === user.id) continue;
 
-                        // It's a new message!
-                        lastMessageIdRef.current = latestMsg.id;
+                        // Check if it's a new message OR a relevant call signal we haven't processed
+                        const isNew = !lastMessageIdRef.current || latestMsg.id > lastMessageIdRef.current;
 
                         // Handle Call Types
                         if (latestMsg.message_type === 'call' || latestMsg.message_type === 'video_call') {
-                            // Fetch caller details
-                            const { data: callerData } = await supabase
-                                .from('users')
-                                .select('*')
-                                .eq('id', latestMsg.sender_id)
-                                .single();
+                            if (isNew) {
+                                lastMessageIdRef.current = latestMsg.id;
+                                // Fetch caller details
+                                const { data: callerData } = await supabase
+                                    .from('users')
+                                    .select('*')
+                                    .eq('id', latestMsg.sender_id)
+                                    .single();
 
-                            if (callerData) {
-                                setIncomingCall({
-                                    conversationId: conv.id,
-                                    caller: callerData as User,
-                                    type: latestMsg.message_type as 'call' | 'video_call',
-                                    link: latestMsg.message
-                                });
-                                // Play ringtone
-                                try {
-                                    await audioRef.current?.play();
-                                } catch (e) {
-                                    console.log('Audio play failed (user interaction needed first):', e);
+                                if (callerData) {
+                                    setIncomingCall({
+                                        conversationId: conv.id,
+                                        caller: callerData as User,
+                                        type: latestMsg.message_type as 'call' | 'video_call',
+                                        link: latestMsg.message
+                                    });
+                                    // Play ringtone
+                                    try {
+                                        await audioRef.current?.play();
+                                    } catch (e) {
+                                        console.log('Audio play failed:', e);
+                                    }
                                 }
                             }
-                        } else {
+                        } else if (latestMsg.message_type === 'call_end') {
+                            // If we have an active call for this conversation, dismiss it
+                            if (incomingCall && incomingCall.conversationId === conv.id) {
+                                setIncomingCall(null);
+                                audioRef.current?.pause();
+                                if (audioRef.current) audioRef.current.currentTime = 0;
+                                markAsRead(conv.id, user.id); // Mark the call_end as read too
+                            }
+                            if (isNew) lastMessageIdRef.current = latestMsg.id;
+                        } else if (isNew) {
                             // Text message
-                            // Play notification sound (short beep)
+                            lastMessageIdRef.current = latestMsg.id;
                             try {
                                 const beep = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                                 await beep.play();
-                            } catch (e) {
-                                // Ignore audio errors (usually due to autoplay policy)
-                            }
+                            } catch (e) { }
+
                             showToast(`New message from team`, 'info', {
                                 label: 'View Message',
                                 onClick: () => window.location.hash = `#/team?userId=${latestMsg.sender_id}`
@@ -126,6 +132,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         }
                     }
                 }
+                setUnreadCount(totalUnread);
 
             } catch (error) {
                 console.error('Polling error:', error);
@@ -134,11 +141,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const interval = setInterval(pollMessages, 3000);
         return () => clearInterval(interval);
-    }, [user, showToast]);
+    }, [user, showToast, incomingCall]); // Added incomingCall as dependency for call_end check
 
     const acceptCall = () => {
         if (incomingCall) {
             window.open(incomingCall.link, '_blank');
+            markAsRead(incomingCall.conversationId, user!.id); // Mark the 'call' message as read
             setIncomingCall(null);
             audioRef.current?.pause();
             if (audioRef.current) audioRef.current.currentTime = 0;
@@ -146,9 +154,12 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const rejectCall = () => {
-        setIncomingCall(null);
-        audioRef.current?.pause();
-        if (audioRef.current) audioRef.current.currentTime = 0;
+        if (incomingCall) {
+            markAsRead(incomingCall.conversationId, user!.id); // Mark the 'call' message as read
+            setIncomingCall(null);
+            audioRef.current?.pause();
+            if (audioRef.current) audioRef.current.currentTime = 0;
+        }
     };
 
     return (
