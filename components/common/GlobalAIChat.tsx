@@ -195,25 +195,36 @@ export default function GlobalAIChat() {
 
             {/* Chat Window */}
             {isOpen && (
-                <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl z-50 flex flex-col border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in-up">
+                <div className="fixed bottom-24 inset-x-4 md:inset-auto md:bottom-24 md:right-6 md:w-96 max-h-[calc(100dvh-120px)] h-[500px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl z-50 flex flex-col border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in-up">
                     {/* Header */}
-                    <div className={`p-4 flex items-center gap-3 transition-colors ${isListening ? 'bg-red-600' : 'bg-gradient-to-r from-purple-600 to-blue-600'}`}>
-                        <div className="bg-white/20 p-2 rounded-full">
-                            {isListening ? (
-                                <div className="animate-pulse"><MicIcon className="w-5 h-5 text-white" /></div>
-                            ) : (
-                                <BotIcon className="w-5 h-5 text-white" />
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-white text-sm">
-                                {isListening ? 'Listening...' : (isSpeaking ? 'Speaking...' : 'OneSkin Executive AI')}
-                            </h3>
-                            <div className="text-xs text-blue-100 flex items-center gap-1">
-                                <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></span>
-                                {isSpeaking ? 'Voice Active' : 'Online'}
+                    <div className={`p-4 flex items-center justify-between transition-colors ${isListening ? 'bg-red-600' : 'bg-gradient-to-r from-purple-600 to-blue-600'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-white/20 p-2 rounded-full">
+                                {isListening ? (
+                                    <div className="animate-pulse"><MicIcon className="w-5 h-5 text-white" /></div>
+                                ) : (
+                                    <BotIcon className="w-5 h-5 text-white" />
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-white text-sm">
+                                    {isListening ? 'Listening...' : (isSpeaking ? 'Speaking...' : 'OneSkin Executive AI')}
+                                </h3>
+                                <div className="text-xs text-blue-100 flex items-center gap-1">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></span>
+                                    {isSpeaking ? 'Voice Active' : 'Online'}
+                                </div>
                             </div>
                         </div>
+
+                        {/* Mobile/Quick Close Button */}
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="p-2 hover:bg-white/10 rounded-full text-white transition-colors"
+                            aria-label="Close Chat"
+                        >
+                            <CloseIcon className="w-5 h-5" />
+                        </button>
                     </div>
 
                     {/* Messages */}
