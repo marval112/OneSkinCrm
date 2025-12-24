@@ -52,7 +52,7 @@ export default function GlobalAIChat() {
         setLoading(true);
 
         try {
-            const { text, action } = await sendMessageToAssistant(input, user, location.pathname);
+            const { text, action } = await sendMessageToAssistant(input, messages, user, location.pathname);
 
             const botMsg = { role: 'model', content: text, action: action ? { ...action, status: 'pending' } : undefined } as ChatMessage;
             setMessages(prev => [...prev, botMsg]);
@@ -118,8 +118,8 @@ export default function GlobalAIChat() {
                         {messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${msg.role === 'user'
-                                        ? 'bg-blue-600 text-white rounded-br-none'
-                                        : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-200 dark:border-slate-600'
+                                    ? 'bg-blue-600 text-white rounded-br-none'
+                                    : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-200 dark:border-slate-600'
                                     }`}>
                                     <p className="whitespace-pre-wrap">{msg.content}</p>
 

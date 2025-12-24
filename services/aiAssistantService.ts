@@ -1,9 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKey } from './aiSettingsService';
+
+import { getClient, generateWithFallback } from './geminiService';
 import * as crmService from './crmService';
 import * as tasksService from './tasksService';
-import type { User, TaskType } from '../types';
 import { TaskStatus } from '../types';
+import type { User, TaskType } from '../types';
 
 // System Prompt derived from chatbot_prompt.md
 const SYSTEM_INSTRUCTION = `
@@ -17,18 +17,18 @@ You have access to the following modules:
 4. TASKS: Daily planning, Reschedule.
 5. PROSPECTING: Search for new leads.
 
-You can execute tools. When the user asks to do something, output a JSON object describing the action.
+You can execute tools.When the user asks to do something, output a JSON object describing the action.
 Format for Action:
-{
-  "action": "function_name",
-  "params": { ...parameters... }
-}
+    {
+        "action": "function_name",
+            "params": { ...parameters... }
+    }
 
-Available Actions (Tools):
+Available Actions(Tools):
 - summarize_lead(leadId: number): Analyze a specific lead.
-- create_task(title: string, dueDate: string, type: string, leadId?: number, customerId?: number): Create a task.
+- create_task(title: string, dueDate: string, type: string, notes ?: string, leadId ?: number, customerId ?: number): Create a task.
 - list_tasks(filter: 'today' | 'overdue' | 'all'): List tasks.
-- navigate(path: string): Navigate to a page (e.g., "/leads", "/customers", "/dashboard").
+- navigate(path: string): Navigate to a page(e.g., "/leads", "/customers", "/dashboard").
 
 If no action is needed, just reply with text.
 Always be concise, professional, and proactive.
@@ -45,43 +45,39 @@ export interface ChatMessage {
     };
 }
 
-let chatSession: any = null;
-
-export const initializeChat = async () => {
-    const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string);
-    if (!key) throw new Error("API Key not found");
-
-    const genAI = new GoogleGenAI({ apiKey: key });
-    // @ts-ignore - The SDK types might be mismatching between versions or environments.
-    // We assume getGenerativeModel exists as per standard Google Generative AI usage.
-    const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
-        systemInstruction: SYSTEM_INSTRUCTION
-    });
-
-    chatSession = model.startChat({
-        history: [],
-    });
-    return chatSession;
-};
-
 export const sendMessageToAssistant = async (
     message: string,
+    history: ChatMessage[],
     user: User,
     currentPath: string
 ): Promise<{ text: string, action?: any }> => {
-    if (!chatSession) await initializeChat();
 
-    // Inject context
-    const contextMessage = `[Context: User=${user.email}, Role=${user.role}, CurrentPage=${currentPath}] ${message}`;
+    // Construct a stateless prompt
+    const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content} `).join('\n');
+    const contextMessage = `
+[System]
+${SYSTEM_INSTRUCTION}
+
+[Context]
+User: ${user.email} (${user.role})
+Current Page: ${currentPath}
+
+[Conversation History]
+${historyText}
+
+[User Input]
+${message}
+`;
 
     try {
-        const result = await chatSession.sendMessage(contextMessage);
-        const responseText = result.response.text();
+        const client = getClient();
+        const result = await generateWithFallback(client, {
+            contents: contextMessage
+        });
+
+        const responseText = result.text;
 
         // Try to parse JSON action from response
-        // The model might output text + JSON or just JSON.
-        // We look for a JSON block.
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         let action = null;
         let cleanText = responseText;
@@ -91,7 +87,6 @@ export const sendMessageToAssistant = async (
                 const parsed = JSON.parse(jsonMatch[0]);
                 if (parsed.action && parsed.params) {
                     action = parsed;
-                    // Remove the JSON from the text shown to user, or keep it if it's the only thing
                     cleanText = responseText.replace(jsonMatch[0], '').trim();
                     if (!cleanText) cleanText = "I'm processing that for you...";
                 }
@@ -109,12 +104,12 @@ export const sendMessageToAssistant = async (
 
 // Tool Execution Logic
 export const executeAction = async (actionName: string, params: any, user: User) => {
-    console.log(`Executing tool: ${actionName}`, params);
+    console.log(`Executing tool: ${actionName} `, params);
 
     switch (actionName) {
         case 'navigate':
             // Navigation is handled by the UI component
-            return { success: true, message: `Navigating to ${params.path}` };
+            return { success: true, message: `Navigating to ${params.path} ` };
 
         case 'create_task':
             try {
@@ -137,12 +132,12 @@ export const executeAction = async (actionName: string, params: any, user: User)
             // Reuse existing service
             try {
                 const counts = await tasksService.getTaskCounts(user.id);
-                return { success: true, message: `You have ${counts.pending} pending tasks (${counts.overdue} overdue, ${counts.today} due today).` };
+                return { success: true, message: `You have ${counts.pending} pending tasks(${counts.overdue} overdue, ${counts.today} due today).` };
             } catch (e: any) {
                 return { success: false, message: e.message };
             }
 
         default:
-            return { success: false, message: `Unknown action: ${actionName}` };
+            return { success: false, message: `Unknown action: ${actionName} ` };
     }
 };

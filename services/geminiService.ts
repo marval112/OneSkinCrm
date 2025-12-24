@@ -14,7 +14,7 @@ import { DealStage } from '../types';
 void loadGeminiApiKey();
 void loadOpenRouterApiKey();
 
-function getClient() {
+export function getClient() {
   const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
   if (!key) return null;
   return new GoogleGenAI({ apiKey: key });
