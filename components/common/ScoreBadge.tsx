@@ -7,9 +7,10 @@ interface ScoreBadgeProps {
     breakdown?: ScoreBreakdown;
     showLabel?: boolean;
     size?: 'sm' | 'md' | 'lg';
+    position?: 'top' | 'bottom';
 }
 
-function ScoreBadge({ score, breakdown, showLabel = true, size = 'md' }: ScoreBadgeProps) {
+function ScoreBadge({ score, breakdown, showLabel = true, size = 'md', position = 'top' }: ScoreBadgeProps) {
     const [showTooltip, setShowTooltip] = useState(false);
 
     const sizeClasses = {
@@ -19,6 +20,8 @@ function ScoreBadge({ score, breakdown, showLabel = true, size = 'md' }: ScoreBa
     };
 
     const badgeClasses = `${getScoreBadgeClasses(score)} ${sizeClasses[size]} relative cursor-help`;
+
+    const tooltipClasses = `absolute z-50 ${position === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} left-1/2 transform -translate-x-1/2 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl`;
 
     return (
         <div
@@ -32,7 +35,7 @@ function ScoreBadge({ score, breakdown, showLabel = true, size = 'md' }: ScoreBa
             </span>
 
             {showTooltip && breakdown && (
-                <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl">
+                <div className={tooltipClasses}>
                     <div className="font-semibold mb-2 border-b border-slate-700 pb-2">
                         Score Breakdown
                     </div>
@@ -73,8 +76,8 @@ function ScoreBadge({ score, breakdown, showLabel = true, size = 'md' }: ScoreBa
                     )}
 
                     {/* Tooltip arrow */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
-                        <div className="border-4 border-transparent border-t-slate-900"></div>
+                    <div className={`absolute ${position === 'top' ? 'top-full' : 'bottom-full'} left-1/2 transform -translate-x-1/2 ${position === 'top' ? '-mt-px' : '-mb-px'}`}>
+                        <div className={`border-4 border-transparent ${position === 'top' ? 'border-t-slate-900' : 'border-b-slate-900'}`}></div>
                     </div>
                 </div>
             )}

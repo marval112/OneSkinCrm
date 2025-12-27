@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useContext, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads } from '../../services/crmService';
+import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads, createDeal } from '../../services/crmService';
 import { getUsers } from '../../services/userService';
 import { scanBusinessCard } from '../../services/geminiService';
 import { calculateLeadScore } from '../../services/leadScoringService';
@@ -17,6 +17,7 @@ import LeadsKanbanView from '../common/LeadsKanbanView';
 import EmailComposer from '../common/EmailComposer';
 import CameraScanner from '../common/CameraScanner';
 import ImportModal from '../common/ImportModal';
+import ModelSelector from '../common/ModelSelector';
 import { parseCSV, importLeads } from '../../services/importService';
 import { listActivitiesForLead, logActivity } from '../../services/activityService';
 import { summarizeLead, suggestLeadTasks, draftLeadFollowUpEmail } from '../../services/geminiService';
@@ -654,7 +655,7 @@ function Leads() {
 
     // Check if we actually got data (it should be an object with fields)
     if (!extractedData) {
-      toastContext?.showToast('Failed to process card data', 'error');
+      toastContext?.showToast('Failed to process card data', 'danger');
       return;
     }
 
@@ -821,7 +822,7 @@ function Leads() {
                           {lead.notes && (
                             <div className="relative group self-start flex-shrink-0">
                               <DocumentTextIcon className="h-4 w-4 text-slate-400" />
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              <div className={`absolute ${filteredLeads.indexOf(lead) < 2 ? 'top-full mt-2' : 'bottom-full mb-2'} left-1/2 -translate-x-1/2 w-64 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none`}>
                                 {lead.notes}
                               </div>
                             </div>
@@ -843,6 +844,7 @@ function Leads() {
                           score={lead.calculatedScore || 0}
                           breakdown={lead.scoreBreakdown}
                           size="sm"
+                          position={filteredLeads.indexOf(lead) < 2 ? 'bottom' : 'top'}
                         />
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
