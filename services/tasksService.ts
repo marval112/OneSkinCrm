@@ -33,6 +33,14 @@ export async function listTasksForLead(leadId: number, onlyPending = true): Prom
   return (data || []) as Task[];
 }
 
+export async function listTasksForCustomer(customerId: number, onlyPending = true): Promise<Task[]> {
+  let query = supabase.from('tasks').select('*').eq('customer_id', customerId);
+  if (onlyPending) query = query.eq('status', 'Pending');
+  const { data, error } = await query.order('due_date', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Task[];
+}
+
 export async function listTasksForUser(userId: number, onlyPending = true): Promise<Task[]> {
   let query = supabase.from('tasks').select('*').eq('user_id', userId);
   if (onlyPending) query = query.eq('status', 'Pending');

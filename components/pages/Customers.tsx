@@ -20,7 +20,7 @@ import ImportModal from '../common/ImportModal';
 import { parseCSV, importCustomers } from '../../services/importService';
 import { listActivitiesForCustomer, logActivity } from '../../services/activityService';
 import { summarizeCustomer, draftCustomerFollowUpEmail, suggestCustomerTasks } from '../../services/geminiService';
-import { createTask } from '../../services/tasksService';
+import { createTask, listTasksForCustomer, completeTask, updateTask } from '../../services/tasksService';
 import type { ActivityLog } from '../../types';
 import { TaskStatus, TaskType } from '../../types';
 
@@ -295,12 +295,27 @@ function Customers() {
   const [dealsLoading, setDealsLoading] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
   const [showInsightModal, setShowInsightModal] = useState(false);
+  const [customerTasks, setCustomerTasks] = useState<Task[]>([]);
+  const [stepInfoSent, setStepInfoSent] = useState(false);
+  const [stepPricesSent, setStepPricesSent] = useState(false);
+  const [stepSamplesSent, setStepSamplesSent] = useState(false);
+  const [stepVisitPlanned, setStepVisitPlanned] = useState(false);
+  const [visitDate, setVisitDate] = useState<string>('');
 
   const fetchTimeline = useCallback(async (customerId: number) => {
     setTimelineLoading(true);
     try {
-      const activities = await listActivitiesForCustomer(customerId, 50);
+      const [activities, tasks] = await Promise.all([
+        listActivitiesForCustomer(customerId, 50),
+        listTasksForCustomer(customerId, false)
+      ]);
       setTimelineItems(activities);
+      setCustomerTasks(tasks);
+      // Initialize steps
+      setStepInfoSent(tasks.some(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.COMPLETED));
+      setStepPricesSent(tasks.some(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.COMPLETED));
+      setStepSamplesSent(tasks.some(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.COMPLETED));
+      setStepVisitPlanned(tasks.some(t => t.type === TaskType.SCHEDULE_VISIT));
     } catch (error) {
       console.error('Failed to fetch timeline', error);
       toastContext?.showToast('Failed to load timeline', 'danger');
@@ -333,7 +348,8 @@ function Customers() {
     try {
       await logActivity({ user_id: user?.id || null, channel: 'note', message: timelineNote, customer_id: timelineCustomer.id });
       setTimelineNote('');
-      setTimelineItems(await listActivitiesForCustomer(timelineCustomer.id, 50));
+      fetchTimeline(timelineCustomer.id);
+      toastContext?.showToast(t('customers.timeline.noteSaved') || 'Note saved!', 'success');
     } catch (e) { console.error(e); } finally { setTimelineSaving(false); }
   };
 
@@ -1039,25 +1055,122 @@ function Customers() {
               {timelineLoading ? (
                 <div className="py-8 text-center">{t('customers.timeline.loading')}</div>
               ) : (
-                <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
-                  {timelineItems.map(item => (
-                    <li key={item.id} className="py-3">
-                      <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
-                      {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
-                      {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
-                      {item.attachments && item.attachments.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {item.attachments.map((att, idx) => (
-                            <a key={idx} href={att.base64 ? `data:${att.content_type}; base64, ${att.base64} ` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
-                              {att.filename}
-                            </a>
-                          ))}
+                <>
+                  {/* Mandatory Steps */}
+                  <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 mb-4">
+                    <div className="text-sm font-semibold mb-2">{t('customers.timeline.mandatorySteps') || 'Mandatory Steps'}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="flex flex-col gap-2">
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
+                            const checked = e.target.checked; setStepInfoSent(checked);
+                            if (timelineCustomer && user && checked) {
+                              const existing = customerTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await completeTask(existing.id);
+                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
+                              } else {
+                                toastContext?.showToast('No automation task found for this step.', 'info');
+                              }
+                            }
+                          }} /> {t('customers.timeline.sendInfo') || 'Send information requested'}
+                        </label>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
+                            const checked = e.target.checked; setStepPricesSent(checked);
+                            if (timelineCustomer && user && checked) {
+                              const existing = customerTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await completeTask(existing.id);
+                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
+                              } else {
+                                toastContext?.showToast('No automation task found for this step.', 'info');
+                              }
+                            }
+                          }} /> {t('customers.timeline.sendPrices') || 'Send prices'}
+                        </label>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
+                            const checked = e.target.checked; setStepSamplesSent(checked);
+                            if (timelineCustomer && user && checked) {
+                              const existing = customerTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                              if (existing) {
+                                await completeTask(existing.id);
+                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
+                              } else {
+                                toastContext?.showToast('No automation task found for this step.', 'info');
+                              }
+                            }
+                          }} /> {t('customers.timeline.sendSamples') || 'Send samples'}
+                        </label>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center flex-wrap gap-2">
+                          <label className="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={stepVisitPlanned} onChange={(e) => setStepVisitPlanned(e.target.checked)} /> {t('customers.timeline.visitPlanned') || 'Visit scheduled'}
+                          </label>
+                          {stepVisitPlanned && (
+                            <input aria-label={t('customers.timeline.pickDate') || 'Pick date'} type="datetime-local" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="px-2 py-1 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-primary outline-none" />
+                          )}
+                          {stepVisitPlanned && visitDate && (
+                            <button type="button" className="px-2 py-1 bg-primary text-white rounded-md text-xs hover:bg-primary-hover transition-colors" onClick={async () => {
+                              if (!timelineCustomer || !user) return;
+                              try {
+                                const existing = customerTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
+                                  setCustomerTasks(await listTasksForCustomer(timelineCustomer.id));
+                                  setVisitDate('');
+                                  setStepVisitPlanned(false);
+                                  toastContext?.showToast(t('customers.timeline.scheduledToast') || 'Visit scheduled!', 'success');
+                                } else {
+                                  toastContext?.showToast('No automation task found for scheduling.', 'info');
+                                }
+                              } catch (e) {
+                                toastContext?.showToast(t('customers.timeline.scheduleError') || 'Failed to schedule visit', 'danger');
+                              }
+                            }}>{t('customers.timeline.save') || 'Save'}</button>
+                          )}
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pending Tasks */}
+                  <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 mb-4">
+                    <div className="text-sm font-semibold mb-2">{t('customers.timeline.pendingTasks') || 'Pending Tasks'}</div>
+                    <ul className="text-xs space-y-1.5 pl-1">
+                      {customerTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="text-slate-500 italic">No pending tasks</li>}
+                      {customerTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
+                        <li key={t.id} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                          <span className="font-medium">{t.type}</span>
+                          {t.due_date && <span className="text-slate-400 font-normal">due {new Date(t.due_date).toLocaleDateString()}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {timelineItems.length === 0 && <li className="py-4 text-slate-500">{t('customers.timeline.noActivity')}</li>}
+                    {timelineItems.map(item => (
+                      <li key={item.id} className="py-3">
+                        <div className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()} • {item.channel}{item.direction ? ` (${item.direction})` : ''}</div>
+                        {item.subject && <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.subject}</div>}
+                        {item.message && <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.message}</div>}
+                        {item.attachments && item.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {item.attachments.map((att, idx) => (
+                              <a key={idx} href={att.base64 ? `data:${att.content_type}; base64, ${att.base64} ` : (att.url || '#')} download={att.filename} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
+                                {att.filename}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
               <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('customers.timeline.addNote')}</label>
