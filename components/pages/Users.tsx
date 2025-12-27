@@ -6,10 +6,10 @@ import Modal from '../common/Modal';
 import TableSkeleton from '../common/TableSkeleton';
 
 const UserForm = ({ onSave, onCancel, user, initial }: { onSave: (data: Partial<User> & { password?: string }) => void; onCancel: () => void; user?: User | null; initial?: Partial<Pick<User, 'email' | 'role' | 'seller_code'>> }) => {
-    const [formData, setFormData] = useState<{ email: string; password?: string; role: 'Admin' | 'Commercial'; seller_code?: string }>({
+    const [formData, setFormData] = useState<{ email: string; password?: string; role: 'Admin' | 'Commercial' | 'BackOffice'; seller_code?: string }>({
         email: user?.email || initial?.email || '',
         password: '',
-        role: ((user?.role || initial?.role || 'Commercial') as 'Admin' | 'Commercial'),
+        role: ((user?.role || initial?.role || 'Commercial') as 'Admin' | 'Commercial' | 'BackOffice'),
         seller_code: user?.seller_code || initial?.seller_code || ''
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,6 +56,7 @@ const UserForm = ({ onSave, onCancel, user, initial }: { onSave: (data: Partial<
                     <select name="role" value={formData.role} onChange={handleChange} className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2 bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                         <option value="Commercial">Commercial</option>
                         <option value="Admin">Admin</option>
+                        <option value="BackOffice">BackOffice</option>
                     </select>
                 </div>
                 <div>
@@ -175,7 +176,7 @@ function Users() {
                                 <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} /></td>
                                 <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-slate-900 dark:text-slate-100">{user.email}</td>
                                 <td className="px-3 py-2 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-800'}`}>
+                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : user.role === 'BackOffice' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}`}>
                                         {user.role}
                                     </span>
                                 </td>
@@ -207,7 +208,7 @@ function Users() {
                                 <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{user.email}</span>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">Code: {user.seller_code || 'N/A'}</span>
                             </div>
-                            <span className={`px-2 py-0.5 inline-flex text-[10px] font-bold uppercase leading-4 rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-800'}`}>
+                            <span className={`px-2 py-0.5 inline-flex text-[10px] font-bold uppercase leading-4 rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : user.role === 'BackOffice' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}`}>
                                 {user.role}
                             </span>
                         </div>

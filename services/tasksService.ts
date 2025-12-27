@@ -41,39 +41,45 @@ export async function listTasksForCustomer(customerId: number, onlyPending = tru
   return (data || []) as Task[];
 }
 
-export async function listTasksForUser(userId: number, onlyPending = true): Promise<Task[]> {
-  let query = supabase.from('tasks').select('*').eq('user_id', userId);
+export async function listTasksForUser(user: { id: number; role: string }, onlyPending = true): Promise<Task[]> {
+  let query = supabase.from('tasks').select('*');
+  if (user.role === 'Commercial') {
+    query = query.eq('user_id', user.id);
+  }
   if (onlyPending) query = query.eq('status', 'Pending');
   const { data, error } = await query.order('due_date', { ascending: true });
   if (error) throw error;
   return (data || []) as Task[];
 }
 
-export async function getTaskCounts(userId: number): Promise<{ pending: number; overdue: number; today: number }> {
+export async function getTaskCounts(user: { id: number; role: string }): Promise<{ pending: number; overdue: number; today: number }> {
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
 
-  const pendingPromise = supabase
+  let pendingPromise = supabase
     .from('tasks')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
     .eq('status', 'Pending');
 
-  const overduePromise = supabase
+  let overduePromise = supabase
     .from('tasks')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
     .eq('status', 'Pending')
     .lt('due_date', startToday);
 
-  const todayPromise = supabase
+  let todayPromise = supabase
     .from('tasks')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
     .eq('status', 'Pending')
     .gte('due_date', startToday)
     .lte('due_date', endToday);
+
+  if (user.role === 'Commercial') {
+    pendingPromise = pendingPromise.eq('user_id', user.id);
+    overduePromise = overduePromise.eq('user_id', user.id);
+    todayPromise = todayPromise.eq('user_id', user.id);
+  }
 
   const [pendingRes, overdueRes, todayRes] = await Promise.all([pendingPromise, overduePromise, todayPromise]);
 

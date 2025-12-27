@@ -37,7 +37,7 @@ function Tasks() {
   const refresh = async () => {
     if (!user) return;
     setLoading(true);
-    try { setTasks(await listTasksForUser(user.id, !showCompleted)); } finally { setLoading(false); }
+    try { setTasks(await listTasksForUser(user as any, !showCompleted)); } finally { setLoading(false); }
   };
 
   useEffect(() => { refresh(); }, [showCompleted, user]);
@@ -57,7 +57,7 @@ function Tasks() {
     setIsBuilderOpen(true);
     setBuilderLoading(true);
     try {
-      const [ls, cs] = await Promise.all([getLeads(user), getCustomers(user)]);
+      const [ls, cs] = await Promise.all([getLeads(user as any), getCustomers(user as any)]);
       setLeadOptions(ls);
       setCustomerOptions(cs);
       setEditingTask(null);
@@ -88,7 +88,7 @@ function Tasks() {
     if (leadIds.length === 0 && customerIds.length === 0) { setLeadNames({}); setCustomerNames({}); return; }
     (async () => {
       try {
-        const [allLeads, allCustomers] = await Promise.all([getLeads(user), getCustomers(user)]);
+        const [allLeads, allCustomers] = await Promise.all([getLeads(user as any), getCustomers(user as any)]);
         const ln: Record<number, string> = {};
         const cn: Record<number, string> = {};
         if (leadIds.length > 0) {

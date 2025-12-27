@@ -51,7 +51,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const refresh = async () => {
       try {
         if (!user) return;
-        const counts = await getTaskCounts(user.id);
+        const counts = await getTaskCounts(user as any);
         setOverdueCount(counts.overdue);
         setTodayCount(counts.today);
         setPendingCount(counts.pending);

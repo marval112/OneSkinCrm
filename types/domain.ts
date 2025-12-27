@@ -146,7 +146,7 @@ export interface Task {
 export interface User {
   id: number;
   email: string;
-  role: 'Admin' | 'Commercial';
+  role: 'Admin' | 'Commercial' | 'BackOffice';
   seller_code?: string | null;
 }
 

@@ -46,7 +46,7 @@ export const getNavItems = (userRole?: string): NavItem[] => {
         { to: '/team', labelKey: 'sidebar.team', icon: <ChatBubbleLeftRightIcon className="h-5 w-5" /> },
     ];
 
-    if (userRole === 'Admin') {
+    if (userRole === 'Admin' || userRole === 'BackOffice') {
         const customerIndex = items.findIndex(item => item.to === '/customers');
         items.splice(customerIndex + 1, 0,
             { to: '/products', labelKey: 'sidebar.products', icon: <PackageIcon className="h-5 w-5" /> }
