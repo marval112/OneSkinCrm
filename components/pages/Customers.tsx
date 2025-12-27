@@ -22,7 +22,7 @@ import { listActivitiesForCustomer, logActivity } from '../../services/activityS
 import { summarizeCustomer, draftCustomerFollowUpEmail, suggestCustomerTasks } from '../../services/geminiService';
 import { createTask, listTasksForCustomer, completeTask, updateTask } from '../../services/tasksService';
 import type { ActivityLog } from '../../types';
-import { TaskStatus, TaskType } from '../../types';
+import { TaskStatus, TaskType, Task } from '../../types';
 
 const statusColors: Record<CustomerStatus, string> = {
   [CustomerStatus.Prospect]: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
