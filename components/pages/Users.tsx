@@ -32,7 +32,11 @@ const UserForm = ({ onSave, onCancel, user, initial }: { onSave: (data: Partial<
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
-            onSave({ ...(user ? { id: user.id } as any : {}), ...formData });
+            const data: any = { ...formData };
+            if (user && !data.password) {
+                delete data.password;
+            }
+            onSave({ ...(user ? { id: user.id } as any : {}), ...data });
         }
     };
 
@@ -139,8 +143,10 @@ function Users() {
             toastContext?.showToast('User updated successfully!', 'success');
             setEditingUser(null);
             fetchUsers();
-        } catch {
-            toastContext?.showToast('Failed to update user.', 'danger');
+        } catch (err: any) {
+            console.error('Failed to update user:', err);
+            const msg = err.message || 'Failed to update user.';
+            toastContext?.showToast(msg, 'danger');
         }
     };
 

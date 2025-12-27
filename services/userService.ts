@@ -3,7 +3,7 @@ import type { User } from '../types';
 import * as db from './databaseService';
 
 export const getUsers = async (): Promise<User[]> => {
-    const users = await db.getAll<{ id: number; email: string; role: 'Admin' | 'Commercial'; seller_code?: string | null }>('users');
+    const users = await db.getAll<{ id: number; email: string; role: 'Admin' | 'Commercial' | 'BackOffice'; seller_code?: string | null }>('users');
     return users;
 };
 
