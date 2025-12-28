@@ -1171,10 +1171,18 @@ function Leads() {
                               const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await completeTask(existing.id);
-                                setLeadTasks(await listTasksForLead(detailLead.id, false));
                               } else {
-                                toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                                await createTask({
+                                  title: 'Información Enviada (Manual)',
+                                  type: TaskType.SEND_INFORMATION,
+                                  status: TaskStatus.COMPLETED,
+                                  user_id: user.id,
+                                  lead_id: detailLead.id,
+                                  completed_at: new Date().toISOString(),
+                                  due_date: new Date().toISOString()
+                                } as any);
                               }
+                              setLeadTasks(await listTasksForLead(detailLead.id, false));
                             }
                           }} /> {t('leads.timeline.sendInfo')}
                         </label>
@@ -1185,10 +1193,18 @@ function Leads() {
                               const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await completeTask(existing.id);
-                                setLeadTasks(await listTasksForLead(detailLead.id, false));
                               } else {
-                                toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                                await createTask({
+                                  title: 'Precios Enviados (Manual)',
+                                  type: TaskType.SEND_QUOTATION,
+                                  status: TaskStatus.COMPLETED,
+                                  user_id: user.id,
+                                  lead_id: detailLead.id,
+                                  completed_at: new Date().toISOString(),
+                                  due_date: new Date().toISOString()
+                                } as any);
                               }
+                              setLeadTasks(await listTasksForLead(detailLead.id, false));
                             }
                           }} /> {t('leads.timeline.sendPrices')}
                         </label>
@@ -1199,10 +1215,18 @@ function Leads() {
                               const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await completeTask(existing.id);
-                                setLeadTasks(await listTasksForLead(detailLead.id, false));
                               } else {
-                                toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                                await createTask({
+                                  title: 'Muestras Enviadas (Manual)',
+                                  type: TaskType.SEND_SAMPLES,
+                                  status: TaskStatus.COMPLETED,
+                                  user_id: user.id,
+                                  lead_id: detailLead.id,
+                                  completed_at: new Date().toISOString(),
+                                  due_date: new Date().toISOString()
+                                } as any);
                               }
+                              setLeadTasks(await listTasksForLead(detailLead.id, false));
                             }
                           }} /> {t('leads.timeline.sendSamples')}
                         </label>
@@ -1219,11 +1243,20 @@ function Leads() {
                               const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
-                                setLeadTasks(await listTasksForLead(detailLead.id));
-                                setVisitDate('');
                               } else {
-                                toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
+                                await createTask({
+                                  title: 'Visita Programada (Manual)',
+                                  type: TaskType.SCHEDULE_VISIT,
+                                  status: TaskStatus.PENDING,
+                                  user_id: user.id,
+                                  lead_id: detailLead.id,
+                                  due_date: new Date(visitDate).toISOString()
+                                } as any);
                               }
+                              setLeadTasks(await listTasksForLead(detailLead.id));
+                              setVisitDate('');
+                              setStepVisitPlanned(false);
+                              toastContext?.showToast(t('leads.timeline.scheduledToast') || 'Visit scheduled!', 'success');
                             }}>{t('leads.timeline.save')}</button>
                           )}
                         </div>
@@ -1407,10 +1440,18 @@ function Leads() {
                           const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
                           if (existing) {
                             await completeTask(existing.id);
-                            setLeadTasks(await listTasksForLead(timelineLead.id, false));
                           } else {
-                            toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                            await createTask({
+                              title: 'Información Enviada (Manual)',
+                              type: TaskType.SEND_INFORMATION,
+                              status: TaskStatus.COMPLETED,
+                              user_id: user.id,
+                              lead_id: timelineLead.id,
+                              completed_at: new Date().toISOString(),
+                              due_date: new Date().toISOString()
+                            } as any);
                           }
+                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
                         }
                       }} /> {t('leads.timeline.sendInfo')}
                     </label>
@@ -1421,10 +1462,18 @@ function Leads() {
                           const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
                           if (existing) {
                             await completeTask(existing.id);
-                            setLeadTasks(await listTasksForLead(timelineLead.id, false));
                           } else {
-                            toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                            await createTask({
+                              title: 'Precios Enviados (Manual)',
+                              type: TaskType.SEND_QUOTATION,
+                              status: TaskStatus.COMPLETED,
+                              user_id: user.id,
+                              lead_id: timelineLead.id,
+                              completed_at: new Date().toISOString(),
+                              due_date: new Date().toISOString()
+                            } as any);
                           }
+                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
                         }
                       }} /> {t('leads.timeline.sendPrices')}
                     </label>
@@ -1435,10 +1484,18 @@ function Leads() {
                           const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
                           if (existing) {
                             await completeTask(existing.id);
-                            setLeadTasks(await listTasksForLead(timelineLead.id, false));
                           } else {
-                            toastContext?.showToast('No automation task found for this step. Configure an automation rule.', 'info');
+                            await createTask({
+                              title: 'Muestras Enviadas (Manual)',
+                              type: TaskType.SEND_SAMPLES,
+                              status: TaskStatus.COMPLETED,
+                              user_id: user.id,
+                              lead_id: timelineLead.id,
+                              completed_at: new Date().toISOString(),
+                              due_date: new Date().toISOString()
+                            } as any);
                           }
+                          setLeadTasks(await listTasksForLead(timelineLead.id, false));
                         }
                       }} /> {t('leads.timeline.sendSamples')}
                     </label>
@@ -1456,13 +1513,20 @@ function Leads() {
                             const existing = leadTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
                             if (existing) {
                               await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
-                              setLeadTasks(await listTasksForLead(timelineLead.id));
-                              setVisitDate('');
-                              setStepVisitPlanned(false);
-                              toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
                             } else {
-                              toastContext?.showToast('No automation task found for scheduling. Configure an automation rule.', 'info');
+                              await createTask({
+                                title: 'Visita Programada (Manual)',
+                                type: TaskType.SCHEDULE_VISIT,
+                                status: TaskStatus.PENDING,
+                                user_id: user.id,
+                                lead_id: timelineLead.id,
+                                due_date: new Date(visitDate).toISOString()
+                              } as any);
                             }
+                            setLeadTasks(await listTasksForLead(timelineLead.id));
+                            setVisitDate('');
+                            setStepVisitPlanned(false);
+                            toastContext?.showToast(t('leads.timeline.scheduledToast'), 'success');
                           } catch (e) {
                             toastContext?.showToast(t('leads.timeline.scheduleError'), 'danger');
                           }

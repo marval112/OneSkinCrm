@@ -1068,10 +1068,18 @@ function Customers() {
                               const existing = customerTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await completeTask(existing.id);
-                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                               } else {
-                                toastContext?.showToast('No automation task found for this step.', 'info');
+                                await createTask({
+                                  title: 'Información Enviada (Manual)',
+                                  type: TaskType.SEND_INFORMATION,
+                                  status: TaskStatus.COMPLETED,
+                                  user_id: user.id,
+                                  customer_id: timelineCustomer.id,
+                                  completed_at: new Date().toISOString(),
+                                  due_date: new Date().toISOString()
+                                } as any);
                               }
+                              setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                             }
                           }} /> {t('customers.timeline.sendInfo') || 'Send information requested'}
                         </label>
@@ -1082,10 +1090,18 @@ function Customers() {
                               const existing = customerTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await completeTask(existing.id);
-                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                               } else {
-                                toastContext?.showToast('No automation task found for this step.', 'info');
+                                await createTask({
+                                  title: 'Precios Enviados (Manual)',
+                                  type: TaskType.SEND_QUOTATION,
+                                  status: TaskStatus.COMPLETED,
+                                  user_id: user.id,
+                                  customer_id: timelineCustomer.id,
+                                  completed_at: new Date().toISOString(),
+                                  due_date: new Date().toISOString()
+                                } as any);
                               }
+                              setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                             }
                           }} /> {t('customers.timeline.sendPrices') || 'Send prices'}
                         </label>
@@ -1096,10 +1112,18 @@ function Customers() {
                               const existing = customerTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
                               if (existing) {
                                 await completeTask(existing.id);
-                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                               } else {
-                                toastContext?.showToast('No automation task found for this step.', 'info');
+                                await createTask({
+                                  title: 'Muestras Enviadas (Manual)',
+                                  type: TaskType.SEND_SAMPLES,
+                                  status: TaskStatus.COMPLETED,
+                                  user_id: user.id,
+                                  customer_id: timelineCustomer.id,
+                                  completed_at: new Date().toISOString(),
+                                  due_date: new Date().toISOString()
+                                } as any);
                               }
+                              setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                             }
                           }} /> {t('customers.timeline.sendSamples') || 'Send samples'}
                         </label>
@@ -1116,16 +1140,23 @@ function Customers() {
                             <button type="button" className="px-2 py-1 bg-primary text-white rounded-md text-xs hover:bg-primary-hover transition-colors" onClick={async () => {
                               if (!timelineCustomer || !user) return;
                               try {
-                                const existing = customerTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
+                                let existing = customerTasks.find(t => t.type === TaskType.SCHEDULE_VISIT && t.status === TaskStatus.PENDING);
                                 if (existing) {
                                   await updateTask({ ...existing, due_date: new Date(visitDate).toISOString() } as any);
-                                  setCustomerTasks(await listTasksForCustomer(timelineCustomer.id));
-                                  setVisitDate('');
-                                  setStepVisitPlanned(false);
-                                  toastContext?.showToast(t('customers.timeline.scheduledToast') || 'Visit scheduled!', 'success');
                                 } else {
-                                  toastContext?.showToast('No automation task found for scheduling.', 'info');
+                                  await createTask({
+                                    title: 'Visita Programada (Manual)',
+                                    type: TaskType.SCHEDULE_VISIT,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    customer_id: timelineCustomer.id,
+                                    due_date: new Date(visitDate).toISOString()
+                                  } as any);
                                 }
+                                setCustomerTasks(await listTasksForCustomer(timelineCustomer.id));
+                                setVisitDate('');
+                                setStepVisitPlanned(false);
+                                toastContext?.showToast(t('customers.timeline.scheduledToast') || 'Visit scheduled!', 'success');
                               } catch (e) {
                                 toastContext?.showToast(t('customers.timeline.scheduleError') || 'Failed to schedule visit', 'danger');
                               }
