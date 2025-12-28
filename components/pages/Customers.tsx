@@ -291,8 +291,6 @@ function Customers() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [aiEmail, setAiEmail] = useState<{ subject: string; body: string } | null>(null);
-  const [aiEmailLanguage, setAiEmailLanguage] = useState<string>('English');
-  const [aiEmailDraft, setAiEmailDraft] = useState<{ subject: string; body: string } | null>(null);
   const [customerDeals, setCustomerDeals] = useState<Deal[]>([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<{ type: string; title: string; dueDays?: number }[]>([]);
@@ -1065,69 +1063,14 @@ function Customers() {
               )}
               {detailTab === 'email' && (
                 <div className="space-y-4">
-                  <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600">
-                    <div className="text-sm font-semibold mb-2">AI Email Assistant</div>
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <select
-                        value={aiEmailLanguage}
-                        onChange={(e) => setAiEmailLanguage(e.target.value)}
-                        className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
-                      >
-                        <option value="English">English</option>
-                        <option value="Spanish">Spanish</option>
-                        <option value="French">French</option>
-                        <option value="German">German</option>
-                        <option value="Portuguese">Portuguese</option>
-                        <option value="Italian">Italian</option>
-                      </select>
-                      <button
-                        className="px-3 py-1 text-sm bg-primary text-white rounded-md disabled:bg-slate-400"
-                        disabled={aiLoading}
-                        onClick={async () => {
-                          if (!detailCustomer) return;
-                          setAiLoading(true);
-                          try {
-                            const { draftCustomerFollowUpEmail } = await import('../../services/geminiService');
-                            const draft = await draftCustomerFollowUpEmail(detailCustomer, timelineItems, aiEmailLanguage);
-                            setAiEmailDraft(draft);
-                            toastContext?.showToast('Email draft generated! Scroll down to see it in the composer.', 'success');
-                          } catch (error) {
-                            console.error('AI email draft error:', error);
-                            toastContext?.showToast('Failed to generate email draft', 'danger');
-                          } finally {
-                            setAiLoading(false);
-                          }
-                        }}
-                      >
-                        {aiLoading ? 'Generating...' : 'Draft with AI'}
-                      </button>
-                    </div>
-                    {aiEmailDraft && (
-                      <div className="mt-3 p-3 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600">
-                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Generated Draft:</div>
-                        <div className="text-xs text-slate-700 dark:text-slate-300 space-y-2">
-                          <div><strong>Subject:</strong> {aiEmailDraft.subject}</div>
-                          <div className="mt-2">
-                            <strong>Body:</strong>
-                            <div className="mt-1 text-[11px] max-h-60 overflow-y-auto whitespace-pre-wrap p-2 bg-slate-50 dark:bg-slate-700/50 rounded border border-slate-200 dark:border-slate-600">
-                              {aiEmailDraft.body}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                    <EmailComposer
-                      recipient={{ name: detailCustomer.name, email: detailCustomer.email }}
-                      initialSubject={aiEmailDraft?.subject}
-                      initialBody={aiEmailDraft?.body}
-                      customerData={detailCustomer}
-                      inline={true}
-                      onClose={() => { setDetailTab('timeline'); setAiEmailDraft(null); }}
-                      onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name}`, 'success'); setDetailTab('timeline'); setAiEmailDraft(null); }}
-                    />
-                  </div>
+                  <EmailComposer
+                    recipient={{ name: detailCustomer.name, email: detailCustomer.email }}
+                    customerData={detailCustomer}
+                    activities={timelineItems}
+                    inline={true}
+                    onClose={() => { setDetailTab('info'); }}
+                    onSent={() => { toastContext?.showToast(`Email sent to ${detailCustomer.name}`, 'success'); setDetailTab('info'); }}
+                  />
                 </div>
               )}
             </div>

@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { sendEmail } from '../../services/emailService';
 import { ToastContext } from '../../contexts/ToastContext';
 import { draftCommercialEmail, draftCustomerFollowUpEmail } from '../../services/geminiService';
-import type { Lead, Customer } from '../../types';
+import type { Lead, Customer, ActivityLog } from '../../types';
 
 interface EmailComposerProps {
     recipient: { name: string; email: string };
@@ -12,6 +12,7 @@ interface EmailComposerProps {
     inline?: boolean;
     leadData?: Lead;
     customerData?: Customer;
+    activities?: ActivityLog[];
     onClose: () => void;
     onSent: () => void;
 }
@@ -22,12 +23,12 @@ const PaperAirplaneIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-function EmailComposer({ recipient, initialSubject = '', initialBody = '', inline = false, leadData, customerData, onClose, onSent }: EmailComposerProps) {
+function EmailComposer({ recipient, initialSubject = '', initialBody = '', inline = false, leadData, customerData, activities = [], onClose, onSent }: EmailComposerProps) {
     const [subject, setSubject] = useState(initialSubject);
     const [body, setBody] = useState(initialBody);
     const [isLoading, setIsLoading] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
-    const [aiLanguage, setAiLanguage] = useState<'English' | 'Spanish' | 'Portuguese'>('English');
+    const [aiLanguage, setAiLanguage] = useState<string>('English');
     const toastContext = useContext(ToastContext);
 
     const handleDraftWithAI = async () => {
@@ -36,7 +37,7 @@ function EmailComposer({ recipient, initialSubject = '', initialBody = '', inlin
         try {
             let draft;
             if (customerData) {
-                draft = await draftCustomerFollowUpEmail(customerData, [], aiLanguage);
+                draft = await draftCustomerFollowUpEmail(customerData, activities, aiLanguage);
             } else if (leadData) {
                 draft = await draftCommercialEmail(
                     leadData.name,
@@ -90,12 +91,15 @@ function EmailComposer({ recipient, initialSubject = '', initialBody = '', inlin
                         <div className="flex items-center gap-2">
                             <select
                                 value={aiLanguage}
-                                onChange={(e) => setAiLanguage(e.target.value as 'English' | 'Spanish' | 'Portuguese')}
+                                onChange={(e) => setAiLanguage(e.target.value)}
                                 className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="English">English</option>
                                 <option value="Spanish">Spanish</option>
+                                <option value="French">French</option>
+                                <option value="German">German</option>
                                 <option value="Portuguese">Portuguese</option>
+                                <option value="Italian">Italian</option>
                             </select>
                             <button
                                 type="button"
