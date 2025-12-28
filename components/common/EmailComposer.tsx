@@ -2,8 +2,8 @@ import React, { useState, useContext } from 'react';
 import Modal from './Modal';
 import { sendEmail } from '../../services/emailService';
 import { ToastContext } from '../../contexts/ToastContext';
-import { draftCommercialEmail } from '../../services/geminiService';
-import type { Lead } from '../../types';
+import { draftCommercialEmail, draftCustomerFollowUpEmail } from '../../services/geminiService';
+import type { Lead, Customer } from '../../types';
 
 interface EmailComposerProps {
     recipient: { name: string; email: string };
@@ -11,6 +11,7 @@ interface EmailComposerProps {
     initialBody?: string;
     inline?: boolean;
     leadData?: Lead;
+    customerData?: Customer;
     onClose: () => void;
     onSent: () => void;
 }
@@ -21,7 +22,7 @@ const PaperAirplaneIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-function EmailComposer({ recipient, initialSubject = '', initialBody = '', inline = false, leadData, onClose, onSent }: EmailComposerProps) {
+function EmailComposer({ recipient, initialSubject = '', initialBody = '', inline = false, leadData, customerData, onClose, onSent }: EmailComposerProps) {
     const [subject, setSubject] = useState(initialSubject);
     const [body, setBody] = useState(initialBody);
     const [isLoading, setIsLoading] = useState(false);
@@ -30,17 +31,25 @@ function EmailComposer({ recipient, initialSubject = '', initialBody = '', inlin
     const toastContext = useContext(ToastContext);
 
     const handleDraftWithAI = async () => {
-        if (!leadData) return;
+        if (!leadData && !customerData) return;
         setAiLoading(true);
         try {
-            const draft = await draftCommercialEmail(
-                leadData.name,
-                leadData.company || 'your company',
-                aiLanguage
-            );
-            setSubject(draft.subject);
-            setBody(draft.body);
-            toastContext?.showToast('AI draft generated successfully!', 'success');
+            let draft;
+            if (customerData) {
+                draft = await draftCustomerFollowUpEmail(customerData, [], aiLanguage);
+            } else if (leadData) {
+                draft = await draftCommercialEmail(
+                    leadData.name,
+                    leadData.company || 'your company',
+                    aiLanguage
+                );
+            }
+
+            if (draft) {
+                setSubject(draft.subject);
+                setBody(draft.body);
+                toastContext?.showToast('AI draft generated successfully!', 'success');
+            }
         } catch (error) {
             console.error('AI draft error:', error);
             toastContext?.showToast('Failed to generate AI draft', 'danger');
@@ -75,7 +84,7 @@ function EmailComposer({ recipient, initialSubject = '', initialBody = '', inlin
     const formContent = (
         <form onSubmit={handleSend}>
             <div className="p-6 space-y-4 dark:text-slate-300">
-                {leadData && (
+                {(leadData || customerData) && (
                     <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-700/40 rounded-md border border-slate-200 dark:border-slate-600">
                         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">AI Email Assistant</h3>
                         <div className="flex items-center gap-2">

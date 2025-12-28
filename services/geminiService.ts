@@ -685,13 +685,13 @@ Recent activity:\n${recent || '(none)'}
   try { const r = await generateWithFallback(client, { model: 'gemini-2.5-flash-lite', contents: prompt }); return r.text; } catch { return 'Could not generate summary.'; }
 };
 
-export const draftCustomerFollowUpEmail = async (customer: Customer, activities: ActivityLog[] = []): Promise<{ subject: string; body: string }> => {
+export const draftCustomerFollowUpEmail = async (customer: Customer, activities: ActivityLog[] = [], language: string = 'Spanish'): Promise<{ subject: string; body: string }> => {
   const client = getClient();
   if (!client) return { subject: `Propuesta ${customer.company}`, body: `Hola ${customer.name},\n\nAdjunto propuesta y catálogo. ¿Agendamos una llamada esta semana?\n\nSaludos,` };
   const lastMsg = activities.find(a => a.channel === 'email' && a.message)?.message || '';
   const prompt = `
     You are a Sales Master and Mentor for OneSkin.
-    Task: Draft a concise, elegant, and motivating Spanish email for an existing customer.
+    Task: Draft a concise, elegant, and motivating email for an existing customer in ${language}.
     Goal: Nurture the relationship and propose next steps (upsell, visit, etc).
     
     Context:
