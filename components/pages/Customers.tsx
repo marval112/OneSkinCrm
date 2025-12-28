@@ -626,7 +626,7 @@ function Customers() {
                   <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="px-2 py-2 w-8"><input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-500 text-primary focus:ring-primary dark:bg-slate-600" checked={selectedCustomers.includes(customer.id)} onChange={() => handleSelectOne(customer.id)} /></td>
                     <td className="px-3 py-2" style={{ maxWidth: '180px' }}>
-                      <div className="cursor-pointer hover:underline overflow-hidden" onDoubleClick={() => setEditingCustomer(customer)} onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
+                      <div className="cursor-pointer hover:underline overflow-hidden" onDoubleClick={() => setEditingCustomer(customer)} onClick={() => { setDetailCustomer(customer); setDetailTab('info'); }}>
                         <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{customer.name}</div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{customer.email}</div>
                       </div>
@@ -670,7 +670,7 @@ function Customers() {
           {/* Mobile Card View */}
           <div className="md:hidden space-y-4">
             {loading ? <TableSkeleton columns={1} rows={5} /> : sortedCustomers.map(customer => (
-              <div key={customer.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); openTimeline(customer); }}>
+              <div key={customer.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700" onClick={() => { setDetailCustomer(customer); setDetailTab('info'); }}>
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <h3 className="font-medium text-slate-900 dark:text-white">{customer.name}</h3>
@@ -997,6 +997,26 @@ function Customers() {
               )}
               {detailTab === 'deals' && (
                 <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Deals for this customer</h4>
+                    <button
+                      onClick={() => {
+                        if (detailCustomer) {
+                          setDealForCustomer(detailCustomer);
+                          setQDealTitle(`${detailCustomer.name} • ${detailCustomer.company || 'Deal'}`);
+                          setQDealValue(0);
+                          setQDealStage(DealStage.QUALIFICATION);
+                          setQDealProbability(50);
+                          setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16));
+                          setQDealNotes('');
+                        }
+                      }}
+                      className="px-2 py-1 text-xs bg-primary text-white rounded-md hover:bg-primary-hover flex items-center gap-1"
+                    >
+                      <PlusIcon className="h-3 w-3" />
+                      Create Deal
+                    </button>
+                  </div>
                   {dealsLoading ? (
                     <div className="py-8 text-center text-slate-500">Loading deals...</div>
                   ) : customerDeals.length === 0 ? (
@@ -1024,18 +1044,12 @@ function Customers() {
                       ))}
                     </div>
                   )}
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700 text-center">
                     <button
-                      onClick={() => {
-                        // Pre-fill deal creation with this customer
-                        setDetailCustomer(null);
-                        // Logic to open deal modal would go here, or navigate to deals page
-                        // For now, we can just close the detail view or maybe trigger a create deal action if available
-                        // But the requirement was just to view history.
-                      }}
-                      className="w-full py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 text-sm"
+                      onClick={() => navigate(`/deals?customer_id=${detailCustomer.id}&customer_name=${encodeURIComponent(detailCustomer.name)}`)}
+                      className="text-primary hover:underline text-sm"
                     >
-                      View in Deals Pipeline
+                      View in Pipeline
                     </button>
                   </div>
                 </div>

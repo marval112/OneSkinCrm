@@ -168,6 +168,16 @@ export const getDealsByCustomer = async (customerId: number): Promise<Deal[]> =>
     return data as Deal[];
 };
 
+export const getDealsByLead = async (leadId: number): Promise<Deal[]> => {
+    const { data, error } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Deal[];
+};
+
 type NewDealInput = {
     title: string;
     value: number;

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useContext, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads, createDeal } from '../../services/crmService';
+import { getLeads, updateLead, createLead, getCountries, convertLeadToCustomer, bulkDeleteLeads, createDeal, getDealsByLead } from '../../services/crmService';
 import { getUsers } from '../../services/userService';
 import { scanBusinessCard } from '../../services/geminiService';
 import { calculateLeadScore } from '../../services/leadScoringService';
 import { exportToExcel } from '../../services/exportService';
 import type { Lead, Country, User } from '../../types';
-import { LeadStatus, LeadSource, Segment, DealStage } from '../../types';
+import { LeadStatus, LeadSource, Segment, DealStage, Deal } from '../../types';
 import { ToastContext } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useChat } from '../../contexts/ChatContext';
@@ -411,7 +411,9 @@ function Leads() {
   const [timelineNote, setTimelineNote] = useState('');
   const [timelineSaving, setTimelineSaving] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
-  const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'email'>('info');
+  const [detailTab, setDetailTab] = useState<'info' | 'timeline' | 'deals' | 'email'>('info');
+  const [leadDeals, setLeadDeals] = useState<Deal[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
   const [leadTasks, setLeadTasks] = useState<Task[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string>('');
@@ -546,6 +548,23 @@ function Leads() {
 
     return sortableLeads;
   }, [leadsWithScores, searchTerm, filterSource, sortConfig, searchParams]);
+
+  useEffect(() => {
+    const fetchDeals = async () => {
+      if (detailLead && detailTab === 'deals') {
+        setDealsLoading(true);
+        try {
+          const deals = await getDealsByLead(detailLead.id);
+          setLeadDeals(deals);
+        } catch (error) {
+          console.error('Failed to fetch lead deals', error);
+        } finally {
+          setDealsLoading(false);
+        }
+      }
+    };
+    fetchDeals();
+  }, [detailLead, detailTab]);
 
   const requestSort = (key: SortableLeadKeys) => {
     let direction: SortDirection = 'ascending';
@@ -814,7 +833,7 @@ function Leads() {
                           {inlineEditingId === lead.id ? (
                             <InlineNameEdit lead={lead} onSave={handleUpdateLead} />
                           ) : (
-                            <div className="cursor-pointer hover:underline overflow-hidden" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
+                            <div className="cursor-pointer hover:underline overflow-hidden" onClick={() => { setDetailLead(lead); setDetailTab('info'); }}>
                               <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
                               <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{lead.email}</div>
                             </div>
@@ -899,7 +918,7 @@ function Leads() {
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
               {loading ? <TableSkeleton columns={1} rows={5} /> : filteredLeads.map(lead => (
-                <div key={lead.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700" onClick={() => { setDetailLead(lead); setDetailTab('info'); openTimeline(lead); }}>
+                <div key={lead.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700" onClick={() => { setDetailLead(lead); setDetailTab('info'); }}>
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <h3 className="font-medium text-slate-900 dark:text-white">{lead.name}</h3>
@@ -1143,6 +1162,7 @@ function Leads() {
               <div className="flex items-center gap-2 mb-4">
                 <button onClick={() => setDetailTab('info')} className={`px-3 py-1.5 rounded-md ${detailTab === 'info' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Info</button>
                 <button onClick={() => setDetailTab('timeline')} className={`px-3 py-1.5 rounded-md ${detailTab === 'timeline' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Timeline</button>
+                <button onClick={() => setDetailTab('deals')} className={`px-3 py-1.5 rounded-md ${detailTab === 'deals' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Deals</button>
                 <button onClick={() => setDetailTab('email')} className={`px-3 py-1.5 rounded-md ${detailTab === 'email' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>Email</button>
               </div>
               {detailTab === 'info' && (
@@ -1306,6 +1326,68 @@ function Leads() {
                     <div className="text-right mt-2">
                       <button disabled={timelineSaving} onClick={async () => { await addTimelineNote(); setDetailTab('timeline'); }} className="px-4 py-2 rounded-md bg-primary text-white disabled:bg-slate-400">{timelineSaving ? '...' : t('leads.timeline.save')}</button>
                     </div>
+                  </div>
+                </div>
+              )}
+              {detailTab === 'deals' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Deals for this lead</h4>
+                    <button
+                      onClick={() => {
+                        if (detailLead) {
+                          setDealForLead(detailLead);
+                          // Initialize deal creation state
+                          setQDealTitle(`${detailLead.name} • ${detailLead.company || 'Deal'}`);
+                          setQDealValue(0);
+                          setQDealStage(DealStage.QUALIFICATION);
+                          setQDealProbability(50);
+                          setQDealExpectedClose(new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().slice(0, 16));
+                          setQDealNotes('');
+                        }
+                      }}
+                      className="px-2 py-1 text-xs bg-primary text-white rounded-md hover:bg-primary-hover flex items-center gap-1"
+                    >
+                      <PlusIcon className="h-3 w-3" />
+                      Create Deal
+                    </button>
+                  </div>
+
+                  {dealsLoading ? (
+                    <div className="py-8 text-center text-slate-500">Loading deals...</div>
+                  ) : leadDeals.length === 0 ? (
+                    <div className="py-8 text-center text-slate-500 italic">No deals found.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {leadDeals.map(deal => (
+                        <div key={deal.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{deal.title}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              Created: {new Date(deal.created_at).toLocaleDateString()} • Close: {new Date(deal.expected_close_date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100">€{deal.value.toLocaleString()}</div>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${deal.status === 'Closed Won' ? 'bg-green-100 text-green-800' :
+                              deal.status === 'Closed Lost' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                              {deal.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700 text-center">
+                    <button
+                      onClick={() => navigate(`/deals?lead_id=${detailLead.id}&lead_name=${encodeURIComponent(detailLead.name)}`)}
+                      className="text-primary hover:underline text-sm"
+                    >
+                      View in Pipeline
+                    </button>
                   </div>
                 </div>
               )}
