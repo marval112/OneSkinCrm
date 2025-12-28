@@ -20,7 +20,7 @@ import ImportModal from '../common/ImportModal';
 import { parseCSV, importCustomers } from '../../services/importService';
 import { listActivitiesForCustomer, logActivity } from '../../services/activityService';
 import { summarizeCustomer, draftCustomerFollowUpEmail, suggestCustomerTasks } from '../../services/geminiService';
-import { createTask, listTasksForCustomer, completeTask, updateTask } from '../../services/tasksService';
+import { createTask, listTasksForCustomer, completeTask, updateTask, deleteTask } from '../../services/tasksService';
 import type { ActivityLog } from '../../types';
 import { TaskStatus, TaskType, Task } from '../../types';
 

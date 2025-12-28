@@ -21,7 +21,7 @@ import ModelSelector from '../common/ModelSelector';
 import { parseCSV, importLeads } from '../../services/importService';
 import { listActivitiesForLead, logActivity } from '../../services/activityService';
 import { summarizeLead, suggestLeadTasks, draftLeadFollowUpEmail } from '../../services/geminiService';
-import { createTask, listTasksForLead, completeTask, updateTask } from '../../services/tasksService';
+import { createTask, listTasksForLead, completeTask, updateTask, deleteTask } from '../../services/tasksService';
 import { TaskType, TaskStatus, Task } from '../../types';
 import type { ActivityLog } from '../../types';
 import ScoreBadge from '../common/ScoreBadge';
