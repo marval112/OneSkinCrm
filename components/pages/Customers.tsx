@@ -312,9 +312,9 @@ function Customers() {
       setTimelineItems(activities);
       setCustomerTasks(tasks);
       // Initialize steps
-      setStepInfoSent(tasks.some(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.COMPLETED));
-      setStepPricesSent(tasks.some(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.COMPLETED));
-      setStepSamplesSent(tasks.some(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.COMPLETED));
+      setStepInfoSent(tasks.some(t => t.type === TaskType.SEND_INFORMATION));
+      setStepPricesSent(tasks.some(t => t.type === TaskType.SEND_QUOTATION));
+      setStepSamplesSent(tasks.some(t => t.type === TaskType.SEND_SAMPLES));
       setStepVisitPlanned(tasks.some(t => t.type === TaskType.SCHEDULE_VISIT));
     } catch (error) {
       console.error('Failed to fetch timeline', error);
@@ -1064,20 +1064,24 @@ function Customers() {
                         <label className="inline-flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
                             const checked = e.target.checked; setStepInfoSent(checked);
-                            if (timelineCustomer && user && checked) {
-                              const existing = customerTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
-                              if (existing) {
-                                await completeTask(existing.id);
+                            if (timelineCustomer && user) {
+                              if (checked) {
+                                const existing = customerTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                                if (!existing) {
+                                  await createTask({
+                                    title: t('customers.timeline.sendInfo') || 'Enviar información solicitada',
+                                    type: TaskType.SEND_INFORMATION,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    customer_id: timelineCustomer.id,
+                                    due_date: new Date().toISOString()
+                                  } as any);
+                                }
                               } else {
-                                await createTask({
-                                  title: 'Información Enviada (Manual)',
-                                  type: TaskType.SEND_INFORMATION,
-                                  status: TaskStatus.COMPLETED,
-                                  user_id: user.id,
-                                  customer_id: timelineCustomer.id,
-                                  completed_at: new Date().toISOString(),
-                                  due_date: new Date().toISOString()
-                                } as any);
+                                const existing = customerTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await deleteTask(existing.id);
+                                }
                               }
                               setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                             }
@@ -1086,20 +1090,24 @@ function Customers() {
                         <label className="inline-flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
                             const checked = e.target.checked; setStepPricesSent(checked);
-                            if (timelineCustomer && user && checked) {
-                              const existing = customerTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
-                              if (existing) {
-                                await completeTask(existing.id);
+                            if (timelineCustomer && user) {
+                              if (checked) {
+                                const existing = customerTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                                if (!existing) {
+                                  await createTask({
+                                    title: t('customers.timeline.sendPrices') || 'Enviar presupuesto/precios',
+                                    type: TaskType.SEND_QUOTATION,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    customer_id: timelineCustomer.id,
+                                    due_date: new Date().toISOString()
+                                  } as any);
+                                }
                               } else {
-                                await createTask({
-                                  title: 'Precios Enviados (Manual)',
-                                  type: TaskType.SEND_QUOTATION,
-                                  status: TaskStatus.COMPLETED,
-                                  user_id: user.id,
-                                  customer_id: timelineCustomer.id,
-                                  completed_at: new Date().toISOString(),
-                                  due_date: new Date().toISOString()
-                                } as any);
+                                const existing = customerTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await deleteTask(existing.id);
+                                }
                               }
                               setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                             }
@@ -1108,20 +1116,24 @@ function Customers() {
                         <label className="inline-flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
                             const checked = e.target.checked; setStepSamplesSent(checked);
-                            if (timelineCustomer && user && checked) {
-                              const existing = customerTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
-                              if (existing) {
-                                await completeTask(existing.id);
+                            if (timelineCustomer && user) {
+                              if (checked) {
+                                const existing = customerTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                                if (!existing) {
+                                  await createTask({
+                                    title: t('customers.timeline.sendSamples') || 'Enviar muestras',
+                                    type: TaskType.SEND_SAMPLES,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    customer_id: timelineCustomer.id,
+                                    due_date: new Date().toISOString()
+                                  } as any);
+                                }
                               } else {
-                                await createTask({
-                                  title: 'Muestras Enviadas (Manual)',
-                                  type: TaskType.SEND_SAMPLES,
-                                  status: TaskStatus.COMPLETED,
-                                  user_id: user.id,
-                                  customer_id: timelineCustomer.id,
-                                  completed_at: new Date().toISOString(),
-                                  due_date: new Date().toISOString()
-                                } as any);
+                                const existing = customerTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await deleteTask(existing.id);
+                                }
                               }
                               setCustomerTasks(await listTasksForCustomer(timelineCustomer.id, false));
                             }

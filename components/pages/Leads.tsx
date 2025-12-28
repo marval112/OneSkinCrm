@@ -444,9 +444,9 @@ function Leads() {
     try {
       const tasks = await listTasksForLead(lead.id, false);
       setLeadTasks(tasks);
-      setStepInfoSent(tasks.some(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.COMPLETED));
-      setStepSamplesSent(tasks.some(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.COMPLETED));
-      setStepPricesSent(tasks.some(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.COMPLETED));
+      setStepInfoSent(tasks.some(t => t.type === TaskType.SEND_INFORMATION));
+      setStepSamplesSent(tasks.some(t => t.type === TaskType.SEND_SAMPLES));
+      setStepPricesSent(tasks.some(t => t.type === TaskType.SEND_QUOTATION));
       setStepVisitPlanned(tasks.some(t => t.type === TaskType.SCHEDULE_VISIT));
     } catch (e) { console.warn('Tasks table missing?', e); }
     setTimelineLoading(false);
@@ -1167,20 +1167,24 @@ function Leads() {
                         <label className="inline-flex items-center gap-2">
                           <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
                             const checked = e.target.checked; setStepInfoSent(checked);
-                            if (detailLead && user && checked) {
-                              const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
-                              if (existing) {
-                                await completeTask(existing.id);
+                            if (detailLead && user) {
+                              if (checked) {
+                                const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                                if (!existing) {
+                                  await createTask({
+                                    title: t('leads.timeline.sendInfo') || 'Enviar información solicitada',
+                                    type: TaskType.SEND_INFORMATION,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    lead_id: detailLead.id,
+                                    due_date: new Date().toISOString()
+                                  } as any);
+                                }
                               } else {
-                                await createTask({
-                                  title: 'Información Enviada (Manual)',
-                                  type: TaskType.SEND_INFORMATION,
-                                  status: TaskStatus.COMPLETED,
-                                  user_id: user.id,
-                                  lead_id: detailLead.id,
-                                  completed_at: new Date().toISOString(),
-                                  due_date: new Date().toISOString()
-                                } as any);
+                                const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await deleteTask(existing.id);
+                                }
                               }
                               setLeadTasks(await listTasksForLead(detailLead.id, false));
                             }
@@ -1189,20 +1193,24 @@ function Leads() {
                         <label className="inline-flex items-center gap-2">
                           <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
                             const checked = e.target.checked; setStepPricesSent(checked);
-                            if (detailLead && user && checked) {
-                              const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
-                              if (existing) {
-                                await completeTask(existing.id);
+                            if (detailLead && user) {
+                              if (checked) {
+                                const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                                if (!existing) {
+                                  await createTask({
+                                    title: t('leads.timeline.sendPrices') || 'Enviar presupuesto/precios',
+                                    type: TaskType.SEND_QUOTATION,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    lead_id: detailLead.id,
+                                    due_date: new Date().toISOString()
+                                  } as any);
+                                }
                               } else {
-                                await createTask({
-                                  title: 'Precios Enviados (Manual)',
-                                  type: TaskType.SEND_QUOTATION,
-                                  status: TaskStatus.COMPLETED,
-                                  user_id: user.id,
-                                  lead_id: detailLead.id,
-                                  completed_at: new Date().toISOString(),
-                                  due_date: new Date().toISOString()
-                                } as any);
+                                const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await deleteTask(existing.id);
+                                }
                               }
                               setLeadTasks(await listTasksForLead(detailLead.id, false));
                             }
@@ -1211,20 +1219,24 @@ function Leads() {
                         <label className="inline-flex items-center gap-2">
                           <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
                             const checked = e.target.checked; setStepSamplesSent(checked);
-                            if (detailLead && user && checked) {
-                              const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
-                              if (existing) {
-                                await completeTask(existing.id);
+                            if (detailLead && user) {
+                              if (checked) {
+                                const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                                if (!existing) {
+                                  await createTask({
+                                    title: t('leads.timeline.sendSamples') || 'Enviar muestras',
+                                    type: TaskType.SEND_SAMPLES,
+                                    status: TaskStatus.PENDING,
+                                    user_id: user.id,
+                                    lead_id: detailLead.id,
+                                    due_date: new Date().toISOString()
+                                  } as any);
+                                }
                               } else {
-                                await createTask({
-                                  title: 'Muestras Enviadas (Manual)',
-                                  type: TaskType.SEND_SAMPLES,
-                                  status: TaskStatus.COMPLETED,
-                                  user_id: user.id,
-                                  lead_id: detailLead.id,
-                                  completed_at: new Date().toISOString(),
-                                  due_date: new Date().toISOString()
-                                } as any);
+                                const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                                if (existing) {
+                                  await deleteTask(existing.id);
+                                }
                               }
                               setLeadTasks(await listTasksForLead(detailLead.id, false));
                             }
@@ -1436,20 +1448,24 @@ function Leads() {
                     <label className="inline-flex items-center gap-2">
                       <input type="checkbox" checked={stepInfoSent} onChange={async (e) => {
                         const checked = e.target.checked; setStepInfoSent(checked);
-                        if (timelineLead && user && checked) {
-                          const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
-                          if (existing) {
-                            await completeTask(existing.id);
+                        if (timelineLead && user) {
+                          if (checked) {
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                            if (!existing) {
+                              await createTask({
+                                title: t('leads.timeline.sendInfo') || 'Enviar información solicitada',
+                                type: TaskType.SEND_INFORMATION,
+                                status: TaskStatus.PENDING,
+                                user_id: user.id,
+                                lead_id: timelineLead.id,
+                                due_date: new Date().toISOString()
+                              } as any);
+                            }
                           } else {
-                            await createTask({
-                              title: 'Información Enviada (Manual)',
-                              type: TaskType.SEND_INFORMATION,
-                              status: TaskStatus.COMPLETED,
-                              user_id: user.id,
-                              lead_id: timelineLead.id,
-                              completed_at: new Date().toISOString(),
-                              due_date: new Date().toISOString()
-                            } as any);
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_INFORMATION && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await deleteTask(existing.id);
+                            }
                           }
                           setLeadTasks(await listTasksForLead(timelineLead.id, false));
                         }
@@ -1458,20 +1474,24 @@ function Leads() {
                     <label className="inline-flex items-center gap-2">
                       <input type="checkbox" checked={stepPricesSent} onChange={async (e) => {
                         const checked = e.target.checked; setStepPricesSent(checked);
-                        if (timelineLead && user && checked) {
-                          const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
-                          if (existing) {
-                            await completeTask(existing.id);
+                        if (timelineLead && user) {
+                          if (checked) {
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                            if (!existing) {
+                              await createTask({
+                                title: t('leads.timeline.sendPrices') || 'Enviar presupuesto/precios',
+                                type: TaskType.SEND_QUOTATION,
+                                status: TaskStatus.PENDING,
+                                user_id: user.id,
+                                lead_id: timelineLead.id,
+                                due_date: new Date().toISOString()
+                              } as any);
+                            }
                           } else {
-                            await createTask({
-                              title: 'Precios Enviados (Manual)',
-                              type: TaskType.SEND_QUOTATION,
-                              status: TaskStatus.COMPLETED,
-                              user_id: user.id,
-                              lead_id: timelineLead.id,
-                              completed_at: new Date().toISOString(),
-                              due_date: new Date().toISOString()
-                            } as any);
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_QUOTATION && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await deleteTask(existing.id);
+                            }
                           }
                           setLeadTasks(await listTasksForLead(timelineLead.id, false));
                         }
@@ -1480,20 +1500,24 @@ function Leads() {
                     <label className="inline-flex items-center gap-2">
                       <input type="checkbox" checked={stepSamplesSent} onChange={async (e) => {
                         const checked = e.target.checked; setStepSamplesSent(checked);
-                        if (timelineLead && user && checked) {
-                          const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
-                          if (existing) {
-                            await completeTask(existing.id);
+                        if (timelineLead && user) {
+                          if (checked) {
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                            if (!existing) {
+                              await createTask({
+                                title: t('leads.timeline.sendSamples') || 'Enviar muestras',
+                                type: TaskType.SEND_SAMPLES,
+                                status: TaskStatus.PENDING,
+                                user_id: user.id,
+                                lead_id: timelineLead.id,
+                                due_date: new Date().toISOString()
+                              } as any);
+                            }
                           } else {
-                            await createTask({
-                              title: 'Muestras Enviadas (Manual)',
-                              type: TaskType.SEND_SAMPLES,
-                              status: TaskStatus.COMPLETED,
-                              user_id: user.id,
-                              lead_id: timelineLead.id,
-                              completed_at: new Date().toISOString(),
-                              due_date: new Date().toISOString()
-                            } as any);
+                            const existing = leadTasks.find(t => t.type === TaskType.SEND_SAMPLES && t.status === TaskStatus.PENDING);
+                            if (existing) {
+                              await deleteTask(existing.id);
+                            }
                           }
                           setLeadTasks(await listTasksForLead(timelineLead.id, false));
                         }
