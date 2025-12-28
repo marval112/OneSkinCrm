@@ -196,7 +196,7 @@ const DealForm = ({
   );
 };
 
-type SortableDealKeys = keyof Deal | 'partyName' | 'closed_at';
+type SortableDealKeys = keyof Deal | 'partyName' | 'closed_at' | 'owner';
 type SortDirection = 'ascending' | 'descending';
 interface SortConfig {
   key: SortableDealKeys;
@@ -256,7 +256,7 @@ function Deals() {
     setLoading(true);
     try {
       const promises: any[] = [getDeals(user), getCustomers(user), getLeads(user)];
-      if (user.role === 'Admin') {
+      if (user.role === 'Admin' || user.role === 'BackOffice') {
         promises.push(getUsers());
       }
       const [dealsData, customersData, leadsData, usersData] = await Promise.all(promises);
@@ -300,7 +300,8 @@ function Deals() {
     const dealsWithPartyNames = deals.map(deal => ({
       ...deal,
       partyName: deal.customer_id ? getCustomerName(deal.customer_id) : (deal.lead_id ? getLeadName(deal.lead_id) : '—'),
-      closed_at: (deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) ? deal.updated_at : null
+      closed_at: (deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) ? deal.updated_at : null,
+      owner: users.find(u => u.id === deal.user_id)?.email || ''
     }));
 
     let filtered = dealsWithPartyNames.filter(deal => {
@@ -587,6 +588,9 @@ function Deals() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
                   </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <button onClick={() => requestSort('owner')} className="flex items-center">Owner {getSortIcon('owner')}</button>
+                  </th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -606,6 +610,9 @@ function Deals() {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600">
+                      {(deal as any).owner || '-'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>

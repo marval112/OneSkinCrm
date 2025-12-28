@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { listTasksForUser, completeTask, createTask, updateTask, deleteTask, toggleTaskTimer } from '../../services/tasksService';
-import type { Task, Lead, Customer } from '../../types';
+import type { Task, Lead, Customer, User } from '../../types';
+import { getUsers } from '../../services/userService';
 import { TaskType, TaskStatus } from '../../types';
 import { useTranslation } from '../../services/i18nService';
 import { prioritizeTasks } from '../../services/geminiService';
@@ -29,6 +30,8 @@ function Tasks() {
   const [leadOptions, setLeadOptions] = useState<Lead[]>([]);
   const [customerOptions, setCustomerOptions] = useState<Customer[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [builder, setBuilder] = useState<{ entityType: 'lead' | 'customer'; entityId: number | null; type: TaskType; title: string; notes: string; due: string }>(
     { entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }
   );
@@ -37,7 +40,16 @@ function Tasks() {
   const refresh = async () => {
     if (!user) return;
     setLoading(true);
-    try { setTasks(await listTasksForUser(user as any, !showCompleted)); } finally { setLoading(false); }
+    try {
+      const [allTasks, allUsers] = await Promise.all([
+        listTasksForUser(user as any, !showCompleted),
+        (user.role === 'Admin' || user.role === 'BackOffice') ? getUsers() : Promise.resolve([])
+      ]);
+      setTasks(allTasks);
+      setUsers(allUsers);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { refresh(); }, [showCompleted, user]);
@@ -113,6 +125,19 @@ function Tasks() {
     }
   }, []);
 
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) return null;
+    return sortConfig.direction === 'asc' ? ' ↑' : ' ↓';
+  };
+
   useEffect(() => {
     if (loading) return;
     const now = new Date();
@@ -154,15 +179,38 @@ function Tasks() {
         default: return true;
       }
     };
-    const base = tasks
+    let base = tasks
       .filter(t => (typeFilter === 'all' ? true : t.type === typeFilter))
       .filter(passRange);
+
+    if (sortConfig) {
+      base = [...base].sort((a, b) => {
+        let aValue: any = (a as any)[sortConfig.key];
+        let bValue: any = (b as any)[sortConfig.key];
+
+        if (sortConfig.key === 'owner') {
+          aValue = users.find(u => u.id === a.user_id)?.email || '';
+          bValue = users.find(u => u.id === b.user_id)?.email || '';
+        } else if (sortConfig.key === 'association') {
+          aValue = renderLeadCustomer(a);
+          bValue = renderLeadCustomer(b);
+        }
+
+        if (aValue === bValue) return 0;
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+
+        const result = aValue < bValue ? -1 : 1;
+        return sortConfig.direction === 'asc' ? result : -result;
+      });
+    }
+
     if (aiOrdering && aiOrdering.length > 0) {
       const orderMap = new Map(aiOrdering.map((id, idx) => [id, idx]));
       return [...base].sort((a, b) => (orderMap.get(a.id) ?? 9999) - (orderMap.get(b.id) ?? 9999));
     }
     return base;
-  }, [tasks, typeFilter, rangeFilter, aiOrdering]);
+  }, [tasks, typeFilter, rangeFilter, aiOrdering, sortConfig, users]);
 
   const renderLeadCustomer = (task: Task) => {
     if (task.lead_id) return `${t('tasks.ui.lead')} • ${leadNames[task.lead_id] || '#' + task.lead_id}`;
@@ -371,10 +419,11 @@ function Tasks() {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.type')}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Title</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.leadCustomer')}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.due')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('type')}>{t('tasks.ui.type')}{getSortIcon('type')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('title')}>Title{getSortIcon('title')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('association')}>{t('tasks.ui.leadCustomer')}{getSortIcon('association')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('due_date')}>{t('tasks.ui.due')}{getSortIcon('due_date')}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Owner</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
                 </tr>
@@ -405,6 +454,9 @@ function Tasks() {
                         {task.due_date ? (
                           <span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>
                         ) : '-'}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-slate-600">
+                        {(user.role === 'Admin' || user.role === 'BackOffice') ? (users.find(u => u.id === task.user_id)?.email || '-') : t('tasks.ui.myself') || 'Myself'}
                       </td>
                       <td className="px-3 py-2 text-xs">
                         <div className="flex items-center gap-2">
