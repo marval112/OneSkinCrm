@@ -385,12 +385,26 @@ function Deals() {
 
   const handleUpdateDeal = async (dealData: Deal) => {
     try {
-      const { customerName, partyName, owner, closed_at, ...dealToUpdate } = dealData as any;
-      await updateDeal(dealToUpdate);
+      // Explicitly pick only database-valid fields to avoid "column not found" errors
+      const allowedFields = [
+        'id', 'user_id', 'customer_id', 'lead_id', 'title', 'value',
+        'status', 'probability', 'expected_close_date', 'notes'
+      ];
+
+      const payload: any = {};
+      allowedFields.forEach(key => {
+        if (key in dealData) {
+          payload[key] = (dealData as any)[key];
+        }
+      });
+
+      console.log('Updating deal with sanitized payload:', payload);
+      await updateDeal(payload);
       toastContext?.showToast('Deal updated successfully!', 'success');
       setEditingDeal(null);
       fetchData();
     } catch (error) {
+      console.error('Failed to update deal:', error);
       toastContext?.showToast('Failed to update deal.', 'danger');
     }
   };
