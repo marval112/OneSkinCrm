@@ -385,7 +385,7 @@ function Deals() {
 
   const handleUpdateDeal = async (dealData: Deal) => {
     try {
-      const { customerName, partyName, ...dealToUpdate } = dealData as any;
+      const { customerName, partyName, owner, closed_at, ...dealToUpdate } = dealData as any;
       await updateDeal(dealToUpdate);
       toastContext?.showToast('Deal updated successfully!', 'success');
       setEditingDeal(null);
@@ -447,7 +447,7 @@ function Deals() {
             >
               <ClockIcon className="h-3 w-3" />
             </button>
-            {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+            {(!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) || user?.role === 'Admin') && (
               <button
                 onClick={() => setEditingDeal(deal as Deal)}
                 className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-hover rounded"
@@ -598,7 +598,7 @@ function Deals() {
                 {loading ? <TableSkeleton columns={8} rows={4} /> : processedDeals.map(deal => (
                   <tr key={deal.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" checked={selectedDeals.includes(deal.id)} onChange={() => handleSelectOne(deal.id)} disabled={deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST} /></td>
-                    <td className="px-3 py-2 text-xs font-medium text-slate-900 cursor-pointer hover:underline max-w-[200px] truncate" onDoubleClick={() => { if (deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }} title={deal.title}>{deal.title}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-slate-900 cursor-pointer hover:underline max-w-[200px] truncate" onDoubleClick={() => { if ((deal.status !== DealStage.CLOSED_WON && deal.status !== DealStage.CLOSED_LOST) || user?.role === 'Admin') setEditingDeal(deal as Deal); }} onClick={() => { setDetailDeal(deal as Deal); setDetailTab('info'); openTimeline(deal as Deal); }} title={deal.title}>{deal.title}</td>
                     <td className="px-3 py-2 hidden md:table-cell text-xs text-slate-600 max-w-[150px] truncate" title={(deal as any).partyName || ''}>{(deal as any).partyName || ''}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-800 font-semibold">€{(deal.value || 0).toLocaleString()}</td>
                     <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-600">{deal.probability}%</td>
@@ -616,7 +616,7 @@ function Deals() {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button onClick={() => { setDetailDeal(deal as Deal); setDetailTab('timeline'); openTimeline(deal as Deal); }} className="text-slate-500 hover:text-indigo-600 p-1" title={t('deals.actions.timeline')}><ClockIcon className="h-5 w-5" /></button>
-                      {!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) && (
+                      {(!(deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) || user?.role === 'Admin') && (
                         <button onClick={() => setEditingDeal(deal as Deal)} className="text-slate-500 hover:text-primary p-1" title={t('deals.actions.editDeal')}><EditIcon className="h-5 w-5" /></button>
                       )}
                     </td>
