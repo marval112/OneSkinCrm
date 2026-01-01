@@ -467,8 +467,8 @@ function Dashboard() {
         ? safeCustomers.filter(c => c.created_at >= currentDateRange.from && c.created_at <= currentDateRange.to)
         : safeCustomers;
 
-      // Customers by Country
-      const ctryCounts = customersInDateRange.reduce((acc: Record<string, number>, c) => {
+      // Customers by Country (all-time)
+      const ctryCounts = safeCustomers.reduce((acc: Record<string, number>, c) => {
         const key = (c.country || 'Unknown');
         acc[key] = (acc[key] || 0) + 1;
         return acc;
@@ -481,9 +481,9 @@ function Dashboard() {
         customersByCountry.push({ name: t('common.others') || 'Others', value: othersTotal });
       }
 
-      // Customers by Owner (admin)
+      // Customers by Owner (admin, all-time)
       const cbOwnerCounts: Record<string, number> = {};
-      customersInDateRange.forEach(c => {
+      safeCustomers.forEach(c => {
         const email = (safeUsers.find(u => u.id === (c.user_id as any))?.email) || `User #${c.user_id}`;
         cbOwnerCounts[email] = (cbOwnerCounts[email] || 0) + 1;
       });
@@ -533,8 +533,8 @@ function Dashboard() {
         leadsBySegment,
         leadsByCountry,
         leadsByOwner,
-        customersByStatus: Object.values(CustomerStatus).map(s => ({ name: s as string, label: t(`labels.customerStatus.${s}`) || s, value: (currentDateRange ? safeCustomers.filter(c => c.created_at >= currentDateRange.from && c.created_at <= currentDateRange.to) : safeCustomers).filter(c => c.status === s).length })),
-        customersBySegment: Object.values(Segment).map(s => ({ name: s as string, label: t(`labels.segments.${s}`) || s, value: (currentDateRange ? safeCustomers.filter(c => c.created_at >= currentDateRange.from && c.created_at <= currentDateRange.to) : safeCustomers).filter(c => c.segment === s).length })),
+        customersByStatus: Object.values(CustomerStatus).map(s => ({ name: s as string, label: t(`labels.customerStatus.${s}`) || s, value: safeCustomers.filter(c => c.status === s).length })),
+        customersBySegment: Object.values(Segment).map(s => ({ name: s as string, label: t(`labels.segments.${s}`) || s, value: safeCustomers.filter(c => c.segment === s).length })),
         customersByCountry,
         customersByOwner,
         topLeads,
