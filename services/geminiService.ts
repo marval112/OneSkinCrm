@@ -594,12 +594,12 @@ Recent activity:\n${recent || '(none)'}
   try { const r = await generateWithFallback(client, { contents: prompt, config: { responseMimeType: 'application/json' } }); const arr = extractJSON<SuggestedTask[]>(r.text); if (Array.isArray(arr)) return arr; throw new Error('bad'); } catch { return []; }
 };
 
-export const generateDashboardInsights = async (payload: any): Promise<string> => {
+export const generateDashboardInsights = async (payload: any, language: string = 'Spanish'): Promise<string> => {
   const client = getClient();
   if (!client) return 'Insights (mock): el pipeline abierto y la tasa de éxito se mantienen estables. Prioriza leads de Website y segment Industrial.';
   const prompt = `
     You are the OneSkin Sales Mentor. 
-    Task: Write 4-6 short, actionable, and highly motivating CRM insights in Spanish from this JSON data. 
+    Task: Write 4-6 short, actionable, and highly motivating CRM insights in ${language} from this JSON data. 
     Tone: Empowering and professional. Avoid generic tips; include specific CTAs that encourage the team to act.
     
     Data: ${JSON.stringify(payload).slice(0, 5000)}

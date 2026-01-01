@@ -93,7 +93,7 @@ function Dashboard() {
     users: [],
     budgetVsAchieved: { budget2026: 0, achieved2026: 0 },
   });
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -563,12 +563,12 @@ function Dashboard() {
       (async () => {
         try {
           const payload = { kpis: stats.kpis, leadSourceData: stats.leadSourceData, dealValueByStage: stats.dealValueByStage, teamPerformance: stats.teamPerformance };
-          const text = await generateDashboardInsights(payload as any);
+          const text = await generateDashboardInsights(payload as any, language);
           setAiInsights(text);
         } catch { }
       })();
     }
-  }, [loading, stats]);
+  }, [loading, stats, language]);
 
   useEffect(() => {
     const savedRange = localStorage.getItem('dashboardDateRange');
