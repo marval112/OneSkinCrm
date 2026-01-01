@@ -399,7 +399,7 @@ function Deals() {
       });
 
       console.log('Updating deal with sanitized payload:', payload);
-      await updateDeal(payload);
+      await updateDeal(payload, user as any);
       toastContext?.showToast('Deal updated successfully!', 'success');
       setEditingDeal(null);
       fetchData();

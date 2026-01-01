@@ -212,7 +212,7 @@ export const createDeal = async (dealData: NewDealInput, userId: number): Promis
     return saved;
 };
 
-export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise<Deal> => {
+export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>, user?: User): Promise<Deal> => {
     // Destructure to remove created_at, which should not be updated.
     const { created_at, ...dealData } = updatedDeal as Deal;
     let prev: Deal | null = null;
@@ -220,9 +220,11 @@ export const updateDeal = async (updatedDeal: Omit<Deal, 'created_at'>): Promise
         const { data } = await supabase.from('deals').select('*').eq('id', (updatedDeal as any).id).maybeSingle();
         prev = (data as Deal) || null;
     } catch { }
-    // Prevent edits when already closed
+    // Prevent edits when already closed, unless user is Admin
     if (prev && (prev.status === 'Closed Won' || prev.status === 'Closed Lost')) {
-        throw new Error('This deal is closed and cannot be modified.');
+        if (user?.role !== 'Admin') {
+            throw new Error('This deal is closed and cannot be modified.');
+        }
     }
     const dealWithTimestamp = {
         ...dealData,
