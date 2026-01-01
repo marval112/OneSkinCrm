@@ -42,6 +42,7 @@ type NewDealInput = {
   probability: number;
   expected_close_date: string;
   notes?: string;
+  closed_at?: string | null;
 };
 
 const DealForm = ({
@@ -66,6 +67,7 @@ const DealForm = ({
     probability: deal.probability,
     expected_close_date: deal.expected_close_date,
     notes: deal.notes,
+    closed_at: deal.closed_at ? new Date(deal.closed_at).toISOString().split('T')[0] : null,
   } : {
     title: '',
     customer_id: initialCustomerId || customers[0]?.id || 0,
@@ -75,6 +77,7 @@ const DealForm = ({
     probability: 10,
     expected_close_date: new Date().toISOString().split('T')[0],
     notes: '',
+    closed_at: null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [association, setAssociation] = useState<'customer' | 'lead'>(() => {
@@ -177,6 +180,21 @@ const DealForm = ({
             {errors.expected_close_date && <p className="text-red-500 text-xs mt-1">{errors.expected_close_date}</p>}
           </div>
         </div>
+        {(isEdit && (formData.status === DealStage.CLOSED_WON || formData.status === DealStage.CLOSED_LOST)) && (
+          <div>
+            <label htmlFor="closed_at" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Actual Close Date</label>
+            <input
+              type="date"
+              name="closed_at"
+              id="closed_at"
+              value={formData.closed_at || ''}
+              onChange={handleChange}
+              disabled={!isEdit || (useAuth().user?.role !== 'Admin')} // Only Admin can edit
+              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md bg-white text-slate-900 dark:bg-slate-700 dark:border-slate-600 dark:text-white disabled:bg-slate-50 disabled:text-slate-500"
+            />
+            {useAuth().user?.role !== 'Admin' && <p className="text-slate-500 text-xs mt-1">Only Administrators can modify the closure date.</p>}
+          </div>
+        )}
         <div>
           <label htmlFor="probability" className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('deals.form.probability')} ({formData.probability}%)</label>
           <input type="range" min="0" max="100" step="5" name="probability" id="probability" value={formData.probability} onChange={handleChange} className="mt-1 block w-full accent-primary" />
@@ -300,7 +318,7 @@ function Deals() {
     const dealsWithPartyNames = deals.map(deal => ({
       ...deal,
       partyName: deal.customer_id ? getCustomerName(deal.customer_id) : (deal.lead_id ? getLeadName(deal.lead_id) : '—'),
-      closed_at: (deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) ? deal.updated_at : null,
+      closed_at: deal.closed_at || ((deal.status === DealStage.CLOSED_WON || deal.status === DealStage.CLOSED_LOST) ? deal.updated_at : null),
       owner: users.find(u => u.id === deal.user_id)?.email || ''
     }));
 
@@ -388,7 +406,7 @@ function Deals() {
       // Explicitly pick only database-valid fields to avoid "column not found" errors
       const allowedFields = [
         'id', 'user_id', 'customer_id', 'lead_id', 'title', 'value',
-        'status', 'probability', 'expected_close_date', 'notes'
+        'status', 'probability', 'expected_close_date', 'notes', 'closed_at'
       ];
 
       const payload: any = {};

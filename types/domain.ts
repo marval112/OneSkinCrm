@@ -107,6 +107,7 @@ export interface Deal {
   created_at: string;
   updated_at: string;
   notes?: string;
+  closed_at?: string | null;
 }
 
 // --- TASKS ---
