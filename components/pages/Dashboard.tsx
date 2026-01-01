@@ -518,7 +518,7 @@ function Dashboard() {
 
       setStats({
         kpis: {
-          newLeads: leadsInDateRange.length.toString(),
+          newLeads: safeLeads.length.toString(),
           winRate: `${Math.round(winRate)}%`,
           revenue: `€${Number(totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
           activeCustomers: safeCustomers.filter(c => c.status === 'Active').length.toString(),
