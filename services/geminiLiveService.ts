@@ -69,13 +69,12 @@ class GeminiLiveService {
                             text: "Eres un mentor de ventas proactivo y secretario ejecutivo para OneSkin. Tu tono es profesional, motivador y elegante. Responde siempre de forma audaz para ayudar a cerrar ventas."
                         }]
                     },
-                    generationConfig: {
-                        responseModalities: [Modality.AUDIO],
-                        speechConfig: {
-                            voiceConfig: {
-                                prebuiltVoiceConfig: {
-                                    voiceName: 'Charon',
-                                }
+                    // Flattened: responseModalities and speechConfig are now direct members of config
+                    responseModalities: [Modality.AUDIO],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: 'Charon',
                             }
                         }
                     }
