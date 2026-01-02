@@ -81,11 +81,22 @@ class GeminiLiveService {
                         const code = e.code || 0;
                         const reason = e.reason || "";
 
-                        if (code === 1007 || (code === 1000 && !this.isReady)) {
-                            console.error(`[GeminiLive] 1007 Precondition Error. Reason: ${reason}`);
+                        if (code === 1007 || code === 1008 || (code === 1000 && !this.isReady)) {
+                            console.error(`[GeminiLive] Connection Closed. Code: ${code}, Reason: ${reason}`);
+
+                            // Diagnostic: List models in console to find the correct one
+                            fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
+                                .then(r => r.json())
+                                .then(data => {
+                                    console.log('[GeminiLive] DEBUG: Available models for this key:',
+                                        data.models?.map((m: any) => `${m.name} (${m.supportedGenerationMethods.join(',')})`)
+                                    );
+                                })
+                                .catch(e => console.error('[GeminiLive] Failed to fetch debug model list:', e));
+
                             this.options.onError?.({
                                 type: 'config',
-                                message: `Voice error 1007: ${reason || 'Precondition check failed (Check keys/region)'}`
+                                message: `Voice error ${code}: ${reason || 'Precondition/Model check failed'}`
                             });
                         }
                         this.options.onClose?.();
