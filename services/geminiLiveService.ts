@@ -36,34 +36,16 @@ class GeminiLiveService {
             // Use v1beta for better stability with native audio preview
             const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1beta' });
 
-            const model = 'models/gemini-2.0-flash-exp';
+            const modelName = 'gemini-2.0-flash-exp';
 
-            // Standard Multimodal Live API configuration
-            const config = {
-                // @ts-ignore - response_modalities might be required in snake_case by some SDK versions
-                response_modalities: ["audio"],
-                speech_config: {
-                    voice_config: {
-                        prebuilt_voice_config: {
-                            voice_name: 'Charon',
-                        }
-                    }
-                },
-                system_instruction: {
-                    parts: [{
-                        text: "Eres un mentor de ventas proactivo y secretario ejecutivo para OneSkin. Tu tono es profesional, motivador y elegante. Responde siempre de forma audaz para ayudar a cerrar ventas."
-                    }]
-                }
-            };
-
-            console.log('[GeminiLive] Connecting to:', model);
+            console.log('[GeminiLive] Connecting to:', modelName);
             console.log('[GeminiLive] Using API version: v1beta');
 
-            // Using the callback structure which previously resulted in a successful handshake
             // @ts-ignore - Using the live property from the SDK
-            // In @google/genai 1.28.0+, we connect and then use .on() for events
+            // In @google/genai 1.28.0+, we connect and use .on() for events
+            // We use 'gemini-2.0-flash-exp' without 'models/' prefix as the SDK adds it
             this.session = await ai.live.connect({
-                model: 'models/gemini-2.0-flash-exp',
+                model: modelName,
                 config: {
                     systemInstruction: {
                         parts: [{
@@ -71,7 +53,7 @@ class GeminiLiveService {
                         }]
                     },
                     generationConfig: {
-                        responseModalities: [Modality.AUDIO],
+                        responseModalities: ["audio" as any],
                         speechConfig: {
                             voiceConfig: {
                                 prebuiltVoiceConfig: {
@@ -89,20 +71,33 @@ class GeminiLiveService {
             });
 
             this.session.on('message', (message: any) => {
-                console.log('[GeminiLive] Message received:', JSON.stringify(message).substring(0, 200));
+                // Diagnostic log for message types
+                if (message.serverContent) {
+                    // Normal content
+                } else if (message.setupComplete) {
+                    console.log('[GeminiLive] Setup Complete received');
+                }
                 this.handleLiveMessage(message);
             });
 
             this.session.on('error', (e: any) => {
                 console.error('[GeminiLive] SDK Error detail:', e);
+                // If the error object has more info, log it
+                if (e.message) console.error('[GeminiLive] Error Message:', e.message);
                 this.options.onError?.(e);
             });
 
             this.session.on('close', (e: any) => {
-                console.warn('[GeminiLive] Session Closed detail:', e);
-                if (e.code === 1007) {
-                    console.error('[GeminiLive] Precondition check failed - verify API configuration');
-                    this.options.onError?.({ type: 'config', message: 'Voice feature unavailable. Please check settings.' });
+                console.warn('[GeminiLive] Session Closed:', e);
+                const code = e.code || (e as any).reason_code;
+                const reason = e.reason || (e as any).reason_phrase;
+
+                if (code === 1007) {
+                    console.error('[GeminiLive] Precondition check failed (1007). Reason:', reason);
+                    this.options.onError?.({
+                        type: 'config',
+                        message: `Voice config error (1007): ${reason || 'Check model/parameters'}`
+                    });
                 }
                 this.options.onClose?.();
             });
