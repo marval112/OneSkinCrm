@@ -121,9 +121,8 @@ npm run preview  # Preview del build
 
 ## Modelos de IA Disponibles
 
-### Gemini (Primario)
-- `gemini-1.5-flash` (por defecto)
-- `gemini-2.0-flash-exp` (multimodal live)
+### Gemini- **Primarios (Gemini)**: `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-3-flash` (via VITE_GEMINI_API_KEY)
+- **Voz (Live)**: `gemini-2.5-flash-native-audio-dialog` (Multimodal Live API)
 
 ### OpenRouter Free Models (Fallback automático)
 - `google/gemini-2.0-flash-exp:free` ⭐ (por defecto)
