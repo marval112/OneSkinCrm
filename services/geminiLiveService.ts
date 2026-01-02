@@ -10,19 +10,34 @@ export interface LiveChatOptions {
 }
 
 class GeminiLiveService {
-    private session: any = null; // Typing as any to avoid strict versioning issues in browser
+    private session: any = null;
     private options: LiveChatOptions = {};
     private isReady: boolean = false;
     private retryCount: number = 0;
     private maxRetries: number = 2;
 
-    async connect(options: LiveChatOptions) {
-        this.options = options;
-        const forceOpenRouterVal = typeof window !== 'undefined' ? localStorage.getItem('oneskin_force_openrouter') : null;
-        console.log('[GeminiLive] Checking Manual Mode (Force OpenRouter):', forceOpenRouterVal);
+    async connect(options: LiveChatOptions, candidateIndex: number = 0) {
+        const CANDIDATES = [
+            'models/gemini-2.5-flash-native-audio-dialog',
+            'models/gemini-2.0-flash-exp',
+            'models/gemini-2.0-flash',
+            'models/gemini-3-flash-preview'
+        ];
 
+        if (candidateIndex === 0) {
+            this.options = options;
+        }
+
+        const modelToTry = CANDIDATES[candidateIndex];
+        if (!modelToTry) {
+            this.options.onError?.('All Voice model candidates failed or are at quota.');
+            return;
+        }
+
+        console.log(`[GeminiLive] [Attempt ${candidateIndex + 1}] Trying model: ${modelToTry}`);
+
+        const forceOpenRouterVal = typeof window !== 'undefined' ? localStorage.getItem('oneskin_force_openrouter') : null;
         if (forceOpenRouterVal === 'true') {
-            console.warn('[GeminiLive] Manual Mode is ACTIVE. Blocking voice connection.');
             options.onError?.('MANUAL_FALLBACK');
             return;
         }
@@ -33,93 +48,53 @@ class GeminiLiveService {
             return;
         }
 
-        // Diagnostic: Masked key logging
-        console.log('[GeminiLive] Using Key (masked):', `${key.substring(0, 5)}...${key.substring(key.length - 4)}`);
-
         try {
             const ai = new GoogleGenAI({ apiKey: key });
 
-            console.log('[GeminiLive] Connecting to models/gemini-2.0-flash-exp (v1beta)...');
-
-            // @ts-ignore - Direct connect via the main instance with callbacks
+            // @ts-ignore
             this.session = await (ai as any).live.connect({
-                model: 'models/gemini-2.0-flash-exp',
+                model: modelToTry,
                 systemInstruction: {
-                    parts: [{
-                        text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
-                    }]
+                    parts: [{ text: "Eres un mentor de ventas proactivo para OneSkin." }]
                 },
-                // Flattening generation config properties as suggested by SDK source
                 responseModalities: ["audio"],
                 speechConfig: {
                     voiceConfig: {
-                        prebuiltVoiceConfig: {
-                            voiceName: 'Puck',
-                        }
+                        prebuiltVoiceConfig: { voiceName: 'Puck' }
                     }
                 },
                 callbacks: {
                     onopen: () => {
-                        console.log('[GeminiLive] WebSocket Connection Established (via callbacks)');
+                        console.log(`[GeminiLive] Connected successfully with: ${modelToTry}`);
                         this.retryCount = 0;
                     },
                     onmessage: (message: any) => {
                         if (message.setupComplete) {
-                            console.log('[GeminiLive] Setup Complete (via callbacks)');
+                            console.log(`[GeminiLive] Setup Complete for ${modelToTry}`);
                             this.isReady = true;
                         }
                         this.handleLiveMessage(message);
                     },
                     onerror: (e: any) => {
-                        console.error('[GeminiLive] SDK Error (via callbacks):', e);
-                        this.options.onError?.(e);
+                        console.error(`[GeminiLive] SDK Error on ${modelToTry}:`, e);
                     },
                     onclose: (e: any) => {
-                        console.warn('[GeminiLive] WebSocket Closed (via callbacks):', e);
+                        console.warn(`[GeminiLive] Closed: ${modelToTry}. Code: ${e.code}, Reason: ${e.reason}`);
                         this.isReady = false;
 
-                        const code = e.code || 0;
-                        const reason = e.reason || "";
-
-                        if (code === 1007 || code === 1008 || code === 1011 || (code === 1000 && !this.isReady)) {
-                            console.error(`[GeminiLive] Connection Closed. Code: ${code}, Reason: ${reason}`);
-
-                            // Diagnostic: List models in console to find the correct one
-                            fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
-                                .then(r => r.json())
-                                .then(data => {
-                                    if (data.models) {
-                                        console.log('[GeminiLive] DEBUG: Available models for this key:');
-                                        data.models.forEach((m: any) => {
-                                            console.log(`- ${m.name} [${m.supportedGenerationMethods.join(', ')}]`);
-                                        });
-                                    } else {
-                                        console.warn('[GeminiLive] DEBUG: No models returned from API list:', data);
-                                    }
-                                })
-                                .catch(e => console.error('[GeminiLive] Failed to fetch debug model list:', e));
-
-                            this.options.onError?.({
-                                type: 'quota',
-                                message: `Voice quota exceeded (Error ${code}). Check dashbord. Reason: ${reason}`
-                            });
+                        // If quota (1011) or not supported (1008/1007), try next candidate
+                        if (e.code === 1011 || e.code === 1008 || e.code === 1007) {
+                            console.log(`[GeminiLive] Model ${modelToTry} unavailable. Trying next...`);
+                            this.connect(options, candidateIndex + 1);
+                        } else {
+                            this.options.onClose?.();
                         }
-                        this.options.onClose?.();
                     }
                 }
             });
         } catch (error: any) {
-            console.error('[GeminiLive] Connection Error:', error);
-
-            // Retry logic for transient failures
-            if (this.retryCount < this.maxRetries && !error.message?.includes('quota')) {
-                this.retryCount++;
-                console.log(`[GeminiLive] Retrying connection (${this.retryCount}/${this.maxRetries})...`);
-                await new Promise(resolve => setTimeout(resolve, 1000 * this.retryCount)); // Exponential backoff
-                return this.connect(options);
-            }
-
-            this.options.onError?.(error);
+            console.error(`[GeminiLive] Handshake failed for ${modelToTry}:`, error);
+            this.connect(options, candidateIndex + 1);
         }
     }
 
@@ -149,11 +124,8 @@ class GeminiLiveService {
 
     sendAudio(pcmData: Int16Array) {
         if (!this.session || !this.isReady) return;
-        // Strictly enforcing isReady to prevent 1007 error from premature audio
-
         try {
             const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
-
             this.session.send({
                 realtimeInput: {
                     mediaChunks: [{
@@ -169,9 +141,7 @@ class GeminiLiveService {
 
     sendText(text: string) {
         if (!this.session) return;
-
         try {
-            // Multimodal Live API expects clientContent for text
             this.session.send({
                 clientContent: {
                     turns: [{
