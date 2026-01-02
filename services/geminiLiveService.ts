@@ -40,26 +40,24 @@ class GeminiLiveService {
             const genAI = new GoogleGenAI(key);
             const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" }, { apiVersion: 'v1beta' });
 
-            console.log('[GeminiLive] Connecting via getGenerativeModel (v1beta)...');
+            console.log('[GeminiLive] Connecting to gemini-2.0-flash-exp (v1beta)...');
 
-            // @ts-ignore - Using the live property from the SDK for multimodal live
+            // @ts-ignore - Direct connect via model instance
             this.session = await (model as any).live.connect({
-                config: {
-                    generationConfig: {
-                        responseModalities: [Modality.AUDIO],
-                        speechConfig: {
-                            voiceConfig: {
-                                prebuiltVoiceConfig: {
-                                    voiceName: 'Puck', // Puck is often more stable in preview
-                                }
+                generationConfig: {
+                    responseModalities: ["audio"] as any,
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: 'Puck',
                             }
                         }
-                    },
-                    systemInstruction: {
-                        parts: [{
-                            text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
-                        }]
                     }
+                },
+                systemInstruction: {
+                    parts: [{
+                        text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
+                    }]
                 }
             });
 
@@ -70,7 +68,7 @@ class GeminiLiveService {
 
             this.session.on('message', (message: any) => {
                 if (message.setupComplete) {
-                    console.log('[GeminiLive] Setup Complete received - Session Ready');
+                    console.log('[GeminiLive] Setup Complete');
                     this.isReady = true;
                 }
                 this.handleLiveMessage(message);
@@ -82,17 +80,17 @@ class GeminiLiveService {
             });
 
             this.session.on('close', (e: any) => {
-                console.warn('[GeminiLive] Connection Closed:', e);
+                console.warn('[GeminiLive] WebSocket Closed:', e);
                 this.isReady = false;
 
-                const code = e.code || (e as any).reason_code;
-                const reason = e.reason || (e as any).reason_phrase || (e as any).message;
+                const code = e.code || 0;
+                const reason = e.reason || "";
 
-                if (code === 1007) {
-                    console.error(`[GeminiLive] PRECONDITION FAILED (1007). Reason: ${reason || 'Unknown'}`);
+                if (code === 1007 || (code === 1000 && !this.isReady)) {
+                    console.error(`[GeminiLive] 1007 Precondition Error. Reason: ${reason}`);
                     this.options.onError?.({
                         type: 'config',
-                        message: `Voice config error (1007): ${reason || 'Precondition failed - Check key/region'}`
+                        message: `Voice error 1007: ${reason || 'Precondition check failed (Check keys/region)'}`
                     });
                 }
                 this.options.onClose?.();
@@ -137,7 +135,9 @@ class GeminiLiveService {
     }
 
     sendAudio(pcmData: Int16Array) {
-        if (!this.session || !this.isReady) return;
+        if (!this.session) return;
+        // Sending audio even if isReady is false to see if it triggers the setup
+        // Some backends might wait for the first chunk to finalize
 
         try {
             const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
