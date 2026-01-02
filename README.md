@@ -122,19 +122,15 @@ npm run preview  # Preview del build
 ## Modelos de IA Disponibles
 
 ### Gemini (Primario)
-- `gemini-2.5-flash-lite` (por defecto)
-- `gemini-2.5-flash`
-- `gemini-2.0-flash-exp`
+- `gemini-1.5-flash` (por defecto)
+- `gemini-2.0-flash-exp` (multimodal live)
 
 ### OpenRouter Free Models (Fallback automático)
-- `openai/gpt-oss-20b:free` ⭐ (por defecto)
-- `xiaomi/mimo-v2-flash:free` (con visión)
-- `mistralai/devstral-2512:free`
-- `mistralai/mistral-small-3.1-24b-instruct:free`
-- `nex-agi/deepseek-v3.1-nex-n1:free`
-- `meta-llama/llama-4-maverick:free`
-- `nvidia/llama-3.1-nemotron-nano-8b-v1:free`
-- `google/gemini-2.5-pro-exp-03-25:free` (con visión)
+- `google/gemini-2.0-flash-exp:free` ⭐ (por defecto)
+- `xiaomi/mimo-v2-flash:free`
+- `mistralai/mistral-small-24b-instruct-2501:free`
+- `nvidia/nemotron-nano-12b-v2-vl:free`
+- `google/learnlm-1.5-pro-experimental:free`
 
 El selector de modelos aparece automáticamente cuando la cuota de Gemini se agota.
 
