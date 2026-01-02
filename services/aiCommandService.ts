@@ -168,7 +168,7 @@ export const processCommand = async (prompt: string, context?: string, userName?
         - Help with sales and business development strategies`;
 
         const response = await generateWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'models/gemini-2.0-flash',
             contents: prompt,
             config: {
                 systemInstruction,

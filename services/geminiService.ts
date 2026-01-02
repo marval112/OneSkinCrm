@@ -280,6 +280,7 @@ export async function generateWithFallback(client: any, params: any) {
 
         return {
           text: result.text || result.response?.text() || "",
+          functionCalls: result.functionCalls || [],
           response: result
         };
       } catch (error: any) {
@@ -323,8 +324,12 @@ export async function generateWithFallback(client: any, params: any) {
   for (const model of orderedOpenRouterList) {
     try {
       console.log(`[AI] Attempting OpenRouter model: ${model}${quotaExhausted || geminiQuotaHit ? ' (Gemini quota exhausted)' : ''}`);
-      const result = await generateWithOpenRouter({ ...params, model });
-      return result;
+      const result: any = await generateWithOpenRouter({ ...params, model });
+      return {
+        text: result.text,
+        functionCalls: result.functionCalls || [],
+        response: result.response
+      };
     } catch (error: any) {
       lastError = error;
       const isRateLimit = error?.status === 429 || error?.message?.includes('429');
@@ -342,7 +347,12 @@ export async function generateWithFallback(client: any, params: any) {
   // 3. Final Last-Ditch effort with OpenRouter free model
   try {
     console.log(`[AI] Final effort: Attempting OpenRouter fallback...`);
-    return await generateWithOpenRouter({ ...params, model: 'google/gemini-2.0-flash-exp:free' });
+    const finalResult: any = await generateWithOpenRouter({ ...params, model: 'google/gemini-2.0-flash-exp:free' });
+    return {
+      text: finalResult.text,
+      functionCalls: finalResult.functionCalls || [],
+      response: finalResult.response
+    };
   } catch (finalError) {
     throw lastError || finalError || new Error("All AI models failed (Gemini & OpenRouter)");
   }

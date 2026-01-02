@@ -64,6 +64,7 @@ export async function generateWithOpenRouter(params: OpenRouterParams) {
 
     return {
         text,
+        functionCalls: [],
         response: data
     };
 }
