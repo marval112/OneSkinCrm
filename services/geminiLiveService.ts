@@ -43,7 +43,7 @@ class GeminiLiveService {
 
             // @ts-ignore - Direct connect via the main instance with callbacks
             this.session = await (ai as any).live.connect({
-                model: 'models/gemini-2.5-flash-native-audio-dialog',
+                model: 'models/gemini-2.0-flash-exp',
                 systemInstruction: {
                     parts: [{
                         text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
