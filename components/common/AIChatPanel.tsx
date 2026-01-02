@@ -97,129 +97,146 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     onCommand: (command: string, args: any) => {
       handlersRef.current.handleCommandResponse?.({ type: 'command', data: { command: command as Command, args } });
     },
-    onError: (err: any) => {
-      // Handle different error types with specific messages
-      let errorMessage = '';
-      let shouldFallbackToText = false;
+    const getFriendlyErrorMessage = (err: any) => {
+      const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+      console.log('[AIChatPanel] Processing error:', msg);
 
-      if (typeof err === 'object' && err.type) {
-        // Structured error from geminiLiveService
-        if (err.type === 'quota') {
-          errorMessage = language === 'es'
-            ? '🎤 **Cuota de voz excedida.** Cambiando a modo texto.'
-            : '🎤 **Voice quota exceeded.** Switching to text mode.';
-          shouldFallbackToText = true;
-        } else if (err.type === 'config') {
-          errorMessage = language === 'es'
-            ? '⚙️ **Función de voz no disponible.** Por favor, verifica la configuración.'
-            : '⚙️ **Voice feature unavailable.** Please check settings.';
-          shouldFallbackToText = true;
+      const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
+      const isManual = msg === 'MANUAL_FALLBACK';
+
+      if (isManual) {
+        return language === 'es'
+          ? '🛡️ **Modo Manual Activo.** La función de voz requiere Gemini directo. Por favor, desactiva "Forzar OpenRouter" en Configuración o usa el modo texto.'
+          : '🛡️ **Manual Mode Active.** Voice features require direct Gemini. Please disable "Force OpenRouter" in Settings or use text mode.';
+      }
+
+      if (isQuota) {
+        return language === 'es'
+          ? '🎤 **Cuota de voz excedida.** Cambiando a modo texto.'
+          : '🎤 **Voice quota exceeded.** Switching to text mode.';
+      }
+
+      if (typeof err === 'object' && err.type === 'config') {
+        return language === 'es'
+          ? '⚙️ **Función de voz no disponible.** Por favor, verifica la configuración.'
+          : '⚙️ **Voice feature unavailable.** Please check settings.';
+      }
+
+      return err.message || msg || (language === 'es' ? 'Error en la conexión de voz.' : 'Voice connection error.');
+    };
+
+    const {
+      start: startLive,
+      stop: stopLive,
+      isListening: isLiveListening,
+      isConnected: isLiveConnected,
+      error: liveError
+    } = useGeminiLive(useMemo(() => ({
+      onMessage: (text: string) => {
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
+            return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+          }
+          return [...prev, { id: Date.now(), text, sender: 'ai' }];
+        });
+      },
+      onCommand: (command: string, args: any) => {
+        handlersRef.current.handleCommandResponse?.({ type: 'command', data: { command: command as Command, args } });
+      },
+      onError: (err: any) => {
+        console.error('[AIChatPanel] Voice error received:', err);
+        const errorMessage = getFriendlyErrorMessage(err);
+        const isCritical = typeof err === 'string' && (err === 'MANUAL_FALLBACK' || err.includes('quota'));
+
+        // Display error message to user in chat
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          sender: 'ai',
+          text: errorMessage,
+        }]);
+
+        if (isCritical) {
+          setInputMode('text');
         } else {
-          errorMessage = err.message || (language === 'es' ? 'Error en la conexión de voz.' : 'Voice connection error.');
-        }
-      } else {
-        // Legacy error handling
-        const msg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
-        const isQuota = msg.includes('quota') || msg.includes('429') || msg.includes('1011') || msg.includes('plan');
-        const isManual = msg === 'MANUAL_FALLBACK';
-
-        if (isQuota || isManual) {
-          errorMessage = isManual
-            ? (language === 'es' ? '🛡️ **Modo Manual Activo.** La función de voz requiere Gemini directo. Por favor, desctiva "Forzar OpenRouter" en Configuración o usa el modo texto.' : '🛡️ **Manual Mode Active.** Voice features require direct Gemini. Please disable "Force OpenRouter" in Settings or use text mode.')
-            : (language === 'es' ? '🎤 **Cuota de voz excedida.** Cambiando a modo texto.' : '🎤 **Voice quota exceeded.** Switching to text mode.');
-          shouldFallbackToText = true;
-        } else {
-          errorMessage = language === 'es' ? 'Error en la conexión de voz.' : 'Voice connection error.';
+          showToast?.(errorMessage, 'danger');
         }
       }
+    }), [language, showToast]));
 
-      // Display error message to user
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        sender: 'ai',
-        text: errorMessage,
-      }]);
+    const displayLiveError = useMemo(() => liveError ? getFriendlyErrorMessage(liveError) : null, [liveError, language]);
 
-      // Fallback to text mode if needed
-      if (shouldFallbackToText) {
-        setInputMode('text');
-      } else {
-        showToast?.(errorMessage, 'danger');
+    // 3. Speak Utility (now has access to isLiveConnected)
+    const speak = useCallback((text: string) => {
+      if (inputMode === 'voice' && isLiveConnected) return;
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'es' ? 'es-ES' : language === 'pt' ? 'pt-BR' : 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }, [inputMode, language, isLiveConnected]);
+
+    // 4. Command Responder (now has access to speak)
+    const handleCommandResponse = useCallback((response: CommandResponse) => {
+      let aiText = '';
+      if (response.type === 'text') {
+        aiText = response.data;
+      } else if (response.type === 'command') {
+        const { command, args } = response.data;
+        switch (command) {
+          case Command.SHOW_LEADS:
+            const leadsQuery = args.status ? `status=${args.status}` : '';
+            navigate(`/leads?${leadsQuery}`);
+            aiText = language === 'es' ? `Entendido. Te muestro los leads${args.status ? ` con estado ${args.status}` : ''}.` : `Sure. Showing leads${args.status ? ` with status ${args.status}` : ''}.`;
+            break;
+          case Command.CREATE_TASK:
+            aiText = language === 'es' ? `¡Hecho! He creado la tarea para ${args.assignee}: "${args.title}"${args.dueDate ? ` para el ${args.dueDate}` : ''}.` : `Done! I created the task for ${args.assignee}: "${args.title}"${args.dueDate ? ` for ${args.dueDate}` : ''}.`;
+            showToast?.(aiText, 'success');
+            break;
+          case Command.FIND_CUSTOMER:
+            navigate(`/customers?search=${args.name || args.company || ''}`);
+            aiText = language === 'es' ? `Buscando al cliente ${args.name || args.company}...` : `Searching for customer ${args.name || args.company}...`;
+            break;
+          case 'navigate' as Command:
+            const screen = (args.screen || '').toLowerCase();
+            navigate(`/${screen}`);
+            aiText = language === 'es' ? `Cambiando a la pantalla de ${screen}.` : `Navigating to the ${screen} screen.`;
+            break;
+          case 'create_lead' as Command:
+            navigate(`/leads?create=true&name=${encodeURIComponent(args.name || '')}&company=${encodeURIComponent(args.company || '')}`);
+            aiText = language === 'es' ? `He abierto el formulario para crear el nuevo lead: ${args.name}.` : `I've opened the form to create a new lead for ${args.name}.`;
+            break;
+          case 'create_deal' as Command:
+            navigate(`/deals?create=true&title=${encodeURIComponent(args.title || '')}`);
+            aiText = language === 'es' ? `Preparando la nueva oportunidad: ${args.title}.` : `Preparing the new opportunity: ${args.title}.`;
+            break;
+          case 'create_alert' as Command:
+            aiText = language === 'es' ? `Alerta creada: "${args.message}". Te lo recordaré.` : `Alert created: "${args.message}". I'll remind you.`;
+            showToast?.(aiText, 'info');
+            break;
+          case 'initiate_call' as Command:
+            aiText = language === 'es' ? `Iniciando ${args.type === 'video' ? 'videollamada' : 'llamada'} con ${args.member}...` : `Initiating ${args.type === 'video' ? 'video call' : 'call'} with ${args.member}...`;
+            showToast?.(aiText, 'info');
+            break;
+          default:
+            aiText = language === 'es' ? "Entiendo la orden, pero aún estoy aprendiendo a ejecutar esa acción específica." : "I understand the instruction, but I'm still learning how to perform that specific action.";
+        }
       }
-    }
-  }), [language, showToast]));
+      setMessages(prev => [...prev, { id: Date.now(), text: aiText, sender: 'ai' }]);
+      speak(aiText);
+    }, [language, navigate, showToast, speak]);
 
-  // 3. Speak Utility (now has access to isLiveConnected)
-  const speak = useCallback((text: string) => {
-    if (inputMode === 'voice' && isLiveConnected) return;
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === 'es' ? 'es-ES' : language === 'pt' ? 'pt-BR' : 'en-US';
-    window.speechSynthesis.speak(utterance);
-  }, [inputMode, language, isLiveConnected]);
+    // Keep ref updated
+    handlersRef.current.handleCommandResponse = handleCommandResponse;
 
-  // 4. Command Responder (now has access to speak)
-  const handleCommandResponse = useCallback((response: CommandResponse) => {
-    let aiText = '';
-    if (response.type === 'text') {
-      aiText = response.data;
-    } else if (response.type === 'command') {
-      const { command, args } = response.data;
-      switch (command) {
-        case Command.SHOW_LEADS:
-          const leadsQuery = args.status ? `status=${args.status}` : '';
-          navigate(`/leads?${leadsQuery}`);
-          aiText = language === 'es' ? `Entendido. Te muestro los leads${args.status ? ` con estado ${args.status}` : ''}.` : `Sure. Showing leads${args.status ? ` with status ${args.status}` : ''}.`;
-          break;
-        case Command.CREATE_TASK:
-          aiText = language === 'es' ? `¡Hecho! He creado la tarea para ${args.assignee}: "${args.title}"${args.dueDate ? ` para el ${args.dueDate}` : ''}.` : `Done! I created the task for ${args.assignee}: "${args.title}"${args.dueDate ? ` for ${args.dueDate}` : ''}.`;
-          showToast?.(aiText, 'success');
-          break;
-        case Command.FIND_CUSTOMER:
-          navigate(`/customers?search=${args.name || args.company || ''}`);
-          aiText = language === 'es' ? `Buscando al cliente ${args.name || args.company}...` : `Searching for customer ${args.name || args.company}...`;
-          break;
-        case 'navigate' as Command:
-          const screen = (args.screen || '').toLowerCase();
-          navigate(`/${screen}`);
-          aiText = language === 'es' ? `Cambiando a la pantalla de ${screen}.` : `Navigating to the ${screen} screen.`;
-          break;
-        case 'create_lead' as Command:
-          navigate(`/leads?create=true&name=${encodeURIComponent(args.name || '')}&company=${encodeURIComponent(args.company || '')}`);
-          aiText = language === 'es' ? `He abierto el formulario para crear el nuevo lead: ${args.name}.` : `I've opened the form to create a new lead for ${args.name}.`;
-          break;
-        case 'create_deal' as Command:
-          navigate(`/deals?create=true&title=${encodeURIComponent(args.title || '')}`);
-          aiText = language === 'es' ? `Preparando la nueva oportunidad: ${args.title}.` : `Preparing the new opportunity: ${args.title}.`;
-          break;
-        case 'create_alert' as Command:
-          aiText = language === 'es' ? `Alerta creada: "${args.message}". Te lo recordaré.` : `Alert created: "${args.message}". I'll remind you.`;
-          showToast?.(aiText, 'info');
-          break;
-        case 'initiate_call' as Command:
-          aiText = language === 'es' ? `Iniciando ${args.type === 'video' ? 'videollamada' : 'llamada'} con ${args.member}...` : `Initiating ${args.type === 'video' ? 'video call' : 'call'} with ${args.member}...`;
-          showToast?.(aiText, 'info');
-          break;
-        default:
-          aiText = language === 'es' ? "Entiendo la orden, pero aún estoy aprendiendo a ejecutar esa acción específica." : "I understand the instruction, but I'm still learning how to perform that specific action.";
-      }
-    }
-    setMessages(prev => [...prev, { id: Date.now(), text: aiText, sender: 'ai' }]);
-    speak(aiText);
-  }, [language, navigate, showToast, speak]);
-
-  // Keep ref updated
-  handlersRef.current.handleCommandResponse = handleCommandResponse;
-
-  // 5. Voice Input (Standard)
-  const { isListening: isSTTListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
+    // 5. Voice Input (Standard)
+    const { isListening: isSTTListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
 
 
 
-  const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
+    const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
 
-  useEffect(() => {
+    useEffect(() => {
     localStorage.setItem('oneskin_ai_input_mode', inputMode);
     // Stop any active listening when switching modes, but ONLY if they belong to the mode being deactivated
     if (inputMode === 'text' && isLiveListening) stopLive();
@@ -399,9 +416,9 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
               </button>
             </div>
           </div>
-          {(voiceError || liveError) && (
+          {(voiceError || displayLiveError) && (
             <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-xs text-red-600 dark:text-red-400">
-              {voiceError || liveError}
+              {voiceError || displayLiveError}
             </div>
           )}
           {inputMode === 'voice' ? (
