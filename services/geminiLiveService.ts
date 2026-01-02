@@ -17,8 +17,11 @@ class GeminiLiveService {
 
     async connect(options: LiveChatOptions) {
         this.options = options;
-        const forceOpenRouter = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'true';
-        if (forceOpenRouter) {
+        const forceOpenRouterVal = typeof window !== 'undefined' ? localStorage.getItem('oneskin_force_openrouter') : null;
+        console.log('[GeminiLive] Checking Manual Mode (Force OpenRouter):', forceOpenRouterVal);
+
+        if (forceOpenRouterVal === 'true') {
+            console.warn('[GeminiLive] Manual Mode is ACTIVE. Blocking voice connection.');
             options.onError?.('MANUAL_FALLBACK');
             return;
         }

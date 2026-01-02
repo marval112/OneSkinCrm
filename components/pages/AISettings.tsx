@@ -20,8 +20,10 @@ function AISettings() {
   }, []);
 
   const save = async () => {
+    console.log('[AISettings] Saving configuration...', { forceOpenRouter });
     const ok = await setGeminiApiKey(key);
     localStorage.setItem('oneskin_force_openrouter', forceOpenRouter.toString());
+    console.log('[AISettings] localStorage updated:', localStorage.getItem('oneskin_force_openrouter'));
 
     toast?.showToast(
       language === 'es' ? 'Configuración de IA guardada.' : 'AI settings saved.',
