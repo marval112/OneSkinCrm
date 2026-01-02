@@ -41,62 +41,56 @@ class GeminiLiveService {
 
             console.log('[GeminiLive] Connecting to models/gemini-2.0-flash-exp (v1beta)...');
 
-            // @ts-ignore - Direct connect via the main instance with FLATTENED config
+            // @ts-ignore - Direct connect via the main instance with callbacks
             this.session = await (ai as any).live.connect({
                 model: 'models/gemini-2.0-flash-exp',
-                generationConfig: {
-                    responseModalities: ["audio"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: {
-                                voiceName: 'Puck',
-                            }
-                        }
-                    }
-                },
                 systemInstruction: {
                     parts: [{
                         text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
                     }]
+                },
+                // Flattening generation config properties as suggested by SDK source
+                responseModalities: ["audio"],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: {
+                            voiceName: 'Puck',
+                        }
+                    }
+                },
+                callbacks: {
+                    onopen: () => {
+                        console.log('[GeminiLive] WebSocket Connection Established (via callbacks)');
+                        this.retryCount = 0;
+                    },
+                    onmessage: (message: any) => {
+                        if (message.setupComplete) {
+                            console.log('[GeminiLive] Setup Complete (via callbacks)');
+                            this.isReady = true;
+                        }
+                        this.handleLiveMessage(message);
+                    },
+                    onerror: (e: any) => {
+                        console.error('[GeminiLive] SDK Error (via callbacks):', e);
+                        this.options.onError?.(e);
+                    },
+                    onclose: (e: any) => {
+                        console.warn('[GeminiLive] WebSocket Closed (via callbacks):', e);
+                        this.isReady = false;
+
+                        const code = e.code || 0;
+                        const reason = e.reason || "";
+
+                        if (code === 1007 || (code === 1000 && !this.isReady)) {
+                            console.error(`[GeminiLive] 1007 Precondition Error. Reason: ${reason}`);
+                            this.options.onError?.({
+                                type: 'config',
+                                message: `Voice error 1007: ${reason || 'Precondition check failed (Check keys/region)'}`
+                            });
+                        }
+                        this.options.onClose?.();
+                    }
                 }
-            });
-
-            this.session.on('open', () => {
-                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-                    sampleRate: 16000,
-                });
-                console.log('[GeminiLive] WebSocket Connection Established');
-                this.retryCount = 0;
-            });
-
-            this.session.on('message', (message: any) => {
-                if (message.setupComplete) {
-                    console.log('[GeminiLive] Setup Complete');
-                    this.isReady = true;
-                }
-                this.handleLiveMessage(message);
-            });
-
-            this.session.on('error', (e: any) => {
-                console.error('[GeminiLive] SDK Error:', e);
-                this.options.onError?.(e);
-            });
-
-            this.session.on('close', (e: any) => {
-                console.warn('[GeminiLive] WebSocket Closed:', e);
-                this.isReady = false;
-
-                const code = e.code || 0;
-                const reason = e.reason || "";
-
-                if (code === 1007 || (code === 1000 && !this.isReady)) {
-                    console.error(`[GeminiLive] 1007 Precondition Error. Reason: ${reason}`);
-                    this.options.onError?.({
-                        type: 'config',
-                        message: `Voice error 1007: ${reason || 'Precondition check failed (Check keys/region)'}`
-                    });
-                }
-                this.options.onClose?.();
             });
         } catch (error: any) {
             console.error('[GeminiLive] Connection Error:', error);
