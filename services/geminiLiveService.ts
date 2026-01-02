@@ -60,7 +60,8 @@ class GeminiLiveService {
             console.log('[GeminiLive] Using API version: v1beta');
 
             // Using the callback structure which previously resulted in a successful handshake
-            // @ts-ignore
+            // @ts-ignore - Using the live property from the SDK
+            // In @google/genai 1.28.0+, we connect and then use .on() for events
             this.session = await ai.live.connect({
                 model: 'models/gemini-2.0-flash-exp',
                 config: {
@@ -69,38 +70,41 @@ class GeminiLiveService {
                             text: "Eres un mentor de ventas proactivo y secretario ejecutivo para OneSkin. Tu tono es profesional, motivador y elegante. Responde siempre de forma audaz para ayudar a cerrar ventas."
                         }]
                     },
-                    // Flattened: responseModalities and speechConfig are now direct members of config
-                    responseModalities: [Modality.AUDIO],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: {
-                                voiceName: 'Charon',
+                    generationConfig: {
+                        responseModalities: [Modality.AUDIO],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: 'Charon',
+                                }
                             }
                         }
                     }
-                },
-                callbacks: {
-                    onopen: () => {
-                        console.log('[GeminiLive] Native Session Opened Successfully');
-                        this.retryCount = 0;
-                    },
-                    onmessage: (message: any) => {
-                        console.log('[GeminiLive] Message received:', JSON.stringify(message).substring(0, 200));
-                        this.handleLiveMessage(message);
-                    },
-                    onerror: (e: any) => {
-                        console.error('[GeminiLive] SDK Error detail:', e);
-                        this.options.onError?.(e);
-                    },
-                    onclose: (e: any) => {
-                        console.warn('[GeminiLive] Session Closed detail:', e);
-                        if (e.code === 1007) {
-                            console.error('[GeminiLive] Precondition check failed - verify API configuration');
-                            this.options.onError?.({ type: 'config', message: 'Voice feature unavailable. Please check settings.' });
-                        }
-                        this.options.onClose?.();
-                    }
                 }
+            });
+
+            this.session.on('open', () => {
+                console.log('[GeminiLive] Native Session Opened Successfully');
+                this.retryCount = 0;
+            });
+
+            this.session.on('message', (message: any) => {
+                console.log('[GeminiLive] Message received:', JSON.stringify(message).substring(0, 200));
+                this.handleLiveMessage(message);
+            });
+
+            this.session.on('error', (e: any) => {
+                console.error('[GeminiLive] SDK Error detail:', e);
+                this.options.onError?.(e);
+            });
+
+            this.session.on('close', (e: any) => {
+                console.warn('[GeminiLive] Session Closed detail:', e);
+                if (e.code === 1007) {
+                    console.error('[GeminiLive] Precondition check failed - verify API configuration');
+                    this.options.onError?.({ type: 'config', message: 'Voice feature unavailable. Please check settings.' });
+                }
+                this.options.onClose?.();
             });
         } catch (error: any) {
             console.error('[GeminiLive] Connection Error:', error);
