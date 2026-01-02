@@ -33,72 +33,66 @@ class GeminiLiveService {
             return;
         }
 
+        // Diagnostic: Masked key logging
+        console.log('[GeminiLive] Using Key (masked):', `${key.substring(0, 5)}...${key.substring(key.length - 4)}`);
+
         try {
-            // Use v1beta for better stability with native audio preview
-            const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1beta' });
+            const genAI = new GoogleGenAI(key);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" }, { apiVersion: 'v1beta' });
 
-            const modelName = 'gemini-2.0-flash-exp';
+            console.log('[GeminiLive] Connecting via getGenerativeModel (v1beta)...');
 
-            console.log('[GeminiLive] Connecting to:', modelName);
-            console.log('[GeminiLive] Using API version: v1beta');
-
-            // @ts-ignore - Using the live property from the SDK
-            // In @google/genai 1.28.0+, we connect and use .on() for events
-            // We use 'gemini-2.0-flash-exp' without 'models/' prefix as the SDK adds it
-            this.session = await ai.live.connect({
-                model: 'gemini-2.0-flash-exp', // Try without models/ prefix as some SDK versions double-prefix
+            // @ts-ignore - Using the live property from the SDK for multimodal live
+            this.session = await (model as any).live.connect({
                 config: {
+                    generationConfig: {
+                        responseModalities: [Modality.AUDIO],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: 'Puck', // Puck is often more stable in preview
+                                }
+                            }
+                        }
+                    },
                     systemInstruction: {
                         parts: [{
                             text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
                         }]
-                    },
-                    generationConfig: {
-                        responseModalities: ["audio" as any],
-                        speechConfig: {
-                            voiceConfig: {
-                                prebuiltVoiceConfig: {
-                                    voiceName: 'Puck', // Try 'Puck' as a safe default
-                                }
-                            }
-                        }
                     }
                 }
             });
 
             this.session.on('open', () => {
-                console.log('[GeminiLive] WebSocket Opened Successfully');
+                console.log('[GeminiLive] WebSocket Connection Established');
                 this.retryCount = 0;
             });
 
             this.session.on('message', (message: any) => {
                 if (message.setupComplete) {
-                    console.log('[GeminiLive] Handshake Complete (Setup received)');
+                    console.log('[GeminiLive] Setup Complete received - Session Ready');
                     this.isReady = true;
                 }
                 this.handleLiveMessage(message);
             });
 
             this.session.on('error', (e: any) => {
-                console.error('[GeminiLive] Session Level Error:', e);
-                if (e.message) console.error('[GeminiLive] Error content:', e.message);
+                console.error('[GeminiLive] SDK Error:', e);
                 this.options.onError?.(e);
             });
 
             this.session.on('close', (e: any) => {
-                console.warn('[GeminiLive] Session Closed event received:', e);
+                console.warn('[GeminiLive] Connection Closed:', e);
                 this.isReady = false;
 
-                // Detailed 1007 diagnosis
-                const closeCode = e.code || (e as any).reason_code;
-                const closeReason = e.reason || (e as any).reason_phrase || (e as any).message;
+                const code = e.code || (e as any).reason_code;
+                const reason = e.reason || (e as any).reason_phrase || (e as any).message;
 
-                if (closeCode === 1007) {
-                    console.error(`[GeminiLive] PRECONDITION FAILED (1007). Reason: ${closeReason || 'Unknown'}`);
-                    console.info('[GeminiLive] Check: API Key permissions, Model access, or invalid Modality structure.');
+                if (code === 1007) {
+                    console.error(`[GeminiLive] PRECONDITION FAILED (1007). Reason: ${reason || 'Unknown'}`);
                     this.options.onError?.({
                         type: 'config',
-                        message: `Voice config error (1007): ${closeReason || 'Precondition check failed'}`
+                        message: `Voice config error (1007): ${reason || 'Precondition failed - Check key/region'}`
                     });
                 }
                 this.options.onClose?.();
