@@ -18,7 +18,7 @@ export function useGeminiLive(options: LiveChatOptions) {
     const audioContextRef = useRef<AudioContext | null>(null);
     const playbackContextRef = useRef<AudioContext | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    const processorRef = useRef<ScriptProcessorNode | null>(null);
+    const workletNodeRef = useRef<AudioWorkletNode | null>(null);
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const nextStartTimeRef = useRef<number>(0);
 
@@ -52,9 +52,9 @@ export function useGeminiLive(options: LiveChatOptions) {
         setIsConnected(false);
         setIsListening(false);
 
-        if (processorRef.current) {
-            processorRef.current.disconnect();
-            processorRef.current = null;
+        if (workletNodeRef.current) {
+            workletNodeRef.current.disconnect();
+            workletNodeRef.current = null;
         }
         if (sourceRef.current) {
             sourceRef.current.disconnect();
@@ -98,33 +98,36 @@ export function useGeminiLive(options: LiveChatOptions) {
             });
             setIsConnected(true);
 
-            // 2. Setup Audio - Use 24kHz to match Gemini Live output
+            // 2. Setup Audio - Use 24kHz
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             streamRef.current = stream;
 
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-                sampleRate: 24000, // Changed from 16000 to 24000 to match output
+                sampleRate: 24000,
             });
             audioContextRef.current = audioContext;
+
+            // Load the PCM processor worklet
+            try {
+                await audioContext.audioWorklet.addModule('/pcm-processor.js');
+            } catch (workletErr) {
+                console.error('[useGeminiLive] Failed to load audio worklet:', workletErr);
+                throw new Error('Failed to initialize audio processor');
+            }
 
             const source = audioContext.createMediaStreamSource(stream);
             sourceRef.current = source;
 
-            const processor = audioContext.createScriptProcessor(4096, 1, 1);
-            processorRef.current = processor;
+            const workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+            workletNodeRef.current = workletNode;
 
-            processor.onaudioprocess = (e) => {
-                const inputData = e.inputBuffer.getChannelData(0);
-                // Convert Float32 to Int16
-                const pcmData = new Int16Array(inputData.length);
-                for (let i = 0; i < inputData.length; i++) {
-                    pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
-                }
+            workletNode.port.onmessage = (event) => {
+                const pcmData = event.data;
                 geminiLiveService.sendAudio(pcmData);
             };
 
-            source.connect(processor);
-            processor.connect(audioContext.destination);
+            source.connect(workletNode);
+            workletNode.connect(audioContext.destination);
 
             setIsListening(true);
         } catch (err: any) {

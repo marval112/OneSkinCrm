@@ -125,7 +125,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
 
         if (isQuota || isManual) {
           errorMessage = isManual
-            ? (language === 'es' ? '🛡️ **Modo Manual Activo.** Usando modelos de respaldo.' : '🛡️ **Manual Mode Active.** Using fallback models.')
+            ? (language === 'es' ? '🛡️ **Modo Manual Activo.** La función de voz requiere Gemini directo. Por favor, desctiva "Forzar OpenRouter" en Configuración o usa el modo texto.' : '🛡️ **Manual Mode Active.** Voice features require direct Gemini. Please disable "Force OpenRouter" in Settings or use text mode.')
             : (language === 'es' ? '🎤 **Cuota de voz excedida.** Cambiando a modo texto.' : '🎤 **Voice quota exceeded.** Switching to text mode.');
           shouldFallbackToText = true;
         } else {
