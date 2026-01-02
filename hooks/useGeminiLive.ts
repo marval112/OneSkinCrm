@@ -25,13 +25,13 @@ export function useGeminiLive(options: LiveChatOptions) {
     const playAudioChunk = useCallback((pcmData: Int16Array) => {
         if (!playbackContextRef.current) {
             playbackContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
-                sampleRate: 24000,
+                sampleRate: 16000,
             });
             nextStartTimeRef.current = playbackContextRef.current.currentTime;
         }
 
         const context = playbackContextRef.current;
-        const buffer = context.createBuffer(1, pcmData.length, 24000);
+        const buffer = context.createBuffer(1, pcmData.length, 16000);
         const channelData = buffer.getChannelData(0);
 
         for (let i = 0; i < pcmData.length; i++) {
@@ -103,7 +103,7 @@ export function useGeminiLive(options: LiveChatOptions) {
             streamRef.current = stream;
 
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-                sampleRate: 24000,
+                sampleRate: 16000,
             });
             audioContextRef.current = audioContext;
 

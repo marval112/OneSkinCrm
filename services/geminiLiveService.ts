@@ -37,31 +37,36 @@ class GeminiLiveService {
         console.log('[GeminiLive] Using Key (masked):', `${key.substring(0, 5)}...${key.substring(key.length - 4)}`);
 
         try {
-            const genAI = new GoogleGenAI(key);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" }, { apiVersion: 'v1beta' });
+            const ai = new GoogleGenAI({ apiKey: key });
 
-            console.log('[GeminiLive] Connecting to gemini-2.0-flash-exp (v1beta)...');
+            console.log('[GeminiLive] Connecting to models/gemini-2.0-flash-exp (v1beta)...');
 
-            // @ts-ignore - Direct connect via model instance
-            this.session = await (model as any).live.connect({
-                generationConfig: {
-                    responseModalities: ["audio"] as any,
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: {
-                                voiceName: 'Puck',
+            // @ts-ignore - Direct connect via the main instance for cleaner handshake
+            this.session = await (ai as any).live.connect({
+                model: 'models/gemini-2.0-flash-exp',
+                config: {
+                    generationConfig: {
+                        responseModalities: ["audio"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: 'Puck',
+                                }
                             }
                         }
+                    },
+                    systemInstruction: {
+                        parts: [{
+                            text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
+                        }]
                     }
-                },
-                systemInstruction: {
-                    parts: [{
-                        text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
-                    }]
                 }
             });
 
             this.session.on('open', () => {
+                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+                    sampleRate: 16000,
+                });
                 console.log('[GeminiLive] WebSocket Connection Established');
                 this.retryCount = 0;
             });
@@ -145,7 +150,7 @@ class GeminiLiveService {
             this.session.send({
                 realtimeInput: {
                     mediaChunks: [{
-                        mimeType: 'audio/pcm;rate=24000',
+                        mimeType: 'audio/pcm;rate=16000',
                         data: base64Audio
                     }]
                 }
