@@ -36,21 +36,20 @@ class GeminiLiveService {
             // Use v1beta for better stability with native audio preview
             const ai = new GoogleGenAI({ apiKey: key, apiVersion: 'v1beta' });
 
-            const model = 'models/gemini-2.5-flash-native-audio-preview-12-2025';
+            const model = 'models/gemini-2.0-flash-exp';
 
-            // Restructured config with generationConfig for proper audio setup
-            // Flattened config structure as required by the latest SDK versions
-            // to avoid "Precondition check failed" (1007) errors.
+            // Standard Multimodal Live API configuration
             const config = {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: {
-                            voiceName: 'Charon',
+                // @ts-ignore - response_modalities might be required in snake_case by some SDK versions
+                response_modalities: ["audio"],
+                speech_config: {
+                    voice_config: {
+                        prebuilt_voice_config: {
+                            voice_name: 'Charon',
                         }
                     }
                 },
-                systemInstruction: {
+                system_instruction: {
                     parts: [{
                         text: "Eres un mentor de ventas proactivo y secretario ejecutivo para OneSkin. Tu tono es profesional, motivador y elegante. Responde siempre de forma audaz para ayudar a cerrar ventas."
                     }]
@@ -60,14 +59,31 @@ class GeminiLiveService {
             console.log('[GeminiLive] Connecting to:', model);
             console.log('[GeminiLive] Using API version: v1beta');
 
-            // @ts-ignore - Using the live property from the SDK
+            // Using the callback structure which previously resulted in a successful handshake
+            // @ts-ignore
             this.session = await ai.live.connect({
-                model,
-                config,
+                model: 'models/gemini-2.0-flash-exp',
+                config: {
+                    systemInstruction: {
+                        parts: [{
+                            text: "Eres un mentor de ventas proactivo y secretario ejecutivo para OneSkin. Tu tono es profesional, motivador y elegante. Responde siempre de forma audaz para ayudar a cerrar ventas."
+                        }]
+                    },
+                    generationConfig: {
+                        responseModalities: [Modality.AUDIO],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: 'Charon',
+                                }
+                            }
+                        }
+                    }
+                },
                 callbacks: {
                     onopen: () => {
                         console.log('[GeminiLive] Native Session Opened Successfully');
-                        this.retryCount = 0; // Reset retry count on successful connection
+                        this.retryCount = 0;
                     },
                     onmessage: (message: any) => {
                         console.log('[GeminiLive] Message received:', JSON.stringify(message).substring(0, 200));
@@ -75,41 +91,14 @@ class GeminiLiveService {
                     },
                     onerror: (e: any) => {
                         console.error('[GeminiLive] SDK Error detail:', e);
-                        if (e.message) console.error('[GeminiLive] SDK Error Message:', e.message);
-
-                        // Classify error type
-                        const errorStr = JSON.stringify(e).toLowerCase();
-                        const isQuotaError = errorStr.includes('quota') ||
-                            errorStr.includes('429') ||
-                            errorStr.includes('1011') ||
-                            errorStr.includes('resource_exhausted');
-                        const isConfigError = errorStr.includes('1007') ||
-                            errorStr.includes('precondition');
-
-                        if (isQuotaError) {
-                            console.warn('[GeminiLive] Quota exhausted - triggering fallback');
-                            this.options.onError?.({ type: 'quota', message: 'Voice quota exceeded' });
-                        } else if (isConfigError) {
-                            console.error('[GeminiLive] Configuration error - check API settings');
-                            this.options.onError?.({ type: 'config', message: 'Voice configuration error' });
-                        } else {
-                            this.options.onError?.(e);
-                        }
+                        this.options.onError?.(e);
                     },
                     onclose: (e: any) => {
                         console.warn('[GeminiLive] Session Closed detail:', e);
-                        if (e.code) console.warn('[GeminiLive] Close Code:', e.code);
-                        if (e.reason) console.warn('[GeminiLive] Close Reason:', e.reason);
-
-                        // Handle specific close codes
                         if (e.code === 1007) {
                             console.error('[GeminiLive] Precondition check failed - verify API configuration');
                             this.options.onError?.({ type: 'config', message: 'Voice feature unavailable. Please check settings.' });
-                        } else if (e.code === 1011) {
-                            console.warn('[GeminiLive] Server error - quota or internal issue');
-                            this.options.onError?.({ type: 'quota', message: 'Voice quota exceeded' });
                         }
-
                         this.options.onClose?.();
                     }
                 }
@@ -156,26 +145,39 @@ class GeminiLiveService {
     sendAudio(pcmData: Int16Array) {
         if (!this.session) return;
 
-        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
-        this.session.sendClientContent({
-            turns: [
-                {
-                    parts: [{
-                        inlineData: {
-                            mimeType: 'audio/pcm;rate=24000', // Updated from 16000 to 24000
-                            data: base64Audio
-                        }
+        try {
+            const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
+
+            // Multimodal Live API expects realtimeInput for audio streams
+            this.session.send({
+                realtimeInput: {
+                    mediaChunks: [{
+                        mimeType: 'audio/pcm;rate=24000',
+                        data: base64Audio
                     }]
                 }
-            ]
-        });
+            });
+        } catch (err) {
+            console.error('[GeminiLive] Error sending audio:', err);
+        }
     }
 
     sendText(text: string) {
         if (!this.session) return;
-        this.session.sendClientContent({
-            turns: [text]
-        });
+
+        try {
+            // Multimodal Live API expects clientContent for text
+            this.session.send({
+                clientContent: {
+                    turns: [{
+                        parts: [{ text }]
+                    }],
+                    turnComplete: true
+                }
+            });
+        } catch (err) {
+            console.error('[GeminiLive] Error sending text:', err);
+        }
     }
 
     disconnect() {
