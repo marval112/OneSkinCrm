@@ -46,7 +46,7 @@ class GeminiLiveService {
             // In @google/genai 1.28.0+, we connect and use .on() for events
             // We use 'gemini-2.0-flash-exp' without 'models/' prefix as the SDK adds it
             this.session = await ai.live.connect({
-                model: 'models/gemini-2.0-flash-exp',
+                model: 'gemini-2.0-flash-exp', // Try without models/ prefix as some SDK versions double-prefix
                 config: {
                     systemInstruction: {
                         parts: [{
@@ -54,11 +54,11 @@ class GeminiLiveService {
                         }]
                     },
                     generationConfig: {
-                        responseModalities: [Modality.AUDIO],
+                        responseModalities: ["audio" as any],
                         speechConfig: {
                             voiceConfig: {
                                 prebuiltVoiceConfig: {
-                                    voiceName: 'Charon',
+                                    voiceName: 'Puck', // Try 'Puck' as a safe default
                                 }
                             }
                         }
@@ -67,32 +67,38 @@ class GeminiLiveService {
             });
 
             this.session.on('open', () => {
-                console.log('[GeminiLive] WebSocket Opened');
+                console.log('[GeminiLive] WebSocket Opened Successfully');
                 this.retryCount = 0;
             });
 
             this.session.on('message', (message: any) => {
                 if (message.setupComplete) {
-                    console.log('[GeminiLive] Model Ready (Setup Complete)');
+                    console.log('[GeminiLive] Handshake Complete (Setup received)');
                     this.isReady = true;
                 }
                 this.handleLiveMessage(message);
             });
 
             this.session.on('error', (e: any) => {
-                console.error('[GeminiLive] Session Error:', e);
+                console.error('[GeminiLive] Session Level Error:', e);
+                if (e.message) console.error('[GeminiLive] Error content:', e.message);
                 this.options.onError?.(e);
             });
 
             this.session.on('close', (e: any) => {
-                console.warn('[GeminiLive] Session Closed:', e);
+                console.warn('[GeminiLive] Session Closed event received:', e);
                 this.isReady = false;
 
-                if (e.code === 1007) {
-                    console.error('[GeminiLive] Precondition failed (1007) - Check config/model');
+                // Detailed 1007 diagnosis
+                const closeCode = e.code || (e as any).reason_code;
+                const closeReason = e.reason || (e as any).reason_phrase || (e as any).message;
+
+                if (closeCode === 1007) {
+                    console.error(`[GeminiLive] PRECONDITION FAILED (1007). Reason: ${closeReason || 'Unknown'}`);
+                    console.info('[GeminiLive] Check: API Key permissions, Model access, or invalid Modality structure.');
                     this.options.onError?.({
                         type: 'config',
-                        message: 'Voice configuration error. Please refresh and try again.'
+                        message: `Voice config error (1007): ${closeReason || 'Precondition check failed'}`
                     });
                 }
                 this.options.onClose?.();
