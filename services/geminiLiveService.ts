@@ -12,6 +12,7 @@ export interface LiveChatOptions {
 class GeminiLiveService {
     private session: any = null; // Typing as any to avoid strict versioning issues in browser
     private options: LiveChatOptions = {};
+    private isReady: boolean = false;
     private retryCount: number = 0;
     private maxRetries: number = 2;
 
@@ -45,15 +46,15 @@ class GeminiLiveService {
             // In @google/genai 1.28.0+, we connect and use .on() for events
             // We use 'gemini-2.0-flash-exp' without 'models/' prefix as the SDK adds it
             this.session = await ai.live.connect({
-                model: modelName,
+                model: 'models/gemini-2.0-flash-exp',
                 config: {
                     systemInstruction: {
                         parts: [{
-                            text: "Eres un mentor de ventas proactivo y secretario ejecutivo para OneSkin. Tu tono es profesional, motivador y elegante. Responde siempre de forma audaz para ayudar a cerrar ventas."
+                            text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
                         }]
                     },
                     generationConfig: {
-                        responseModalities: ["audio" as any],
+                        responseModalities: [Modality.AUDIO],
                         speechConfig: {
                             voiceConfig: {
                                 prebuiltVoiceConfig: {
@@ -66,37 +67,32 @@ class GeminiLiveService {
             });
 
             this.session.on('open', () => {
-                console.log('[GeminiLive] Native Session Opened Successfully');
+                console.log('[GeminiLive] WebSocket Opened');
                 this.retryCount = 0;
             });
 
             this.session.on('message', (message: any) => {
-                // Diagnostic log for message types
-                if (message.serverContent) {
-                    // Normal content
-                } else if (message.setupComplete) {
-                    console.log('[GeminiLive] Setup Complete received');
+                if (message.setupComplete) {
+                    console.log('[GeminiLive] Model Ready (Setup Complete)');
+                    this.isReady = true;
                 }
                 this.handleLiveMessage(message);
             });
 
             this.session.on('error', (e: any) => {
-                console.error('[GeminiLive] SDK Error detail:', e);
-                // If the error object has more info, log it
-                if (e.message) console.error('[GeminiLive] Error Message:', e.message);
+                console.error('[GeminiLive] Session Error:', e);
                 this.options.onError?.(e);
             });
 
             this.session.on('close', (e: any) => {
                 console.warn('[GeminiLive] Session Closed:', e);
-                const code = e.code || (e as any).reason_code;
-                const reason = e.reason || (e as any).reason_phrase;
+                this.isReady = false;
 
-                if (code === 1007) {
-                    console.error('[GeminiLive] Precondition check failed (1007). Reason:', reason);
+                if (e.code === 1007) {
+                    console.error('[GeminiLive] Precondition failed (1007) - Check config/model');
                     this.options.onError?.({
                         type: 'config',
-                        message: `Voice config error (1007): ${reason || 'Check model/parameters'}`
+                        message: 'Voice configuration error. Please refresh and try again.'
                     });
                 }
                 this.options.onClose?.();
@@ -141,12 +137,11 @@ class GeminiLiveService {
     }
 
     sendAudio(pcmData: Int16Array) {
-        if (!this.session) return;
+        if (!this.session || !this.isReady) return;
 
         try {
             const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
 
-            // Multimodal Live API expects realtimeInput for audio streams
             this.session.send({
                 realtimeInput: {
                     mediaChunks: [{
@@ -156,7 +151,7 @@ class GeminiLiveService {
                 }
             });
         } catch (err) {
-            console.error('[GeminiLive] Error sending audio:', err);
+            console.error('[GeminiLive] Send error:', err);
         }
     }
 
@@ -182,6 +177,7 @@ class GeminiLiveService {
         if (this.session) {
             this.session.close();
             this.session = null;
+            this.isReady = false;
         }
     }
 }
