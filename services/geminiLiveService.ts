@@ -39,14 +39,14 @@ class GeminiLiveService {
             const model = 'models/gemini-2.5-flash-native-audio-preview-12-2025';
 
             // Restructured config with generationConfig for proper audio setup
+            // Flattened config structure as required by the latest SDK versions
+            // to avoid "Precondition check failed" (1007) errors.
             const config = {
-                generationConfig: {
-                    responseModalities: [Modality.AUDIO],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: {
-                                voiceName: 'Charon',
-                            }
+                responseModalities: [Modality.AUDIO],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: {
+                            voiceName: 'Charon',
                         }
                     }
                 },
