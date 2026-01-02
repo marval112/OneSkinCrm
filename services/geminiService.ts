@@ -252,11 +252,11 @@ export async function generateWithFallback(client: any, params: any) {
   // Check if Gemini quota was previously exhausted
   const quotaExhausted = isGeminiQuotaExhausted();
 
-  // Check for manual fallback override
-  const forceGemini = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'false';
+  // Check for manual fallback override (Manual Mode)
+  const forceOpenRouter = typeof window !== 'undefined' && localStorage.getItem('oneskin_force_openrouter') === 'true';
 
   // Determine if we should try Gemini first
-  const shouldTryGemini = !quotaExhausted && forceGemini;
+  const shouldTryGemini = !quotaExhausted && !forceOpenRouter;
 
   // 1. Try Gemini Models first if quota is not exhausted and user prefers Gemini
   if (shouldTryGemini && client) {

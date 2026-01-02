@@ -52,19 +52,22 @@ function QuotaStatusIndicator() {
 function Settings() {
   const navigate = useNavigate();
   const [geminiKey, setKey] = useState('');
+  const [forceOpenRouter, setForceOpenRouter] = useState(false);
   const toast = useContext(ToastContext);
 
   useEffect(() => {
     const init = async () => {
       await loadGeminiApiKey();
       setKey(getGeminiApiKey() || '');
+      setForceOpenRouter(localStorage.getItem('oneskin_force_openrouter') === 'true');
     };
     init();
   }, []);
 
   const saveAI = async () => {
     const ok = await setGeminiApiKey(geminiKey);
-    toast?.showToast(ok ? 'Gemini API key saved.' : 'Failed to save Gemini API key.', ok ? 'success' : 'danger');
+    localStorage.setItem('oneskin_force_openrouter', forceOpenRouter.toString());
+    toast?.showToast(ok ? 'AI settings saved.' : 'Failed to save AI settings.', ok ? 'success' : 'danger');
   };
 
   const Card = ({ title, description, onClick }: { title: string; description: string; onClick: () => void }) => (
@@ -95,16 +98,32 @@ function Settings() {
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
         <h3 className="font-semibold mb-2">AI Settings</h3>
         <p className="text-sm text-slate-500 mb-3">Configure Google Gemini for AI features (lead scoring, insights, OCR).</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Gemini API Key</label>
-            <input type="password" value={geminiKey} onChange={e => setKey(e.target.value)} placeholder="AIza..." className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Gemini API Key</label>
+              <input type="password" value={geminiKey} onChange={e => setKey(e.target.value)} placeholder="AIza..." className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600" />
+            </div>
+            <div className="text-right">
+              <button onClick={saveAI} className="px-4 py-2 rounded-md bg-primary text-white">Save</button>
+            </div>
           </div>
-          <div className="text-right">
-            <button onClick={saveAI} className="px-4 py-2 rounded-md bg-primary text-white">Save</button>
+
+          <div className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-200 dark:border-slate-700">
+            <input
+              id="force-openrouter-settings"
+              type="checkbox"
+              checked={forceOpenRouter}
+              onChange={e => setForceOpenRouter(e.target.checked)}
+              className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
+            />
+            <label htmlFor="force-openrouter-settings" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+              Forzar OpenRouter (Modo Manual) - <span className="text-[10px] text-amber-600">Desactiva VOZ</span>
+            </label>
           </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">La clave se guarda de forma centralizada en la base de datos (Supabase).</p>
+
+        <p className="mt-2 text-[10px] text-slate-500 italic">La clave se guarda de forma centralizada en la base de datos (Supabase).</p>
 
         {/* Quota Status Indicator */}
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
