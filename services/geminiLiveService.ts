@@ -41,25 +41,23 @@ class GeminiLiveService {
 
             console.log('[GeminiLive] Connecting to models/gemini-2.0-flash-exp (v1beta)...');
 
-            // @ts-ignore - Direct connect via the main instance for cleaner handshake
+            // @ts-ignore - Direct connect via the main instance with FLATTENED config
             this.session = await (ai as any).live.connect({
                 model: 'models/gemini-2.0-flash-exp',
-                config: {
-                    generationConfig: {
-                        responseModalities: ["audio"],
-                        speechConfig: {
-                            voiceConfig: {
-                                prebuiltVoiceConfig: {
-                                    voiceName: 'Puck',
-                                }
+                generationConfig: {
+                    responseModalities: ["audio"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: 'Puck',
                             }
                         }
-                    },
-                    systemInstruction: {
-                        parts: [{
-                            text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
-                        }]
                     }
+                },
+                systemInstruction: {
+                    parts: [{
+                        text: "Eres un mentor de ventas proactivo para OneSkin. Tu tono es profesional y motivador."
+                    }]
                 }
             });
 
@@ -140,9 +138,8 @@ class GeminiLiveService {
     }
 
     sendAudio(pcmData: Int16Array) {
-        if (!this.session) return;
-        // Sending audio even if isReady is false to see if it triggers the setup
-        // Some backends might wait for the first chunk to finalize
+        if (!this.session || !this.isReady) return;
+        // Strictly enforcing isReady to prevent 1007 error from premature audio
 
         try {
             const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
