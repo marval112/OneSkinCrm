@@ -81,22 +81,27 @@ class GeminiLiveService {
                         const code = e.code || 0;
                         const reason = e.reason || "";
 
-                        if (code === 1007 || code === 1008 || (code === 1000 && !this.isReady)) {
+                        if (code === 1007 || code === 1008 || code === 1011 || (code === 1000 && !this.isReady)) {
                             console.error(`[GeminiLive] Connection Closed. Code: ${code}, Reason: ${reason}`);
 
                             // Diagnostic: List models in console to find the correct one
                             fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
                                 .then(r => r.json())
                                 .then(data => {
-                                    console.log('[GeminiLive] DEBUG: Available models for this key:',
-                                        data.models?.map((m: any) => `${m.name} (${m.supportedGenerationMethods.join(',')})`)
-                                    );
+                                    if (data.models) {
+                                        console.log('[GeminiLive] DEBUG: Available models for this key:');
+                                        data.models.forEach((m: any) => {
+                                            console.log(`- ${m.name} [${m.supportedGenerationMethods.join(', ')}]`);
+                                        });
+                                    } else {
+                                        console.warn('[GeminiLive] DEBUG: No models returned from API list:', data);
+                                    }
                                 })
                                 .catch(e => console.error('[GeminiLive] Failed to fetch debug model list:', e));
 
                             this.options.onError?.({
-                                type: 'config',
-                                message: `Voice error ${code}: ${reason || 'Precondition/Model check failed'}`
+                                type: 'quota',
+                                message: `Voice quota exceeded (Error ${code}). Check dashbord. Reason: ${reason}`
                             });
                         }
                         this.options.onClose?.();
