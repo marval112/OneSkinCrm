@@ -178,7 +178,26 @@ class GeminiLiveService {
 
                 // FIX: Use sendToolResponse instead of send
                 // @ts-ignore
-                this.session.sendToolResponse(toolResponse);
+                try {
+                    console.log('[GeminiLive] Attempting format 1: Pure Content');
+                    await this.session.sendToolResponse(toolResponse);
+                } catch (e1) {
+                    console.warn('[GeminiLive] Format 1 failed:', e1);
+                    try {
+                        console.log('[GeminiLive] Attempting format 2: Wrapped in toolResponse');
+                        // @ts-ignore
+                        await this.session.sendToolResponse({ toolResponse: toolResponse });
+                    } catch (e2) {
+                        console.warn('[GeminiLive] Format 2 failed:', e2);
+                        try {
+                            console.log('[GeminiLive] Attempting format 3: Direct Array');
+                            // @ts-ignore
+                            await this.session.sendToolResponse(toolResponse.functionResponses);
+                        } catch (e3) {
+                            console.error('[GeminiLive] All formats failed:', e3);
+                        }
+                    }
+                }
             }
         }
     }
