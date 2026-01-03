@@ -167,10 +167,15 @@ class GeminiLiveService {
 
         // Handle tool calls
         if (message.toolCall) {
-            console.log('[GeminiLive] Tool Call Received:', message.toolCall);
+            console.log('[GeminiLive] Tool Call Received FULL:', JSON.stringify(message.toolCall));
             const functionCalls = message.toolCall.functionCalls;
             if (functionCalls && functionCalls.length > 0) {
-                const toolResponse = await this.executeTool(functionCalls[0]);
+                const call = functionCalls[0];
+                console.log('[GeminiLive] Processing Tool Call ID:', call.id, 'Name:', call.name);
+
+                const toolResponse = await this.executeTool(call);
+                console.log('[GeminiLive] Sending Tool Response Payload:', JSON.stringify(toolResponse));
+
                 // FIX: Use sendToolResponse instead of send
                 // @ts-ignore
                 this.session.sendToolResponse(toolResponse);
