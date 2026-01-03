@@ -149,6 +149,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   // 3. Speak Utility (now has access to isLiveConnected)
   const speak = useCallback((text: string) => {
+    if (inputMode === 'text') return;
     if (inputMode === 'voice' && isLiveConnected) return;
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
