@@ -171,7 +171,9 @@ class GeminiLiveService {
             const functionCalls = message.toolCall.functionCalls;
             if (functionCalls && functionCalls.length > 0) {
                 const toolResponse = await this.executeTool(functionCalls[0]);
-                this.session.send({ toolResponse });
+                // FIX: Use sendToolResponse instead of send
+                // @ts-ignore
+                this.session.sendToolResponse(toolResponse);
             }
         }
     }
@@ -279,13 +281,13 @@ class GeminiLiveService {
     sendText(text: string) {
         if (!this.session || !this.isReady) return;
         try {
-            this.session.send({
-                clientContent: {
-                    turns: [{
-                        parts: [{ text }]
-                    }],
-                    turnComplete: true
-                }
+            // FIX: Use sendClientContent instead of send
+            // @ts-ignore
+            this.session.sendClientContent({
+                turns: [{
+                    parts: [{ text }]
+                }],
+                turnComplete: true
             });
         } catch (err) {
             console.error('[GeminiLive] Error sending text:', err);
