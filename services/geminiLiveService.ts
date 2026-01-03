@@ -9,9 +9,10 @@ export interface LiveChatOptions {
     onClose?: () => void;
 }
 
-// Adding models/ prefix as it is the standard for the SDK
-const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-preview-09-2025';
+// EXACTLY as in the working example (no models/ prefix)
+const GEMINI_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
+// EXACTLY as in the working example
 const SYSTEM_INSTRUCTION = `
 You are the OneSkin International Sales Expert. You are sophisticated, professional, and highly knowledgeable about luxury architectural surfaces.
 Your focus is OneSkin's premium lacquered MDF panels (High Gloss and Soft Touch).
@@ -56,12 +57,12 @@ class GeminiLiveService {
             this.session = await (ai as any).live.connect({
                 model: GEMINI_MODEL,
                 config: {
-                    responseModalities: ["audio"],
+                    responseModalities: [Modality.AUDIO],
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
                     },
-                    // Using standard object format for systemInstruction
-                    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                    // Direct string as provided in the working example
+                    systemInstruction: SYSTEM_INSTRUCTION,
                     inputAudioTranscription: {},
                     outputAudioTranscription: {},
                 },
@@ -126,6 +127,7 @@ class GeminiLiveService {
         if (!this.session || !this.isReady) return;
 
         try {
+            // Using a Uint8Array view for the Blob constructor
             const pcmBlob = new Blob([new Uint8Array(pcmData.buffer)], { type: 'audio/pcm;rate=16000' });
 
             // @ts-ignore
