@@ -11,14 +11,15 @@ export interface LiveChatOptions {
 
 const GEMINI_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
+// EXACTLY as provided in his working snippet
 const SYSTEM_INSTRUCTION = `
-Eres el experto en ventas internacionales de OneSkin. Eres sofisticado, profesional y tienes un conocimiento profundo de las superficies arquitectónicas de lujo.
-Tu enfoque son los paneles de MDF lacados premium de OneSkin (High Gloss y Soft Touch).
-Experiencia técnica: proceso de lacado UV, resistencia al rayado (6H), estabilidad del color y núcleos de MDF sostenibles.
-Experiencia en ventas: logística internacional (Incoterms), precios para proyectos a gran escala y tendencias en diseño de interiores.
-Personalidad: Persuasivo pero servicial. Habla con claridad y mantén un tono de consultor de clase mundial.
-Puedes comunicarte fluidamente en español.
-Responde siempre usando audio.
+You are the OneSkin International Sales Expert. You are sophisticated, professional, and highly knowledgeable about luxury architectural surfaces.
+Your focus is OneSkin's premium lacquered MDF panels (High Gloss and Soft Touch).
+Technical expertise: UV lacquering process, scratch resistance (6H), color stability, and sustainable MDF cores.
+Sales expertise: International logistics (Incoterms), large-scale project pricing, and interior design trends.
+Personality: Persuasivo but helpful. Speak clearly and maintain a world-class consultant tone.
+You can communicate fluently in English, Spanish, and Portuguese.
+Always respond using audio.
 `;
 
 class GeminiLiveService {
@@ -54,7 +55,9 @@ class GeminiLiveService {
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
                     },
-                    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+                    systemInstruction: SYSTEM_INSTRUCTION,
+                    inputAudioTranscription: {},
+                    outputAudioTranscription: {},
                 },
                 callbacks: {
                     onopen: () => {
@@ -69,20 +72,28 @@ class GeminiLiveService {
                         this.options.onError?.(e);
                     },
                     onclose: (e: any) => {
-                        console.warn(`[GeminiLive] Connection Closed. Code: ${e.code}, Reason: ${e.reason}`);
+                        console.warn(`[GeminiLive] Connection Closed. Code: ${e.code}, Reason: ${e.reason}`, e);
                         this.isReady = false;
                         this.options.onClose?.();
                     }
                 }
             });
         } catch (error: any) {
-            console.error(`[GeminiLive] Failed to connect:`, error);
+            console.error(`[GeminiLive] Handshake failed:`, error);
             this.options.onError?.(error);
         }
     }
 
     private handleLiveMessage(message: LiveServerMessage) {
-        // Handle audio data
+        // Transcriptions support (as seen in working code)
+        if (message.serverContent?.inputTranscription) {
+            this.options.onMessage?.(`[User] ${message.serverContent.inputTranscription.text}`);
+        }
+        if (message.serverContent?.outputTranscription) {
+            this.options.onMessage?.(`[AI] ${message.serverContent.outputTranscription.text}`);
+        }
+
+        // Audio data
         const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
             const binary = atob(base64Audio);
@@ -92,13 +103,7 @@ class GeminiLiveService {
             this.options.onAudio?.(audioData);
         }
 
-        // Handle text message if available (transcriptions)
-        const text = message.serverContent?.modelTurn?.parts?.[0]?.text;
-        if (text) {
-            this.options.onMessage?.(text);
-        }
-
-        // Handle tool calls
+        // Tool calls
         if (message.toolCall) {
             const call = message.toolCall.functionCalls?.[0];
             if (call) {
@@ -111,8 +116,8 @@ class GeminiLiveService {
         if (!this.session || !this.isReady) return;
 
         try {
-            // Using a Blob as expected by sendRealtimeInput helper
-            const pcmBlob = new Blob([pcmData], { type: 'audio/pcm' });
+            // Matching working example's Blob usage
+            const pcmBlob = new Blob([pcmData.buffer], { type: 'audio/pcm;rate=16000' });
 
             // @ts-ignore
             this.session.sendRealtimeInput({
