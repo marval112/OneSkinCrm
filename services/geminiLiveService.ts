@@ -17,7 +17,7 @@ You are the OneSkin International Sales Expert. You are sophisticated, professio
 Your focus is OneSkin's premium lacquered MDF panels (High Gloss and Soft Touch).
 Technical expertise: UV lacquering process, scratch resistance (6H), color stability, and sustainable MDF cores.
 Sales expertise: International logistics (Incoterms), large-scale project pricing, and interior design trends.
-Personality: Persuasivo but helpful. Speak clearly and maintain a world-class consultant tone.
+Personality: Persuasive but helpful. Speak clearly and maintain a world-class consultant tone.
 You can communicate fluently in English, Spanish, and Portuguese.
 Always respond using audio.
 `;
@@ -26,6 +26,7 @@ class GeminiLiveService {
     private session: any = null;
     private options: LiveChatOptions = {};
     private isReady: boolean = false;
+    private setupResolve: (() => void) | null = null;
 
     async connect(options: LiveChatOptions) {
         this.options = options;
@@ -47,6 +48,11 @@ class GeminiLiveService {
 
             console.log(`[GeminiLive] Connecting to ${GEMINI_MODEL}...`);
 
+            // This promise will blocking the caller until onopen is called
+            const openPromise = new Promise<void>((resolve) => {
+                this.setupResolve = resolve;
+            });
+
             // @ts-ignore
             this.session = await (ai as any).live.connect({
                 model: GEMINI_MODEL,
@@ -63,6 +69,7 @@ class GeminiLiveService {
                     onopen: () => {
                         console.log(`[GeminiLive] Connected successfully with: ${GEMINI_MODEL}`);
                         this.isReady = true;
+                        if (this.setupResolve) this.setupResolve();
                     },
                     onmessage: (message: any) => {
                         this.handleLiveMessage(message);
@@ -78,22 +85,18 @@ class GeminiLiveService {
                     }
                 }
             });
+
+            // CRITICAL: Wait for the connection to be fully OPEN before returning
+            await openPromise;
         } catch (error: any) {
             console.error(`[GeminiLive] Handshake failed:`, error);
             this.options.onError?.(error);
+            throw error;
         }
     }
 
     private handleLiveMessage(message: LiveServerMessage) {
-        // Transcriptions support (as seen in working code)
-        if (message.serverContent?.inputTranscription) {
-            this.options.onMessage?.(`[User] ${message.serverContent.inputTranscription.text}`);
-        }
-        if (message.serverContent?.outputTranscription) {
-            this.options.onMessage?.(`[AI] ${message.serverContent.outputTranscription.text}`);
-        }
-
-        // Audio data
+        // Handle audio data
         const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
             const binary = atob(base64Audio);
@@ -103,7 +106,15 @@ class GeminiLiveService {
             this.options.onAudio?.(audioData);
         }
 
-        // Tool calls
+        // Handle transcription results
+        if (message.serverContent?.inputTranscription) {
+            this.options.onMessage?.(`[Transcript User] ${message.serverContent.inputTranscription.text}`);
+        }
+        if (message.serverContent?.outputTranscription) {
+            this.options.onMessage?.(`[Transcript AI] ${message.serverContent.outputTranscription.text}`);
+        }
+
+        // Handle tool calls
         if (message.toolCall) {
             const call = message.toolCall.functionCalls?.[0];
             if (call) {
@@ -116,8 +127,8 @@ class GeminiLiveService {
         if (!this.session || !this.isReady) return;
 
         try {
-            // Matching working example's Blob usage
-            const pcmBlob = new Blob([pcmData.buffer], { type: 'audio/pcm;rate=16000' });
+            // Passing pcmData (TypedArray) directly to Blob is safer than pcmData.buffer
+            const pcmBlob = new Blob([pcmData], { type: 'audio/pcm;rate=16000' });
 
             // @ts-ignore
             this.session.sendRealtimeInput({
