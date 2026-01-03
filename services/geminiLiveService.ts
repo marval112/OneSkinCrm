@@ -178,21 +178,36 @@ class GeminiLiveService {
 
                 // FIX: Use sendToolResponse instead of send
                 // @ts-ignore
+                const resultData = toolResponse.functionResponses[0].response.result;
+                const callId = toolResponse.functionResponses[0].id;
+                const callName = call.name;
+
                 try {
-                    console.log('[GeminiLive] Attempting format 1: Pure Content');
-                    await this.session.sendToolResponse(toolResponse);
+                    console.log('[GeminiLive] Attempting format 1: Stringified Response (Potential Fix)');
+                    // @ts-ignore
+                    await this.session.sendToolResponse({
+                        functionResponses: [{
+                            response: { result: { object_value: resultData } }, // Try wrapping in result structure expected by some clients
+                            id: callId
+                        }]
+                    });
                 } catch (e1) {
                     console.warn('[GeminiLive] Format 1 failed:', e1);
                     try {
-                        console.log('[GeminiLive] Attempting format 2: Wrapped in toolResponse');
+                        console.log('[GeminiLive] Attempting format 2: Direct Object (No wrapper)');
                         // @ts-ignore
-                        await this.session.sendToolResponse({ toolResponse: toolResponse });
+                        await this.session.sendToolResponse({
+                            functionResponses: [{
+                                response: resultData,
+                                id: callId
+                            }]
+                        });
                     } catch (e2) {
                         console.warn('[GeminiLive] Format 2 failed:', e2);
                         try {
-                            console.log('[GeminiLive] Attempting format 3: Direct Array');
+                            console.log('[GeminiLive] Attempting format 3: Flat Result Wrapper');
                             // @ts-ignore
-                            await this.session.sendToolResponse(toolResponse.functionResponses);
+                            await this.session.sendToolResponse(toolResponse);
                         } catch (e3) {
                             console.error('[GeminiLive] All formats failed:', e3);
                         }
