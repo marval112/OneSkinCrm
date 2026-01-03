@@ -9,34 +9,27 @@ export interface LiveChatOptions {
     onClose?: () => void;
 }
 
+const GEMINI_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
+
+const SYSTEM_INSTRUCTION = `
+Eres el experto en ventas internacionales de OneSkin. Eres sofisticado, profesional y tienes un conocimiento profundo de las superficies arquitectónicas de lujo.
+Tu enfoque son los paneles de MDF lacados premium de OneSkin (High Gloss y Soft Touch).
+Experiencia técnica: proceso de lacado UV, resistencia al rayado (6H), estabilidad del color y núcleos de MDF sostenibles.
+Experiencia en ventas: logística internacional (Incoterms), precios para proyectos a gran escala y tendencias en diseño de interiores.
+Personalidad: Persuasivo pero servicial. Habla con claridad y mantén un tono de consultor de clase mundial.
+Puedes comunicarte fluidamente en español.
+Responde siempre usando audio.
+`;
+
 class GeminiLiveService {
     private session: any = null;
     private options: LiveChatOptions = {};
     private isReady: boolean = false;
-    private retryCount: number = 0;
-    private maxRetries: number = 2;
 
-    async connect(options: LiveChatOptions, candidateIndex: number = 0) {
-        const CANDIDATES = [
-            'models/gemini-2.5-flash-native-audio-dialog',
-            'models/gemini-2.0-flash-exp',
-            'models/gemini-2.0-flash',
-            'models/gemini-3-flash-preview'
-        ];
-
-        if (candidateIndex === 0) {
-            this.options = options;
-        }
-
-        const modelToTry = CANDIDATES[candidateIndex];
-        if (!modelToTry) {
-            this.options.onError?.('All Voice model candidates failed or are at quota.');
-            return;
-        }
-
-        console.log(`[GeminiLive] [Attempt ${candidateIndex + 1}] Trying model: ${modelToTry}`);
-
+    async connect(options: LiveChatOptions) {
+        this.options = options;
         const forceOpenRouterVal = typeof window !== 'undefined' ? localStorage.getItem('oneskin_force_openrouter') : null;
+
         if (forceOpenRouterVal === 'true') {
             options.onError?.('MANUAL_FALLBACK');
             return;
@@ -51,69 +44,61 @@ class GeminiLiveService {
         try {
             const ai = new GoogleGenAI({ apiKey: key });
 
+            console.log(`[GeminiLive] Connecting to ${GEMINI_MODEL}...`);
+
             // @ts-ignore
             this.session = await (ai as any).live.connect({
-                model: modelToTry,
-                systemInstruction: {
-                    parts: [{ text: "Eres un mentor de ventas proactivo para OneSkin." }]
-                },
-                responseModalities: ["audio"],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: 'Puck' }
-                    }
+                model: GEMINI_MODEL,
+                config: {
+                    responseModalities: [Modality.AUDIO],
+                    speechConfig: {
+                        voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+                    },
+                    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
                 },
                 callbacks: {
                     onopen: () => {
-                        console.log(`[GeminiLive] Connected successfully with: ${modelToTry}`);
-                        this.retryCount = 0;
+                        console.log(`[GeminiLive] Connected successfully with: ${GEMINI_MODEL}`);
+                        this.isReady = true;
                     },
                     onmessage: (message: any) => {
-                        if (message.setupComplete) {
-                            console.log(`[GeminiLive] Setup Complete for ${modelToTry}`);
-                            this.isReady = true;
-                        }
                         this.handleLiveMessage(message);
                     },
                     onerror: (e: any) => {
-                        console.error(`[GeminiLive] SDK Error on ${modelToTry}:`, e);
+                        console.error(`[GeminiLive] SDK Error:`, e);
+                        this.options.onError?.(e);
                     },
                     onclose: (e: any) => {
-                        console.warn(`[GeminiLive] Closed: ${modelToTry}. Code: ${e.code}, Reason: ${e.reason}`);
+                        console.warn(`[GeminiLive] Connection Closed. Code: ${e.code}, Reason: ${e.reason}`);
                         this.isReady = false;
-
-                        // If quota (1011) or not supported (1008/1007), try next candidate
-                        if (e.code === 1011 || e.code === 1008 || e.code === 1007) {
-                            console.log(`[GeminiLive] Model ${modelToTry} unavailable. Trying next...`);
-                            this.connect(options, candidateIndex + 1);
-                        } else {
-                            this.options.onClose?.();
-                        }
+                        this.options.onClose?.();
                     }
                 }
             });
         } catch (error: any) {
-            console.error(`[GeminiLive] Handshake failed for ${modelToTry}:`, error);
-            this.connect(options, candidateIndex + 1);
+            console.error(`[GeminiLive] Failed to connect:`, error);
+            this.options.onError?.(error);
         }
     }
 
     private handleLiveMessage(message: LiveServerMessage) {
-        if (message.serverContent?.modelTurn?.parts) {
-            for (const part of message.serverContent.modelTurn.parts) {
-                if (part.text) {
-                    this.options.onMessage?.(part.text);
-                }
-                if (part.inlineData?.mimeType?.startsWith('audio/')) {
-                    const binary = atob(part.inlineData.data);
-                    const bytes = new Uint8Array(binary.length);
-                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                    const audioData = new Int16Array(bytes.buffer);
-                    this.options.onAudio?.(audioData);
-                }
-            }
+        // Handle audio data
+        const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+        if (base64Audio) {
+            const binary = atob(base64Audio);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const audioData = new Int16Array(bytes.buffer);
+            this.options.onAudio?.(audioData);
         }
 
+        // Handle text message if available (transcriptions)
+        const text = message.serverContent?.modelTurn?.parts?.[0]?.text;
+        if (text) {
+            this.options.onMessage?.(text);
+        }
+
+        // Handle tool calls
         if (message.toolCall) {
             const call = message.toolCall.functionCalls?.[0];
             if (call) {
@@ -124,15 +109,14 @@ class GeminiLiveService {
 
     sendAudio(pcmData: Int16Array) {
         if (!this.session || !this.isReady) return;
+
         try {
-            const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
-            this.session.send({
-                realtimeInput: {
-                    mediaChunks: [{
-                        mimeType: 'audio/pcm;rate=16000',
-                        data: base64Audio
-                    }]
-                }
+            // Using a Blob as expected by sendRealtimeInput helper
+            const pcmBlob = new Blob([pcmData], { type: 'audio/pcm' });
+
+            // @ts-ignore
+            this.session.sendRealtimeInput({
+                media: pcmBlob
             });
         } catch (err) {
             console.error('[GeminiLive] Send error:', err);
@@ -140,7 +124,7 @@ class GeminiLiveService {
     }
 
     sendText(text: string) {
-        if (!this.session) return;
+        if (!this.session || !this.isReady) return;
         try {
             this.session.send({
                 clientContent: {
@@ -157,7 +141,9 @@ class GeminiLiveService {
 
     disconnect() {
         if (this.session) {
-            this.session.close();
+            try {
+                this.session.close();
+            } catch (e) { }
             this.session = null;
             this.isReady = false;
         }
