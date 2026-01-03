@@ -70,12 +70,12 @@ class GeminiLiveService {
             this.session = await (ai as any).live.connect({
                 model: GEMINI_MODEL,
                 config: {
-                    responseModalities: ["audio"],
+                    responseModalities: [Modality.AUDIO],
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
                     },
                     // Direct string as provided in the working example
-                    systemInstruction: SYSTEM_INSTRUCTION,
+                    systemInstruction: SYSTEM_INSTRUCTION.trim(),
                     inputAudioTranscription: {},
                     outputAudioTranscription: {},
                 },
@@ -86,14 +86,19 @@ class GeminiLiveService {
                         if (this.setupResolve) this.setupResolve();
                     },
                     onmessage: (message: any) => {
-                        this.handleLiveMessage(message);
+                        console.log('[GeminiLive] Message received:', message);
+                        try {
+                            this.handleLiveMessage(message);
+                        } catch (e) {
+                            console.error('[GeminiLive] Error handling message:', e);
+                        }
                     },
                     onerror: (e: any) => {
-                        console.error(`[GeminiLive] SDK Error:`, e);
+                        console.error(`[GeminiLive] SDK Error (onerror):`, e);
                         this.options.onError?.(e);
                     },
                     onclose: (e: any) => {
-                        console.warn(`[GeminiLive] Connection Closed. Code: ${e.code}, Reason: ${e.reason}`, e);
+                        console.warn(`[GeminiLive] Connection Closed (onclose). Code: ${e.code}, Reason: ${e.reason}`, e);
                         this.isReady = false;
                         this.options.onClose?.();
                     }
