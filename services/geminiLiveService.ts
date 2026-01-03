@@ -180,36 +180,51 @@ class GeminiLiveService {
                 // @ts-ignore
                 const resultData = toolResponse.functionResponses[0].response.result;
                 const callId = toolResponse.functionResponses[0].id;
-                const callName = call.name;
+
+                // helper to try sending
+                const trySend = async (payload: any, label: string) => {
+                    console.log(`[GeminiLive] Attempting ${label}:`, JSON.stringify(payload));
+                    // @ts-ignore
+                    await this.session.sendToolResponse(payload);
+                };
 
                 try {
-                    console.log('[GeminiLive] Attempting format 1: Stringified Response (Potential Fix)');
-                    // @ts-ignore
-                    await this.session.sendToolResponse({
+                    // Format 1: Standard Wrapper with 'result'
+                    await trySend({
                         functionResponses: [{
-                            response: { result: { object_value: resultData } }, // Try wrapping in result structure expected by some clients
+                            response: { result: resultData },
                             id: callId
                         }]
-                    });
+                    }, 'fmt_result_wrapper');
                 } catch (e1) {
-                    console.warn('[GeminiLive] Format 1 failed:', e1);
+                    console.warn('[GeminiLive] fmt_result_wrapper failed:', e1);
                     try {
-                        console.log('[GeminiLive] Attempting format 2: Direct Object (No wrapper)');
-                        // @ts-ignore
-                        await this.session.sendToolResponse({
+                        // Format 2: Wrapper with 'output' (Vertex style)
+                        await trySend({
                             functionResponses: [{
-                                response: resultData,
+                                response: { output: resultData },
                                 id: callId
                             }]
-                        });
+                        }, 'fmt_output_wrapper');
                     } catch (e2) {
-                        console.warn('[GeminiLive] Format 2 failed:', e2);
+                        console.warn('[GeminiLive] fmt_output_wrapper failed:', e2);
                         try {
-                            console.log('[GeminiLive] Attempting format 3: Flat Result Wrapper');
-                            // @ts-ignore
-                            await this.session.sendToolResponse(toolResponse);
+                            // Format 3: Direct Object
+                            await trySend({
+                                functionResponses: [{
+                                    response: resultData,
+                                    id: callId
+                                }]
+                            }, 'fmt_direct_obj');
                         } catch (e3) {
-                            console.error('[GeminiLive] All formats failed:', e3);
+                            console.warn('[GeminiLive] fmt_direct_obj failed:', e3);
+                            try {
+                                // Format 4: Array (Unlikely but possible if sdk takes variadic or array)
+                                // @ts-ignore
+                                await this.session.sendToolResponse(toolResponse.functionResponses);
+                            } catch (e4) {
+                                console.error('[GeminiLive] All formats failed:', e4);
+                            }
                         }
                     }
                 }
