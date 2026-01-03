@@ -23,6 +23,19 @@ You can communicate fluently in English, Spanish, and Portuguese.
 Always respond using audio.
 `;
 
+/**
+ * Utility to encode Uint8Array to base64 string
+ * Matching the user's audioutils.ts implementation
+ */
+function encode(bytes: Uint8Array): string {
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
 class GeminiLiveService {
     private session: any = null;
     private options: LiveChatOptions = {};
@@ -127,12 +140,16 @@ class GeminiLiveService {
         if (!this.session || !this.isReady) return;
 
         try {
-            // Using a Uint8Array view for the Blob constructor
-            const pcmBlob = new Blob([new Uint8Array(pcmData.buffer)], { type: 'audio/l16;rate=16000' });
+            // CRITICAL: Match the working example's format exactly
+            // Instead of a browser Blob, we send an object with base64 data
+            const base64Audio = encode(new Uint8Array(pcmData.buffer));
 
             // @ts-ignore
             this.session.sendRealtimeInput({
-                media: pcmBlob
+                media: {
+                    data: base64Audio,
+                    mimeType: 'audio/pcm;rate=16000'
+                }
             });
         } catch (err) {
             console.error('[GeminiLive] Send error:', err);
