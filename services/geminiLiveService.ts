@@ -57,7 +57,7 @@ class GeminiLiveService {
             this.session = await (ai as any).live.connect({
                 model: GEMINI_MODEL,
                 config: {
-                    responseModalities: [Modality.AUDIO],
+                    responseModalities: ["audio"],
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
                     },
@@ -128,7 +128,7 @@ class GeminiLiveService {
 
         try {
             // Using a Uint8Array view for the Blob constructor
-            const pcmBlob = new Blob([new Uint8Array(pcmData.buffer)], { type: 'audio/pcm;rate=16000' });
+            const pcmBlob = new Blob([new Uint8Array(pcmData.buffer)], { type: 'audio/l16;rate=16000' });
 
             // @ts-ignore
             this.session.sendRealtimeInput({
