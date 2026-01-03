@@ -120,6 +120,14 @@ class GeminiLiveService {
             // CRITICAL: Wait for setupComplete (or timeout/error)
             await openPromise;
             console.log('[GeminiLive] Promise resolved - Handshake complete');
+
+            // DEBUG: Inspect session object to find correct send method
+            if (this.session) {
+                console.log('[GeminiLive] Session methods:',
+                    Object.getOwnPropertyNames(Object.getPrototypeOf(this.session)),
+                    Object.keys(this.session)
+                );
+            }
         } catch (error: any) {
             console.error(`[GeminiLive] Handshake failed:`, error);
             this.options.onError?.(error);
