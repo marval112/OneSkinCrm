@@ -85,6 +85,9 @@ export function useGeminiLive(options: LiveChatOptions) {
             // 1. Connect WebSocket
             await geminiLiveService.connect({
                 ...options,
+                onMessage: (message) => {
+                    options.onMessage?.(message as any); // Type assertion until hook is fully refactored if needed, but here it just passes through
+                },
                 onAudio: (data) => {
                     playAudioChunk(data);
                     options.onAudio?.(data);

@@ -113,14 +113,48 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     isConnected: isLiveConnected,
     error: liveError
   } = useGeminiLive(useMemo(() => ({
-    onMessage: (text: string) => {
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
-          return [...prev.slice(0, -1), { ...last, text: last.text + text }];
-        }
-        return [...prev, { id: Date.now(), text, sender: 'ai' }];
-      });
+    onMessage: (message: any) => {
+      // Handling structured message from Gemini Live
+      if (typeof message === 'object' && message.text) {
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          // If the last message was from AI and is not final (or just streaming from same source), append
+          // But with 'isFinal' flag we can be smarter. 
+          // Simple logic: If last sender is AI, append text. 
+          // To support distinct bubbles, we only append if it's "streaming" continuation.
+          // For now, let's assume Gemini Live sends partials.
+
+          if (last && last.sender === 'ai' && !message.isFinal) {
+            return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
+          }
+          // If it is a new complete thought or a new turn (User -> AI), add new
+          // However, Gemini Live "User" transcripts come as separate messages too.
+
+          if (message.sender === 'user') {
+            // Check if last was user to avoid duplicate bubbles if user pauses?
+            // Usually user transcripts come in chunks too.
+            if (last && last.sender === 'user') {
+              return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
+            }
+            return [...prev, { id: Date.now(), text: message.text, sender: 'user' }];
+          }
+
+          // AI Message
+          if (last && last.sender === 'ai') {
+            return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
+          }
+          return [...prev, { id: Date.now(), text: message.text, sender: 'ai' }];
+        });
+      } else if (typeof message === 'string') {
+        // Fallback for legacy string messages
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
+            return [...prev.slice(0, -1), { ...last, text: last.text + message }];
+          }
+          return [...prev, { id: Date.now(), text: message, sender: 'ai' }];
+        });
+      }
     },
     onCommand: (command: string, args: any) => {
       handlersRef.current.handleCommandResponse?.({ type: 'command', data: { command: command as Command, args } });
@@ -159,7 +193,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   }, [inputMode, language, isLiveConnected]);
 
   // 4. Command Responder (now has access to speak)
-  const handleCommandResponse = useCallback((response: CommandResponse) => {
+  const handleCommandResponse = useCallback((response: CommandResponse, silent: boolean = false) => {
     let aiText = '';
     if (response.type === 'text') {
       aiText = response.data;
@@ -205,7 +239,9 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       }
     }
     setMessages(prev => [...prev, { id: Date.now(), text: aiText, sender: 'ai' }]);
-    speak(aiText);
+    if (!silent) {
+      speak(aiText);
+    }
   }, [language, navigate, showToast, speak]);
 
   // Keep ref updated
@@ -236,7 +272,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
           const briefingPrompt = `Hola Mentor. Eres mi secretario y mentor experto. Por favor, realiza un ANALISIS PROACTIVO DE MI CARTERA con los siguientes datos actuales:\n${briefingContext}\n\nSalúdame de forma personalizada y dame 2-3 consejos estratégicos para hoy basados en estos datos.`;
 
           const response = await processCommand(briefingPrompt, briefingContext, sellerName, language);
-          handleCommandResponse(response);
+          handleCommandResponse(response, true); // Pass true to silence the briefing
         } catch (e) {
           console.error('Proactive briefing error:', e);
         } finally {

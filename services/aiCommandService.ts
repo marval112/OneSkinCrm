@@ -23,7 +23,7 @@ export type CommandResponse =
 
 // --- GEMINI FUNCTION DECLARATIONS ---
 
-const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
+export const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
     {
         functionDeclarations: [
             {
