@@ -127,8 +127,9 @@ class GeminiLiveService {
         if (!this.session || !this.isReady) return;
 
         try {
-            // Passing pcmData (TypedArray) directly to Blob is safer than pcmData.buffer
-            const pcmBlob = new Blob([pcmData], { type: 'audio/pcm;rate=16000' });
+            // Using a Uint8Array view of the buffer for the Blob constructor
+            // This ensures maximum compatibility and byte-perfect transmission
+            const pcmBlob = new Blob([new Uint8Array(pcmData.buffer)], { type: 'audio/pcm;rate=16000' });
 
             // @ts-ignore
             this.session.sendRealtimeInput({
