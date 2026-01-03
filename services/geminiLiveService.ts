@@ -9,9 +9,9 @@ export interface LiveChatOptions {
     onClose?: () => void;
 }
 
-const GEMINI_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
+// Adding models/ prefix as it is the standard for the SDK
+const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-preview-09-2025';
 
-// EXACTLY as provided in his working snippet
 const SYSTEM_INSTRUCTION = `
 You are the OneSkin International Sales Expert. You are sophisticated, professional, and highly knowledgeable about luxury architectural surfaces.
 Your focus is OneSkin's premium lacquered MDF panels (High Gloss and Soft Touch).
@@ -48,7 +48,6 @@ class GeminiLiveService {
 
             console.log(`[GeminiLive] Connecting to ${GEMINI_MODEL}...`);
 
-            // This promise will blocking the caller until onopen is called
             const openPromise = new Promise<void>((resolve) => {
                 this.setupResolve = resolve;
             });
@@ -57,11 +56,12 @@ class GeminiLiveService {
             this.session = await (ai as any).live.connect({
                 model: GEMINI_MODEL,
                 config: {
-                    responseModalities: [Modality.AUDIO],
+                    responseModalities: ["audio"],
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
                     },
-                    systemInstruction: SYSTEM_INSTRUCTION,
+                    // Using standard object format for systemInstruction
+                    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
                     inputAudioTranscription: {},
                     outputAudioTranscription: {},
                 },
@@ -86,7 +86,6 @@ class GeminiLiveService {
                 }
             });
 
-            // CRITICAL: Wait for the connection to be fully OPEN before returning
             await openPromise;
         } catch (error: any) {
             console.error(`[GeminiLive] Handshake failed:`, error);
@@ -108,10 +107,10 @@ class GeminiLiveService {
 
         // Handle transcription results
         if (message.serverContent?.inputTranscription) {
-            this.options.onMessage?.(`[Transcript User] ${message.serverContent.inputTranscription.text}`);
+            this.options.onMessage?.(`[User] ${message.serverContent.inputTranscription.text}`);
         }
         if (message.serverContent?.outputTranscription) {
-            this.options.onMessage?.(`[Transcript AI] ${message.serverContent.outputTranscription.text}`);
+            this.options.onMessage?.(`[AI] ${message.serverContent.outputTranscription.text}`);
         }
 
         // Handle tool calls
@@ -127,8 +126,6 @@ class GeminiLiveService {
         if (!this.session || !this.isReady) return;
 
         try {
-            // Using a Uint8Array view of the buffer for the Blob constructor
-            // This ensures maximum compatibility and byte-perfect transmission
             const pcmBlob = new Blob([new Uint8Array(pcmData.buffer)], { type: 'audio/pcm;rate=16000' });
 
             // @ts-ignore
