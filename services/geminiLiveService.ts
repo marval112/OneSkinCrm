@@ -81,12 +81,20 @@ class GeminiLiveService {
                 },
                 callbacks: {
                     onopen: () => {
-                        console.log(`[GeminiLive] Connected successfully with: ${GEMINI_MODEL}`);
-                        this.isReady = true;
-                        if (this.setupResolve) this.setupResolve();
+                        console.log(`[GeminiLive] WebSocket socket open...`);
                     },
                     onmessage: (message: any) => {
                         console.log('[GeminiLive] Message received:', message);
+
+                        if (message.setupComplete) {
+                            console.log('[GeminiLive] Session Ready (setupComplete)');
+                            this.isReady = true;
+                            if (this.setupResolve) {
+                                this.setupResolve();
+                                this.setupResolve = null;
+                            }
+                        }
+
                         try {
                             this.handleLiveMessage(message);
                         } catch (e) {
@@ -105,7 +113,9 @@ class GeminiLiveService {
                 }
             });
 
+            // CRITICAL: Wait for setupComplete (or timeout/error)
             await openPromise;
+            console.log('[GeminiLive] Promise resolved - Handshake complete');
         } catch (error: any) {
             console.error(`[GeminiLive] Handshake failed:`, error);
             this.options.onError?.(error);
@@ -118,9 +128,12 @@ class GeminiLiveService {
         const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
             const binary = atob(base64Audio);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            const audioData = new Int16Array(bytes.buffer);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+
+            // Safer creation of Int16Array (handling potentially odd byte lengths)
+            const audioData = new Int16Array(bytes.buffer, 0, Math.floor(bytes.byteLength / 2));
             this.options.onAudio?.(audioData);
         }
 

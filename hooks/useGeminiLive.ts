@@ -23,6 +23,9 @@ export function useGeminiLive(options: LiveChatOptions) {
     const nextStartTimeRef = useRef<number>(0);
 
     const playAudioChunk = useCallback((pcmData: Int16Array) => {
+        if (pcmData.length === 0) return;
+        console.log(`[useGeminiLive] Playing audio chunk (${pcmData.length} samples)`);
+
         if (!playbackContextRef.current) {
             playbackContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
                 sampleRate: 24000,
@@ -48,6 +51,7 @@ export function useGeminiLive(options: LiveChatOptions) {
     }, []);
 
     const stop = useCallback(() => {
+        console.log('[useGeminiLive] stop() called - disconnecting');
         geminiLiveService.disconnect();
         setIsConnected(false);
         setIsListening(false);
