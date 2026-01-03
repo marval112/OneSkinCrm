@@ -271,11 +271,14 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel();
       stopLive();
     };
-  }, [messages, stopLive]);
+  }, [stopLive]);
 
 
 
