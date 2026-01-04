@@ -9,6 +9,7 @@ import { prioritizeTasks } from '../../services/geminiService';
 import { getLeads, getCustomers } from '../../services/crmService';
 import Modal from '../common/Modal';
 import TaskCalendar from '../common/TaskCalendar';
+import { useSearchParams } from 'react-router-dom';
 
 function Tasks() {
   const { user } = useAuth();
@@ -36,6 +37,8 @@ function Tasks() {
     { entityType: 'lead', entityId: null, type: TaskType.FOLLOW_UP_CALL, title: '', notes: '', due: '' }
   );
   const [, setTick] = useState(0); // Force re-render for live timer
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightedTaskId, setHighlightedTaskId] = useState<number | null>(null);
 
   const refresh = async () => {
     if (!user) return;
@@ -63,6 +66,31 @@ function Tasks() {
     }, 1000);
     return () => clearInterval(interval);
   }, [tasks]);
+
+  // Handle highlight parameter from URL
+  useEffect(() => {
+    const highlightParam = searchParams.get('highlight');
+    if (highlightParam) {
+      const taskId = parseInt(highlightParam, 10);
+      if (!isNaN(taskId)) {
+        setHighlightedTaskId(taskId);
+        // Scroll to highlighted task after a short delay
+        setTimeout(() => {
+          const element = document.getElementById(`task-${taskId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+        // Clear highlight after 3 seconds
+        setTimeout(() => {
+          setHighlightedTaskId(null);
+          // Remove highlight parameter from URL
+          searchParams.delete('highlight');
+          setSearchParams(searchParams, { replace: true });
+        }, 3000);
+      }
+    }
+  }, [searchParams, setSearchParams]);
 
   const openBuilder = useCallback(async () => {
     if (!user) return;
@@ -245,8 +273,16 @@ function Tasks() {
 
   const renderTaskCard = (task: Task) => {
     const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
+    const isHighlighted = task.id === highlightedTaskId;
     return (
-      <div key={task.id} className="bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 flex flex-col gap-3">
+      <div
+        key={task.id}
+        id={`task-${task.id}`}
+        className={`bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border transition-all duration-300 flex flex-col gap-3 ${isHighlighted
+            ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-600'
+            : 'border-slate-200 dark:border-slate-600'
+          }`}
+      >
         {/* Header */}
         <div className="flex justify-between items-start">
           <div className="flex flex-col">
@@ -434,8 +470,16 @@ function Tasks() {
                 )}
                 {filtered.map(task => {
                   const badge = task.status === 'Completed' ? 'text-green-700 bg-green-100' : (task.due_date && new Date(task.due_date) < new Date() ? 'text-red-700 bg-red-100' : 'text-slate-700 bg-slate-100');
+                  const isHighlighted = task.id === highlightedTaskId;
                   return (
-                    <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <tr
+                      key={task.id}
+                      id={`task-${task.id}`}
+                      className={`transition-all duration-300 ${isHighlighted
+                          ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-300 dark:ring-blue-600'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        }`}
+                    >
                       <td className="px-3 py-2 text-xs">
                         {
                           task.type === 'Follow Up Call' ? t('tasks.types.followUpCall') :

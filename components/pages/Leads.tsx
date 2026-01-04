@@ -1300,7 +1300,18 @@ function Leads() {
                     <ul className="text-sm list-disc pl-5">
                       {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
                       {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
-                        <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
+                        <li key={t.id}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/tasks?highlight=${t.id}`);
+                            }}
+                            className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                          >
+                            {t.type}
+                          </button>
+                          {t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -1593,7 +1604,18 @@ function Leads() {
                 <ul className="text-sm list-disc pl-5">
                   {leadTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500">Sin tareas pendientes</li>}
                   {leadTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
-                    <li key={t.id}>{t.type}{t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}</li>
+                    <li key={t.id}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/tasks?highlight=${t.id}`);
+                        }}
+                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                      >
+                        {t.type}
+                      </button>
+                      {t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}
+                    </li>
                   ))}
                 </ul>
               </div>
