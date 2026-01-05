@@ -120,20 +120,20 @@ export interface OpenRouterModel {
 }
 
 export const OPENROUTER_FREE_MODELS: OpenRouterModel[] = [
-  // User requested fallback sequence
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
+  // User requested fallback sequence: Nvidia (fastest) first for vision
   { id: 'nvidia/nemotron-nano-12b-v2-vl:free', name: 'Nvidia Nemotron 12B VL', supportsVision: true },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Google Gemini 2.0 Flash Exp', supportsVision: true },
   { id: 'google/gemma-3-27b-it:free', name: 'Google Gemma 3 27B', supportsVision: true },
 ];
 
 // Default OpenRouter models when Gemini quota is exhausted
 export const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.0-flash-exp:free';
-export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.0-flash-exp:free';
+export const DEFAULT_OPENROUTER_VISION_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';
 
 // Scanner-specific models (best for OCR and business card extraction)
 export const SCANNER_VISION_MODELS: string[] = [
-  'google/gemini-2.0-flash-exp:free',   // 1. Primary
-  'nvidia/nemotron-nano-12b-v2-vl:free', // 2. Secondary
+  'nvidia/nemotron-nano-12b-v2-vl:free', // 1. Primary (Fastest)
+  'google/gemini-2.0-flash-exp:free',   // 2. Secondary
   'google/gemma-3-27b-it:free',          // 3. Tertiary
 ];
 
