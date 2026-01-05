@@ -342,8 +342,9 @@ class GeminiLiveService {
 
             return {
                 functionResponses: [{
-                    response: { result: result },
-                    id: call.id
+                    id: call.id,
+                    name: call.name,
+                    response: result
                 }]
             };
 
@@ -351,8 +352,9 @@ class GeminiLiveService {
             console.error('[GeminiLive] Tool execution failed:', error);
             return {
                 functionResponses: [{
-                    response: { error: error.message },
-                    id: call.id
+                    id: call.id,
+                    name: call.name,
+                    response: { error: error.message }
                 }]
             };
         }
