@@ -298,13 +298,24 @@ function Deals() {
   // Auto-open create modal if create=true parameter is present
   useEffect(() => {
     const shouldCreate = searchParams.get('create') === 'true';
-    console.log('Deals page loaded, create param:', shouldCreate, 'modal open:', isCreateModalOpen);
-
     if (shouldCreate && !isCreateModalOpen) {
-      console.log('Opening create modal automatically');
       setIsCreateModalOpen(true);
     }
   }, [searchParams]);
+
+  // Handle highlight parameter to auto-open deal detail
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (highlightId && deals.length > 0) {
+      const dealIdNum = parseInt(highlightId, 10);
+      const deal = deals.find(d => d.id === dealIdNum);
+      if (deal) {
+        setDetailDeal(deal);
+        setDetailTab('info');
+        openTimeline(deal);
+      }
+    }
+  }, [searchParams, deals]);
 
 
   const getCustomerName = useCallback((customerId: number) => {

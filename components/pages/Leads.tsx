@@ -1369,9 +1369,13 @@ function Leads() {
                   ) : (
                     <div className="space-y-3">
                       {leadDeals.map(deal => (
-                        <div key={deal.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                        <button
+                          key={deal.id}
+                          onClick={() => navigate(`/deals?highlight=${deal.id}`)}
+                          className="w-full text-left p-3 bg-slate-50 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600 flex justify-between items-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                        >
                           <div>
-                            <div className="font-medium text-slate-900 dark:text-slate-100">{deal.title}</div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">{deal.title}</div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                               Created: {new Date(deal.created_at).toLocaleDateString()} • Close: {new Date(deal.expected_close_date).toLocaleDateString()}
                             </div>
@@ -1385,7 +1389,7 @@ function Leads() {
                               {deal.status}
                             </span>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
