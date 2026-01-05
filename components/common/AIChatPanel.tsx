@@ -59,7 +59,7 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     if (language === 'es') {
       greeting = `¡Hola ${sellerName} ! 🚀 Estoy listo para ayudarte a romper tus récords de venta hoy. ¿Qué desafío tenemos entre manos ? `;
     } else if (language === 'pt') {
-      greeting = `Olá ${sellerName} ! 🚀 Estou pronto para te ajudar a superar suas metas de venda hoje.Qual é o desafio de agora ? `;
+      greeting = `Olá ${sellerName} ! 🚀 Estou pronto para te ayudar a superar suas metas de venda hoje.Qual é o desafio de agora ? `;
     } else {
       greeting = `Hello ${sellerName} ! 🚀 I'm ready to help you crush your sales goals today. What challenge are we tackling?`;
     }
@@ -125,35 +125,24 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       if (typeof message === 'object' && message.text) {
         setMessages(prev => {
           const last = prev[prev.length - 1];
-          // If the last message was from AI and is not final (or just streaming from same source), append
-          // But with 'isFinal' flag we can be smarter. 
-          // Simple logic: If last sender is AI, append text. 
-          // To support distinct bubbles, we only append if it's "streaming" continuation.
-          // For now, let's assume Gemini Live sends partials.
 
           if (last && last.sender === 'ai' && !message.isFinal) {
             return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
           }
-          // If it is a new complete thought or a new turn (User -> AI), add new
-          // However, Gemini Live "User" transcripts come as separate messages too.
 
           if (message.sender === 'user') {
-            // Check if last was user to avoid duplicate bubbles if user pauses?
-            // Usually user transcripts come in chunks too.
             if (last && last.sender === 'user') {
               return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
             }
             return [...prev, { id: Date.now(), text: message.text, sender: 'user' }];
           }
 
-          // AI Message
           if (last && last.sender === 'ai') {
             return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
           }
           return [...prev, { id: Date.now(), text: message.text, sender: 'ai' }];
         });
       } else if (typeof message === 'string') {
-        // Fallback for legacy string messages
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last && last.sender === 'ai' && Date.now() - last.id < 5000) {
@@ -171,7 +160,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
       const errorMessage = getFriendlyErrorMessage(err);
       const isCritical = typeof err === 'string' && (err === 'MANUAL_FALLBACK' || err.includes('quota'));
 
-      // Display error message to user in chat
       setMessages(prev => [...prev, {
         id: Date.now(),
         sender: 'ai',
@@ -184,11 +172,10 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
         showToast?.(errorMessage, 'danger');
       }
     }
-  }), [language, showToast, getFriendlyErrorMessage]));
+  }), [user, language, showToast, getFriendlyErrorMessage]));
 
   const displayLiveError = useMemo(() => liveError ? getFriendlyErrorMessage(liveError) : null, [liveError, getFriendlyErrorMessage]);
 
-  // 3. Speak Utility (now has access to isLiveConnected)
   const speak = useCallback((text: string) => {
     if (inputMode === 'text') return;
     if (inputMode === 'voice' && isLiveConnected) return;
@@ -199,7 +186,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     window.speechSynthesis.speak(utterance);
   }, [inputMode, language, isLiveConnected]);
 
-  // 4. Command Responder (now has access to speak)
   const handleCommandResponse = useCallback((response: CommandResponse, silent: boolean = false) => {
     let aiText = '';
     if (response.type === 'text') {
@@ -251,19 +237,14 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     }
   }, [language, navigate, showToast, speak]);
 
-  // Keep ref updated
   handlersRef.current.handleCommandResponse = handleCommandResponse;
 
-  // 5. Voice Input (Standard)
   const { isListening: isSTTListening, transcript, error: voiceError, isSupported, startListening, stopListening } = useVoiceInput();
-
-
 
   const activeIsListening = inputMode === 'voice' ? isLiveListening : isSTTListening;
 
   useEffect(() => {
     localStorage.setItem('oneskin_ai_input_mode', inputMode);
-    // Stop any active listening when switching modes, but ONLY if they belong to the mode being deactivated
     if (inputMode === 'text' && isLiveListening) stopLive();
     if (inputMode === 'voice' && isSTTListening) stopListening();
   }, [inputMode, isSTTListening, isLiveListening, stopListening, stopLive]);
@@ -275,11 +256,9 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
         try {
           const briefingContext = await getProactiveBriefingContext(user);
           const sellerName = user.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : 'Comercial';
-
           const briefingPrompt = `Hola Mentor. Eres mi secretario y mentor experto. Por favor, realiza un ANALISIS PROACTIVO DE MI CARTERA con los siguientes datos actuales:\n${briefingContext}\n\nSalúdame de forma personalizada y dame 2-3 consejos estratégicos para hoy basados en estos datos.`;
-
           const response = await processCommand(briefingPrompt, briefingContext, sellerName, language);
-          handleCommandResponse(response, true); // Pass true to silence the briefing
+          handleCommandResponse(response, true);
         } catch (e) {
           console.error('Proactive briefing error:', e);
         } finally {
@@ -287,8 +266,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
         }
       }
     };
-
-    // Only trigger if panel is open and no messages yet
     if (user) {
       triggerBriefing();
     }
@@ -297,12 +274,9 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   useEffect(() => {
     if (initialMessage) {
       setInputValue(initialMessage);
-      // Optional: Auto-send
-      // handleSendMessage(initialMessage); 
     }
   }, [initialMessage]);
 
-  // Update input with voice transcript (only in text mode)
   useEffect(() => {
     if (transcript && inputMode === 'text') {
       setInputValue(transcript);
@@ -324,21 +298,15 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     };
   }, [stopLive]);
 
-
-
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
-
     const userMessage: Message = { id: Date.now(), text, sender: 'user' };
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-
     try {
-      // Fetch fresh context for every command to be proactive
       const crmContext = user ? await getProactiveBriefingContext(user) : '';
       const context = `Current Page: ${location.pathname}\nCRM Status: ${crmContext}`;
-
       const sellerName = user?.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : undefined;
       const response = await processCommand(text, context, sellerName, language);
       handleCommandResponse(response);
@@ -356,7 +324,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
 
   const toggleVoiceInput = () => {
     if (inputMode === 'voice') {
-      // Use Gemini Live
       if (isLiveListening) {
         stopLive();
       } else {
@@ -380,7 +347,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl flex flex-col w-full max-w-2xl h-full max-h-[80vh]">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <div className="flex items-center">
@@ -396,7 +362,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
           </button>
         </div>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -419,7 +384,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-3">
             <div className="flex flex-wrap gap-2">
@@ -427,8 +391,6 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
                 <button key={cmd} onClick={() => handleSuggestionClick(cmd)} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">{cmd}</button>
               ))}
             </div>
-
-            {/* Input Mode Toggle */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
               <button
                 onClick={() => setInputMode('text')}
