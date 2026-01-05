@@ -334,14 +334,21 @@ export async function generateWithFallback(client: any, params: any) {
       };
     } catch (error: any) {
       lastError = error;
-      const isRateLimit = error?.status === 429 || error?.message?.includes('429');
-      console.warn(`[AI Fallback] OpenRouter Model ${model} failed. ${isRateLimit ? 'Rate limited, waiting...' : 'Trying next...'}`);
+      const isRateLimit = error?.status === 429 || error?.isRateLimited || error?.message?.includes('429');
+      const isAuthError = error?.status === 401 || error?.status === 403;
 
-      // If rate limited, wait 2 seconds before trying next model to avoid spamming
+      // Log detailed error information
       if (isRateLimit) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.warn(`[AI Fallback] OpenRouter Model ${model} rate limited. The service will handle retries automatically.`);
+      } else if (isAuthError) {
+        console.error(`[AI Fallback] OpenRouter authentication failed for ${model}. Check your API key.`);
+        // Don't try other models if auth fails
+        throw error;
+      } else {
+        console.warn(`[AI Fallback] OpenRouter Model ${model} failed: ${error?.message || 'Unknown error'}. Trying next model...`);
       }
 
+      // Continue to next model (openRouterService already handled retries for this model)
       continue;
     }
   }
