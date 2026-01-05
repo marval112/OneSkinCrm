@@ -8,6 +8,7 @@ export enum Command {
     SHOW_LEADS = 'show_leads',
     CREATE_TASK = 'create_task',
     FIND_CUSTOMER = 'find_customer',
+    QUERY_CRM = 'query_crm', // NEW: Dynamic CRM querying
     UNKNOWN = 'unknown',
 }
 
@@ -122,6 +123,36 @@ export const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
                     },
                     required: ['member', 'type'],
                 },
+            },
+            {
+                name: 'query_crm',
+                description: 'Query the CRM database dynamically for specific data across different tables.',
+                parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                        table: {
+                            type: Type.STRING,
+                            description: 'The table to query.',
+                            enum: ['leads', 'customers', 'deals', 'tasks', 'activities']
+                        },
+                        filters: {
+                            type: Type.OBJECT,
+                            description: 'A key-value object of filters to apply (e.g., {"status": "New", "country": "Spain"}).',
+                            properties: {
+                                status: { type: Type.STRING },
+                                country: { type: Type.STRING },
+                                owner: { type: Type.STRING },
+                                value_gt: { type: Type.NUMBER, description: 'Value greater than' },
+                                value_lt: { type: Type.NUMBER, description: 'Value less than' }
+                            }
+                        },
+                        limit: {
+                            type: Type.NUMBER,
+                            description: 'The maximum number of results to return (default is 10).',
+                        }
+                    },
+                    required: ['table']
+                }
             }
         ]
     }

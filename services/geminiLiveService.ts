@@ -206,63 +206,28 @@ class GeminiLiveService {
                 console.log('[GeminiLive] Processing Tool Call ID:', call.id, 'Name:', call.name);
 
                 const toolResponse = await this.executeTool(call);
-                console.log('[GeminiLive] Sending Tool Response Payload:', JSON.stringify(toolResponse));
 
-                // FIX: Use sendToolResponse instead of send
+                // Consolidate sending tool response
                 // @ts-ignore
                 const resultData = toolResponse.functionResponses[0].response.result;
                 const callId = toolResponse.functionResponses[0].id;
-
-                // helper to try sending
-                const trySend = async (payload: any, label: string) => {
-                    console.log(`[GeminiLive] Attempting ${label}:`, JSON.stringify(payload));
-                    // @ts-ignore
-                    await this.session.sendToolResponse(payload);
-                };
+                const callName = call.name;
 
                 try {
-                    // Format 1: Response itself is a JSON string
-                    await trySend({
+                    console.log(`[GeminiLive] Attempting to send tool response for ${callName}:`, JSON.stringify(resultData));
+                    // The SDK expects an object for response. We wrap result inside.
+                    // If resultData is already what the AI expects, we pass it.
+                    // Matching working example patterns for Gemini 2.0 Realtime/Live:
+                    // @ts-ignore
+                    await this.session.sendToolResponse({
                         functionResponses: [{
-                            response: JSON.stringify(resultData),
-                            id: callId
+                            id: callId,
+                            response: { result: resultData }
                         }]
-                    }, 'fmt_string_root');
-                } catch (e1) {
-                    console.warn('[GeminiLive] fmt_string_root failed:', e1);
-                    try {
-                        // Format 2: 'result' key with stringified JSON
-                        await trySend({
-                            functionResponses: [{
-                                response: { result: JSON.stringify(resultData) },
-                                id: callId
-                            }]
-                        }, 'fmt_result_string');
-                    } catch (e2) {
-                        console.warn('[GeminiLive] fmt_result_string failed:', e2);
-                        try {
-                            // Format 3: 'content' key (common alternative)
-                            await trySend({
-                                functionResponses: [{
-                                    response: { content: resultData },
-                                    id: callId
-                                }]
-                            }, 'fmt_content_obj');
-                        } catch (e3) {
-                            console.warn('[GeminiLive] fmt_content_obj failed:', e3);
-                            try {
-                                // Format 4: 'output' key with stringified JSON
-                                await trySend({
-                                    functionResponses: [{
-                                        response: { output: JSON.stringify(resultData) },
-                                        id: callId
-                                    }]
-                                }, 'fmt_output_string');
-                            } catch (e4) {
-                                console.error('[GeminiLive] All formats failed:', e4);
-                            }
-                        }
-                    }
+                    });
+                    console.log(`[GeminiLive] Tool response sent successfully for ${callName}`);
+                } catch (e) {
+                    console.error('[GeminiLive] Failed to send tool response:', e);
                 }
             }
         }
@@ -298,17 +263,63 @@ class GeminiLiveService {
                     // Filter in memory for now based on args
                     let filtered = leads;
                     if (args.status) filtered = filtered.filter(l => l.status === args.status);
-                    result = { count: filtered.length, leads: filtered.slice(0, 5).map(l => ({ name: l.name, status: l.status, company: l.company })) };
-                    // Also trigger UI navigation via command?
+                    if (args.source) filtered = filtered.filter(l => l.source === args.source);
+
+                    result = {
+                        count: filtered.length,
+                        leads: filtered.slice(0, 10).map(l => ({
+                            name: l.name,
+                            status: l.status,
+                            company: l.company,
+                            score: l.score
+                        }))
+                    };
+                    // Also trigger UI navigation via command
                     this.options.onCommand?.(Command.SHOW_LEADS, args);
                     break;
 
+                case Command.QUERY_CRM:
+                    const { table, filters, limit = 10 } = args;
+                    console.log(`[GeminiLive] Dynamic Query on table: ${table}`, filters);
+
+                    let query = supabase.from(table).select('*');
+
+                    // Enforce ownership for non-admins
+                    if (user.role === 'Commercial') {
+                        query = query.eq('user_id', user.id);
+                    }
+
+                    if (filters) {
+                        // Dynamic filter mapping
+                        Object.keys(filters).forEach(key => {
+                            const val = filters[key];
+                            if (key.endsWith('_gt')) {
+                                const realKey = key.replace('_gt', '');
+                                query = query.gt(realKey, val);
+                            } else if (key.endsWith('_lt')) {
+                                const realKey = key.replace('_lt', '');
+                                query = query.lt(realKey, val);
+                            } else if (key === 'owner' && val) {
+                                // Placeholder for owner query
+                            } else {
+                                query = query.eq(key, val);
+                            }
+                        });
+                    }
+
+                    const { data: qResult, error: qError } = await query.limit(limit);
+                    if (qError) throw qError;
+
+                    result = {
+                        table,
+                        count: qResult?.length || 0,
+                        data: (qResult || []).slice(0, 5) // Return limited preview to AI
+                    };
+                    break;
+
                 case Command.CREATE_TASK:
-                    // We can't actually create task fully without more info, but let's simulate or try
-                    // Reuse command service logic or calling crm directly? 
-                    // crmService doesn't export createTask directly exposed this way easily without "db".
-                    // Let's just return success and trigger the UI command which shows a toast.
-                    result = { status: 'success', message: 'Task creation interface opened' };
+                    // Return success and trigger the UI command which shows a toast.
+                    result = { status: 'success', message: 'Task creation interface opened', details: args };
                     this.options.onCommand?.(Command.CREATE_TASK, args);
                     break;
 
@@ -318,7 +329,10 @@ class GeminiLiveService {
                         (args.name && c.name.toLowerCase().includes(args.name.toLowerCase())) ||
                         (args.company && c.company.toLowerCase().includes(args.company.toLowerCase()))
                     );
-                    result = { found: found.map(c => ({ id: c.id, name: c.name, company: c.company, email: c.email })) };
+                    result = {
+                        count: found.length,
+                        found: found.map(c => ({ id: c.id, name: c.name, company: c.company, email: c.email }))
+                    };
                     this.options.onCommand?.(Command.FIND_CUSTOMER, args);
                     break;
 
