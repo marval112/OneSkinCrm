@@ -5,6 +5,7 @@ import * as crmService from './crmService';
 import { supabase } from './supabaseClient';
 
 export interface LiveChatOptions {
+    crmContext?: string; // Real-time CRM context
     onMessage?: (message: { text: string; sender: 'user' | 'ai'; isFinal?: boolean }) => void;
     onAudio?: (audio: Int16Array) => void;
     onCommand?: (command: string, args: any) => void;
@@ -37,6 +38,37 @@ function encode(bytes: Uint8Array): string {
         binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
+}
+
+/**
+ * Build dynamic system instruction with CRM context
+ */
+function buildSystemInstruction(crmContext?: string): string {
+    let instruction = `
+You are the OneSkin International Sales Expert and Executive Sales Secretary. 
+You are sophisticated, professional, and highly knowledgeable about luxury architectural surfaces.
+
+Your focus is OneSkin's premium lacquered MDF panels (High Gloss and Soft Touch).
+Technical expertise: UV lacquering process, scratch resistance (6H), color stability, and sustainable MDF cores.
+Sales expertise: International logistics (Incoterms), large-scale project pricing, and interior design trends.
+
+Personality: Persuasive but helpful. Speak clearly and maintain a world-class consultant tone.
+You can communicate fluently in English, Spanish, and Portuguese.
+Always respond using audio.
+
+As a Sales Secretary, you can:
+- Execute CRM actions (create tasks, update leads, find customers)
+- Provide proactive recommendations based on current portfolio status
+- Help prioritize work based on pending items
+`;
+
+    if (crmContext) {
+        instruction += `\n\n=== YOUR CURRENT PORTFOLIO STATUS ===\n${crmContext}\n`;
+        instruction += `\nUse this information to provide context-aware, proactive assistance. `;
+        instruction += `Mention relevant metrics when appropriate and suggest actions based on current priorities.\n`;
+    }
+
+    return instruction.trim();
 }
 
 class GeminiLiveService {
@@ -77,8 +109,8 @@ class GeminiLiveService {
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
                     },
-                    // Direct string as provided in the working example
-                    systemInstruction: SYSTEM_INSTRUCTION.trim(),
+                    // Use dynamic instruction with context
+                    systemInstruction: buildSystemInstruction(options.crmContext),
                     tools: tools,
                     inputAudioTranscription: {},
                     outputAudioTranscription: {},

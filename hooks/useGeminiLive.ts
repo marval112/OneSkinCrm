@@ -82,11 +82,23 @@ export function useGeminiLive(options: LiveChatOptions) {
         try {
             setError(null);
 
+            // Fetch CRM context if callback provided
+            let crmContext = undefined;
+            if ((options as any).getCrmContext) {
+                try {
+                    console.log('[useGeminiLive] Fetching CRM context...');
+                    crmContext = await (options as any).getCrmContext();
+                } catch (ce) {
+                    console.warn('[useGeminiLive] Failed to fetch CRM context:', ce);
+                }
+            }
+
             // 1. Connect WebSocket
             await geminiLiveService.connect({
                 ...options,
+                crmContext, // Pass fetched context
                 onMessage: (message) => {
-                    options.onMessage?.(message as any); // Type assertion until hook is fully refactored if needed, but here it just passes through
+                    options.onMessage?.(message as any);
                 },
                 onAudio: (data) => {
                     playAudioChunk(data);

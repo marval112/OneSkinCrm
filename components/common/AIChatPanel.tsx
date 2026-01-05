@@ -113,6 +113,13 @@ function AIChatPanel({ onClose }: AIChatPanelProps) {
     isConnected: isLiveConnected,
     error: liveError
   } = useGeminiLive(useMemo(() => ({
+    getCrmContext: async () => {
+      if (user) {
+        console.log('[AIChatPanel] Providing real-time CRM context for Voice session');
+        return await getProactiveBriefingContext(user);
+      }
+      return '';
+    },
     onMessage: (message: any) => {
       // Handling structured message from Gemini Live
       if (typeof message === 'object' && message.text) {
