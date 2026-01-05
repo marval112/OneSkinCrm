@@ -207,25 +207,21 @@ class GeminiLiveService {
 
                 const toolResponse = await this.executeTool(call);
 
-                // Consolidate sending tool response
-                // @ts-ignore
-                const resultData = toolResponse.functionResponses[0].response.result;
-                const callId = toolResponse.functionResponses[0].id;
-                const callName = call.name;
-
                 try {
-                    console.log(`[GeminiLive] Attempting to send tool response for ${callName}:`, JSON.stringify(resultData));
-                    // The SDK expects an object for response. We wrap result inside.
-                    // If resultData is already what the AI expects, we pass it.
-                    // Matching working example patterns for Gemini 2.0 Realtime/Live:
-                    // @ts-ignore
-                    await this.session.sendToolResponse({
-                        functionResponses: [{
-                            id: callId,
-                            response: { result: resultData }
-                        }]
-                    });
-                    console.log(`[GeminiLive] Tool response sent successfully for ${callName}`);
+                    console.log(`[GeminiLive] Sending tool response for ${call.name}:`, JSON.stringify(toolResponse));
+
+                    // The SDK @google/genai @1.28.0+ has sendToolResponse
+                    // We need to ensure we use the correct method.
+                    if (this.session && typeof this.session.sendToolResponse === 'function') {
+                        await this.session.sendToolResponse(toolResponse);
+                    } else if (this.session && typeof this.session.send === 'function') {
+                        // Fallback for different SDK versions
+                        await this.session.send(toolResponse);
+                    } else {
+                        console.error('[GeminiLive] No send method found on session object');
+                    }
+
+                    console.log(`[GeminiLive] Tool response sent successfully for ${call.name}`);
                 } catch (e) {
                     console.error('[GeminiLive] Failed to send tool response:', e);
                 }

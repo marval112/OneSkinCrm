@@ -1212,13 +1212,20 @@ function Customers() {
                   {/* Pending Tasks */}
                   <div className="p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 mb-4">
                     <div className="text-sm font-semibold mb-2">{t('customers.timeline.pendingTasks') || 'Pending Tasks'}</div>
-                    <ul className="text-xs space-y-1.5 pl-1">
-                      {customerTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="text-slate-500 italic">No pending tasks</li>}
+                    <ul className="text-sm list-disc pl-5">
+                      {customerTasks.filter(t => t.status === TaskStatus.PENDING).length === 0 && <li className="list-none text-slate-500 italic">No pending tasks</li>}
                       {customerTasks.filter(t => t.status === TaskStatus.PENDING).map(t => (
-                        <li key={t.id} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                          <span className="font-medium">{t.type}</span>
-                          {t.due_date && <span className="text-slate-400 font-normal">due {new Date(t.due_date).toLocaleDateString()}</span>}
+                        <li key={t.id}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/tasks?highlight=${t.id}`);
+                            }}
+                            className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                          >
+                            {t.type}
+                          </button>
+                          {t.due_date ? ` • ${new Date(t.due_date).toLocaleString()}` : ''}
                         </li>
                       ))}
                     </ul>
