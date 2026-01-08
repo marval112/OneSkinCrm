@@ -292,6 +292,17 @@ Real Data vs Demo Mode
             }
         },
         technicalGuide: {
+            techStack: {
+                title: "Tech Stack & Construction",
+                description: "OneSkin CRM is built using a modern, high-performance stack designed for scalability and AI integration.",
+                reference: {
+                    "Core Language": ["TypeScript (ESNext) - Strong typing for reliability"],
+                    "Frontend Framework": ["React 18 - Component-based architecture", "Vite - Ultra-fast build tool and dev server"],
+                    "Styling & UI": ["Tailwind CSS - Utility-first styling", "Framer Motion - Smooth micro-animations"],
+                    "Backend & Database": ["PostgreSQL - Robust relational database engine", "Supabase - Real-time BaaS (Backend as a Service)"],
+                    "AI Infrastructure": ["Gemini 2.0 / 1.5 - Primary LLM engine", "Nvidia Nemotron - Specialized high-speed vision model", "OpenRouter - Multi-model orchestration and fallback"]
+                }
+            },
             architecture: {
                 title: "System Architecture",
                 description: "The OneSkin CRM is a modern web application built with React, TypeScript, and Tailwind CSS. The backend is powered by Supabase, which provides a PostgreSQL database, authentication, and storage."
@@ -946,6 +957,17 @@ Datos Reales vs Modo Demo
             }
         },
         technicalGuide: {
+            techStack: {
+                title: "Tecnologías y Construcción",
+                description: "OneSkin CRM está construido con un stack moderno de alto rendimiento, diseñado para escalabilidad e integración profunda de IA.",
+                reference: {
+                    "Lenguaje Core": ["TypeScript (ESNext) - Tipado fuerte para mayor fiabilidad"],
+                    "Framework Frontend": ["React 18 - Arquitectura basada en componentes", "Vite - Herramienta de compilación y servidor ultra rápido"],
+                    "Estilos e Interfaz": ["Tailwind CSS - Estilos basados en utilidades", "Framer Motion - Micro-animaciones fluidas"],
+                    "Base de Datos y Backend": ["PostgreSQL - Motor de base de datos relacional robusto", "Supabase - Plataforma BaaS (Backend as a Service) en tiempo real"],
+                    "Infraestructura de IA": ["Gemini 2.0 / 1.5 - Motor principal de lenguaje", "Nvidia Nemotron - Modelo especializado en visión de alta velocidad", "OpenRouter - Orquestación de múltiples modelos y redundancia"]
+                }
+            },
             architecture: {
                 title: "Arquitectura del Sistema",
                 description: "OneSkin CRM es una aplicación web moderna construida con React, TypeScript y Tailwind CSS. El backend está impulsado por Supabase, que proporciona una base de datos PostgreSQL, autenticación y almacenamiento."
@@ -1391,6 +1413,17 @@ O OneSkin CRM inclui um **Assistente de Voz em Tempo Real** de ponta.
             }
         },
         technicalGuide: {
+            techStack: {
+                title: "Tecnologias e Construção",
+                description: "O OneSkin CRM é construído com um stack moderno de alto desempenho, projetado para escalabilidade e integração profunda de IA.",
+                reference: {
+                    "Linguagem Principal": ["TypeScript (ESNext) - Tipagem forte para maior confiabilidade"],
+                    "Framework Frontend": ["React 18 - Arquitetura baseada em componentes", "Vite - Ferramenta de compilação e servidor ultra rápido"],
+                    "Estilos e Interface": ["Tailwind CSS - Estilos baseados em utilidades", "Framer Motion - Micro-animações fluidas"],
+                    "Banco de Dados e Backend": ["PostgreSQL - Motor de banco de dados relacional robusto", "Supabase - Plataforma BaaS (Backend as a Service) em tempo real"],
+                    "Infraestrutura de IA": ["Gemini 2.0 / 1.5 - Motor principal de linguagem", "Nvidia Nemotron - Modelo especializado em visão de alta velocidade", "OpenRouter - Orquestração de múltipl modelos e redundância"]
+                }
+            },
             architecture: {
                 title: "Arquitetura do Sistema",
                 description: "O OneSkin CRM é uma aplicação web moderna construída com React, TypeScript e Tailwind CSS. O backend é alimentado pelo Supabase, que fornece um banco de dados PostgreSQL, autenticação e armazenamento."

@@ -24,33 +24,33 @@ function TechnicalGuide() {
     const { t } = useTranslation();
     const searchContext = useContext(SearchContext);
     const searchTerm = searchContext?.searchTerm ?? '';
-    const sections = ['architecture', 'databaseSchema', 'apiReference', 'webhooks'];
+    const sections = ['techStack', 'architecture', 'databaseSchema', 'apiReference', 'webhooks'];
 
-     const filteredSections = sections.filter(key => {
+    const filteredSections = sections.filter(key => {
         const section = t(`technicalGuide.${key}` as any);
         return !searchTerm ||
-               section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               section.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               (section.sql && section.sql.toLowerCase().includes(searchTerm.toLowerCase()));
+            section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            section.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (section.sql && section.sql.toLowerCase().includes(searchTerm.toLowerCase()));
     });
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             {filteredSections.map(key => {
-                 const section = t(`technicalGuide.${key}` as any);
-                 return (
+                const section = t(`technicalGuide.${key}` as any);
+                return (
                     <div key={key} className="bg-white p-6 rounded-lg border border-slate-200">
                         <h2 className="text-2xl font-bold text-slate-800 mb-2">
-                           <Highlight text={section.title} highlight={searchTerm} />
+                            <Highlight text={section.title} highlight={searchTerm} />
                         </h2>
                         <p className="text-slate-600 mb-4">
-                           <Highlight text={section.description} highlight={searchTerm} />
+                            <Highlight text={section.description} highlight={searchTerm} />
                         </p>
                         {section.sql && (
                             <CodeBlock code={section.sql} language="sql" />
                         )}
                         {section.reference && (
-                             <div className="font-mono text-sm space-y-4">
+                            <div className="font-mono text-sm space-y-4">
                                 {Object.entries(section.reference).map(([service, methods]: [string, any]) => (
                                     <div key={service}>
                                         <h4 className="font-bold text-slate-700">{service}</h4>
@@ -61,8 +61,8 @@ function TechnicalGuide() {
                                 ))}
                             </div>
                         )}
-                         {section.payloads && (
-                             <div className="space-y-4">
+                        {section.payloads && (
+                            <div className="space-y-4">
                                 {Object.entries(section.payloads).map(([event, payload]: [string, any]) => (
                                     <div key={event}>
                                         <h4 className="font-bold text-slate-700">{event}</h4>
@@ -72,9 +72,9 @@ function TechnicalGuide() {
                             </div>
                         )}
                     </div>
-                 );
+                );
             })}
-             {filteredSections.length === 0 && (
+            {filteredSections.length === 0 && (
                 <p className="text-center text-slate-500 py-8">No technical documentation found matching your search.</p>
             )}
         </div>
