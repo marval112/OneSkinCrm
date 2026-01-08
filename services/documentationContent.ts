@@ -78,11 +78,22 @@ Formulas at a glance
             },
             leads: {
                 title: "Leads Management",
-                content: "A **Lead** is a potential sales contact—an individual or organization that expresses interest in your goods or services. The goal is to qualify and convert them into customers."
+                content: `
+A **Lead** is a potential sales contact—an individual or organization that expresses interest in your goods or services. The goal is to qualify and convert them into customers.
+
+Key Features
+- **AI Business Card Scanner**: Upload or capture a business card. Powered by **Nvidia Nemotron 12B**, it extracts name, company, and contact details with extreme speed.
+- **Interactive Timeline**: Tasks and Deals in the lead details are clickable. Click any item to navigate and highlight it in its respective module.
+- **Lead Scoring**: AI automatically ranks leads based on their potential.
+`
             },
             customers: {
                 title: "Customers Management",
-                content: "A **Customer** is an individual or business that has purchased goods or services from your company. This module helps you track their status, health, and history."
+                content: `
+A **Customer** is an individual or business that has purchased goods or services from your company. This module helps you track their status, health, and history.
+
+**Interactive Details**: View associated deals in the 'Deals' tab. Each deal is a live link that takes you directly to the pipeline and opens that specific detail view.
+`
             },
             deals: {
                 title: "Deals Pipeline",
@@ -141,6 +152,13 @@ Tips for best results
 - Keep activity logs updated (emails/calls/notes) so AI has context.
 - Use concise titles for tasks (e.g., "Enviar propuesta 2.0 al comprador") – improves suggestions.
 - Review AI outputs quickly before applying; you keep control.
+
+### Gemini Live (Voice Mode)
+OneSkin CRM features a cutting-edge **Real-Time Voice Assistant**. 
+- **CRM Context Awareness**: The AI understands your entire portfolio (number of pending leads, value of open deals, etc.) without you having to explain it.
+- **Dynamic Queries**: Ask complex questions like "How many deals over 10,000 euros do I have in Spain?" and the AI will query the database directly to give you the answer.
+- **Voice Action Execution**: Create tasks, update statuses, or log notes just by talking.
+- **Natural Interaction**: Interupt the AI, speak quickly, and get human-like audio responses.
 `
             },
             prospecting: {
@@ -196,7 +214,9 @@ Real Data vs Demo Mode
                     { q: "Can I track multiple deals for the same customer?", a: "Absolutely! Each customer can have multiple deals. When creating a new deal, select the customer from the dropdown. All deals for a customer are visible in their timeline." },
                     { q: "How do I delete or archive old data?", a: "Select items using the checkboxes in list views, then use the bulk action menu to delete multiple items at once. For important data, consider changing the status to 'Churned' or 'Lost' instead of deleting." },
                     { q: "What browsers are supported?", a: "OneSkin CRM works best on modern browsers: Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. For optimal performance, keep your browser updated to the latest version." },
-                    { q: "How do I reset my password?", a: "Click 'Forgot Password' on the login page and enter your email. You'll receive a reset link. If you're already logged in, go to Settings > Account to change your password." }
+                    { q: "How do I reset my password?", a: "Click 'Forgot Password' on the login page and enter your email. You'll receive a reset link. If you're already logged in, go to Settings > Account to change your password." },
+                    { q: "How fast is the business card scanner?", a: "The scanner uses the specialized Nvidia Nemotron Vision model, which typically processes a card in under 2 seconds. If a model is busy, it automatically tries Gemini as a fallback." },
+                    { q: "Can the Voice Mode execute actions?", a: "Yes! While in Gemini Live session, you can ask the AI to 'Create a reminder for tomorrow' or 'Update this lead's status', and the system will perform the action in the CRM." }
                 ]
             },
             leads: {
@@ -721,11 +741,22 @@ El **Dashboard** es tu centro de control principal. Proporciona una vista genera
             },
             leads: {
                 title: "Gestión de Leads",
-                content: "Un **Lead** es un contacto de venta potencial: un individuo u organización que expresa interés en tus bienes o servicios. El objetivo es cualificarlos y convertirlos en clientes."
+                content: `
+Un **Lead** es un contacto de venta potencial: un individuo u organización que expresa interés en tus bienes o servicios. El objetivo es cualificarlos y convertirlos en clientes.
+
+Funciones Clave
+- **Escáner de IA**: Sube o captura una tarjeta de visita. Impulsado por **Nvidia Nemotron 12B**, extrae nombre, empresa y datos de contacto a velocidad récord.
+- **Navegación Interactiva**: Las tareas y oportunidades en el detalle del lead son clicables. Toca cualquier elemento para saltar directamente a su módulo.
+- **Puntuación Automática**: La IA clasifica tus leads según su potencial de cierre.
+`
             },
             customers: {
                 title: "Gestión de Clientes",
-                content: "Un **Cliente** es un individuo o empresa que ha comprado bienes o servicios de tu compañía. Este módulo te ayuda a seguir su estado, salud e historial."
+                content: `
+Un **Cliente** es un individuo o empresa que ha comprado bienes o servicios de tu compañía. Este módulo te ayuda a seguir su estado, salud e historial.
+
+**Detalles Dinámicos**: En la pestaña 'Oportunidades', cada negocio es un enlace directo que te lleva al pipeline y resalta esa oportunidad específica.
+`
             },
             deals: {
                 title: "Pipeline de Oportunidades",
@@ -783,6 +814,13 @@ Consejos
 - Registra emails/llamadas/notas: mejor contexto = mejores sugerencias.
 - Usa títulos claros en tareas: "Enviar propuesta 2.0 a compras".
 - Revisa en segundos antes de aplicar; tú decides.
+
+### Gemini Live (Modo Voz)
+OneSkin CRM incluye un **Asistente de Voz en Tiempo Real** de última generación.
+- **Conciencia del Contexto CRM**: La IA entiende toda tu cartera (número de leads, valor de oportunidades, etc.) sin que tengas que explicárselo.
+- **Consultas Dinámicas**: Haz preguntas complejas como "¿Cuántos negocios de más de 10.000 euros tengo en Italia?" y la IA consultará la base de datos por ti.
+- **Acciones Directas**: Crea tareas, actualiza estados o añade notas solo con hablar.
+- **Interacción Natural**: Interrumpe, habla rápido y recibe respuestas con audio humano.
 `
             },
             prospecting: {
@@ -830,7 +868,9 @@ Datos Reales vs Modo Demo
                 title: "Preguntas Generales",
                 items: [
                     { q: "¿Cómo filtro y exporto datos?", a: "En módulos como Leads y Clientes, usa la barra de búsqueda superior para filtrar. El botón 'Exportar CSV' descargará la vista actual como un archivo CSV." },
-                    { q: "¿Cómo personalizo el tema?", a: "Navega a la página 'Tema' desde el menú lateral. Puedes seleccionar un preajuste o crear tu propio esquema de colores usando el personalizador." }
+                    { q: "¿Cómo personalizo el tema?", a: "Navega a la página 'Tema' desde el menú lateral. Puedes seleccionar un preajuste o crear tu propio esquema de colores usando el personalizador." },
+                    { q: "¿Es rápido el escáner de tarjetas?", a: "El escáner utiliza el modelo especializado Nvidia Nemotron Vision, que procesa una tarjeta en menos de 2 segundos de media. Si el modelo está ocupado, usa Gemini automáticamente." },
+                    { q: "¿Puede el Modo Voz ejecutar acciones?", a: "¡Sí! Mientras hablas con Gemini Live, puedes decirle 'Crea un recordatorio para mañana' o 'Pasa este lead a Cualificado', y el sistema lo hará en el CRM." }
                 ]
             },
             leads: {
@@ -1185,11 +1225,22 @@ O **Painel de Controle** (Dashboard) é o seu principal centro de comando. Ele f
             },
             leads: {
                 title: "Gerenciamento de Leads",
-                content: "Um **Lead** é um contato de venda em potencial — um indivíduo ou organização que expressa interesse em seus produtos ou serviços. O objetivo é qualificá-los e convertê-los em clientes."
+                content: `
+Um **Lead** é um contato de venda em potencial — um indivíduo ou organização que expressa interesse em seus produtos ou serviços. O objetivo é qualificá-los e convertê-los em clientes.
+
+Recursos Principais
+- **Scanner de IA**: Carregue ou capture um cartão de visita. Equipado com **Nvidia Nemotron 12B**, extrai nome, empresa e contatos em tempo recorde.
+- **Navegação Interativa**: Tarefas e oportunidades nos detalhes do lead são clicáveis. Toque em qualquer item para navegar e destacá-lo em seu módulo.
+- **Pontuação Automática**: A IA classifica seus leads automaticamente com base no potencial.
+`
             },
             customers: {
                 title: "Gerenciamento de Clientes",
-                content: "Um **Cliente** é um indivíduo ou empresa que comprou produtos ou serviços da sua empresa. Este módulo ajuda a rastrear seu status, saúde e histórico."
+                content: `
+Um **Cliente** é um indivíduo ou empresa que comprou produtos ou serviços da sua empresa. Este módulo ajuda a rastrear seu status, saúde e histórico.
+
+**Detalhes Interativos**: Veja negócios associados na aba 'Negócios'. Cada negócio é um link direto que te leva ao pipeline e abre esse detalhe específico.
+`
             },
             deals: {
                 title: "Pipeline de Negócios",
@@ -1247,6 +1298,13 @@ Dicas
 - Mantenha as atividades atualizadas.
 - Títulos claros em tarefas melhoram as sugestões.
 - Revise rapidamente antes de aplicar; a decisão é sua.
+
+### Gemini Live (Modo Voz)
+O OneSkin CRM inclui um **Assistente de Voz em Tempo Real** de ponta.
+- **Consciência do Contexto CRM**: A IA entende todo o seu portfólio (número de leads, valor de negócios, etc.) sem precisar de explicações.
+- **Consultas Dinâmicas**: Faça perguntas complexas como "Quantos negócios acima de 10.000 euros tenho na Espanha?" e a IA consultará o banco de dados.
+- **Execução por Voz**: Crie tarefas, atualize status ou registre notas apenas falando.
+- **Interação Natural**: Interrompa, fale rápido e receba respostas com áudio humano.
 `
             }
         },
@@ -1279,7 +1337,9 @@ Dicas
             integrations: {
                 title: "Integrações",
                 items: [
-                    { q: "Como configuro um Webhook?", a: "Vá para o módulo de Webhooks, clique em 'Criar Webhook' e forneça a URL do seu serviço externo. Em seguida, selecione os eventos (ex: 'lead.created') que devem acionar o webhook." }
+                    { q: "Como configuro um Webhook?", a: "Vá para o módulo de Webhooks, clique em 'Criar Webhook' e forneça a URL do seu serviço externo. Em seguida, selecione os eventos (ex: 'lead.created') que devem acionar o webhook." },
+                    { q: "O scanner de cartões é rápido?", a: "O scanner usa o modelo especializado Nvidia Nemotron Vision, que processa um cartão em menos de 2 segundos. Se o modelo principal estiver ocupado, ele tenta o Gemini automaticamente." },
+                    { q: "O Modo Voz pode executar ações?", a: "Sim! Durante a sessão Gemini Live, você pode pedir 'Crie um lembrete para amanhã' ou 'Atualize o status deste lead' e o sistema executará a ação no CRM." }
                 ]
             }
         },
