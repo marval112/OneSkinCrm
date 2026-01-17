@@ -1,0 +1,137 @@
+import { supabase } from './supabaseClient';
+import * as db from './databaseService';
+import type { Task, TaskStatus, TaskType } from '../types';
+
+export async function createTask(task: Omit<Task, 'id' | 'created_at' | 'completed_at'> & { completed_at?: string | null }): Promise<Task> {
+  return db.create<Task>('tasks', task as any);
+}
+
+export async function updateTask(task: Task): Promise<Task> {
+  return db.update<Task>('tasks', task);
+}
+
+export async function deleteTask(taskId: number): Promise<void> {
+  return db.remove('tasks', taskId);
+}
+
+export async function completeTask(taskId: number): Promise<Task> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({ status: 'Completed', completed_at: new Date().toISOString() })
+    .eq('id', taskId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as Task;
+}
+
+export async function listTasksForLead(leadId: number, onlyPending = true): Promise<Task[]> {
+  let query = supabase.from('tasks').select('*').eq('lead_id', leadId);
+  if (onlyPending) query = query.eq('status', 'Pending');
+  const { data, error } = await query.order('due_date', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Task[];
+}
+
+export async function listTasksForCustomer(customerId: number, onlyPending = true): Promise<Task[]> {
+  let query = supabase.from('tasks').select('*').eq('customer_id', customerId);
+  if (onlyPending) query = query.eq('status', 'Pending');
+  const { data, error } = await query.order('due_date', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Task[];
+}
+
+export async function listTasksForUser(user: { id: number; role: string }, onlyPending = true): Promise<Task[]> {
+  let query = supabase.from('tasks').select('*');
+  if (user.role === 'Commercial') {
+    query = query.eq('user_id', user.id);
+  }
+  if (onlyPending) query = query.eq('status', 'Pending');
+  const { data, error } = await query.order('due_date', { ascending: true });
+  if (error) throw error;
+  return (data || []) as Task[];
+}
+
+export async function getTaskCounts(user: { id: number; role: string }): Promise<{ pending: number; overdue: number; today: number }> {
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+
+  let pendingPromise = supabase
+    .from('tasks')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'Pending');
+
+  let overduePromise = supabase
+    .from('tasks')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'Pending')
+    .lt('due_date', startToday);
+
+  let todayPromise = supabase
+    .from('tasks')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'Pending')
+    .gte('due_date', startToday)
+    .lte('due_date', endToday);
+
+  if (user.role === 'Commercial') {
+    pendingPromise = pendingPromise.eq('user_id', user.id);
+    overduePromise = overduePromise.eq('user_id', user.id);
+    todayPromise = todayPromise.eq('user_id', user.id);
+  }
+
+  const [pendingRes, overdueRes, todayRes] = await Promise.all([pendingPromise, overduePromise, todayPromise]);
+
+  return {
+    pending: pendingRes.count || 0,
+    overdue: overdueRes.count || 0,
+    today: todayRes.count || 0,
+  };
+}
+
+export async function toggleTaskTimer(taskId: number, isRunning: boolean): Promise<Task> {
+  if (isRunning) {
+    // Stop the timer: calculate elapsed time and add to time_spent
+    const { data: task, error: fetchError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!task || !task.timer_start) {
+      throw new Error('Timer is not running for this task');
+    }
+
+    const startTime = new Date(task.timer_start).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+    const newTimeSpent = (task.time_spent || 0) + elapsedSeconds;
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ timer_start: null, time_spent: newTimeSpent })
+      .eq('id', taskId)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data as Task;
+  } else {
+    // Start the timer
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ timer_start: new Date().toISOString() })
+      .eq('id', taskId)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data as Task;
+  }
+}
+
+export { TaskStatus, TaskType };
+
+

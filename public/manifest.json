@@ -1,0 +1,16 @@
+{
+    "short_name": "OneSkin",
+    "name": "OneSkin CRM",
+    "icons": [
+        {
+            "src": "/dashboard/Logo_Negro.jpg",
+            "sizes": "192x192 512x512",
+            "type": "image/jpeg",
+            "purpose": "any maskable"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#0f172a",
+    "background_color": "#ffffff"
+}
