@@ -302,13 +302,10 @@ export const uiTranslations = {
       customer: "Cliente",
       others: "Otros",
       howAiHelps: "¿Cómo puede ayudar la IA?",
-<<<<<<< HEAD
       name: "Nombre",
       company: "Empresa",
       source: "Fuente",
       score: "Puntuación",
-=======
->>>>>>> 3f297ca54c75af2ced119b06b8e9f19811377bae
       table: "Tabla",
       kanban: "Kanban",
       status: "Estado",
@@ -595,13 +592,10 @@ export const uiTranslations = {
       customer: "Cliente",
       others: "Outros",
       howAiHelps: "Como a IA pode ajudar?",
-<<<<<<< HEAD
       name: "Nome",
       company: "Empresa",
       source: "Fonte",
       score: "Pontuação",
-=======
->>>>>>> 3f297ca54c75af2ced119b06b8e9f19811377bae
       table: "Tabela",
       kanban: "Kanban",
       status: "Status",
