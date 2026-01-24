@@ -1,7 +1,7 @@
 
 
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKey, loadGeminiApiKey, loadOpenRouterApiKey } from './aiSettingsService';
+import { getGeminiApiKey, loadGeminiApiKey, loadOpenRouterApiKey, getOpenAIKey, loadOpenAIKey } from './aiSettingsService';
 import { generateWithOpenRouter } from './openRouterService';
 import type { Lead, Customer, ActivityLog, Deal } from '../types';
 import { DealStage } from '../types';
@@ -12,7 +12,9 @@ import { DealStage } from '../types';
 // Best-effort: try to warm cache from DB once on module load
 // Note: not blocking; calls may proceed without a key until it is loaded
 void loadGeminiApiKey();
+void loadGeminiApiKey();
 void loadOpenRouterApiKey();
+void loadOpenAIKey();
 
 export function getClient() {
   const key = getGeminiApiKey() || (process.env.VITE_GEMINI_API_KEY as string | undefined);
@@ -240,11 +242,85 @@ export function setPreferredOpenRouterModel(modelId: string, visionTask: boolean
 }
 
 // Export for use in Settings and UI components
-export { isGeminiQuotaExhausted, clearGeminiQuotaExhaustion };
+
+
+
+
+async function generateWithOpenAI(apiKey: string, params: any) {
+  const model = "gpt-4o-mini"; // Use a cost-effective, high-quality model
+  let messages = [];
+
+  // Convert Gemini-style "contents" to OpenAI messages
+  if (typeof params.contents === 'string') {
+    messages.push({ role: 'user', content: params.contents });
+  } else if (Array.isArray(params.contents)) {
+    // Basic mapping - elaborate as needed for multi-turn
+    messages = params.contents.map((c: any) => ({
+      role: c.role === 'model' ? 'assistant' : 'user',
+      content: c.parts?.[0]?.text || ''
+    }));
+  } else if (params.contents && params.contents.parts) {
+    messages.push({ role: 'user', content: params.contents.parts[0].text });
+  }
+
+  // Handle Vision/Image parts if present (structure: { parts: [{ inlineData: {...} }, { text: ... }] })
+  if (params.contents && params.contents.parts && params.contents.parts.some((p: any) => p.inlineData)) {
+    const textPart = params.contents.parts.find((p: any) => p.text)?.text || '';
+    const imagePart = params.contents.parts.find((p: any) => p.inlineData);
+
+    const content: any[] = [{ type: 'text', text: textPart }];
+
+    if (imagePart) {
+      content.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+        }
+      });
+    }
+    messages = [{ role: 'user', content }];
+  }
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: messages,
+      response_format: params.config?.responseMimeType === 'application/json' ? { type: "json_object" } : undefined
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenAI API Error: ${response.status} ${response.statusText} - ${err}`);
+  }
+
+  const data = await response.json();
+  return {
+    text: data.choices[0].message.content,
+    response: data
+  };
+}
 
 export async function generateWithFallback(client: any, params: any) {
   let lastError;
   let geminiQuotaHit = false;
+
+  // 0. Try OpenAI First (Primary)
+  const openAIKey = getOpenAIKey();
+  if (openAIKey) {
+    try {
+      console.log('[AI] Attempting OpenAI (Primary)...');
+      return await generateWithOpenAI(openAIKey, params);
+    } catch (e: any) {
+      console.warn('[AI] OpenAI failed, falling back to Gemini/OpenRouter...', e);
+      lastError = e;
+    }
+  }
 
   // Helper to check if vision is requested
   const isVisionTask = params.contents?.parts?.some((p: any) => p.inlineData) || false;
