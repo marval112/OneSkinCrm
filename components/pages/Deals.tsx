@@ -631,7 +631,7 @@ function Deals() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                     <button onClick={() => requestSort('status')} className="flex items-center">Stage {getSortIcon('status')}</button>
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
                     <button onClick={() => requestSort('owner')} className="flex items-center">Owner {getSortIcon('owner')}</button>
                   </th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
@@ -654,7 +654,7 @@ function Deals() {
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stageColors[deal.status]}`}>{deal.status}</span>
                     </td>
-                    <td className="px-3 py-2 text-xs text-slate-600 max-w-[150px] truncate" title={(deal as any).owner || '-'}>
+                    <td className="px-3 py-2 text-xs text-slate-600 max-w-[150px] truncate hidden lg:table-cell" title={(deal as any).owner || '-'}>
                       {(deal as any).owner || '-'}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium space-x-2">

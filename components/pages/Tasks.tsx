@@ -279,8 +279,8 @@ function Tasks() {
         key={task.id}
         id={`task-${task.id}`}
         className={`bg-white dark:bg-slate-700 p-4 rounded-lg shadow-sm border transition-all duration-300 flex flex-col gap-3 ${isHighlighted
-            ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-600'
-            : 'border-slate-200 dark:border-slate-600'
+          ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-600'
+          : 'border-slate-200 dark:border-slate-600'
           }`}
       >
         {/* Header */}
@@ -459,8 +459,8 @@ function Tasks() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('title')}>Title{getSortIcon('title')}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('association')}>{t('tasks.ui.leadCustomer')}{getSortIcon('association')}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('due_date')}>{t('tasks.ui.due')}{getSortIcon('due_date')}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Owner</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">Owner</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">Time</th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('tasks.ui.actions')}</th>
                 </tr>
               </thead>
@@ -476,8 +476,8 @@ function Tasks() {
                       key={task.id}
                       id={`task-${task.id}`}
                       className={`transition-all duration-300 ${isHighlighted
-                          ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-300 dark:ring-blue-600'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-300 dark:ring-blue-600'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
                         }`}
                     >
                       <td className="px-3 py-2 text-xs">
@@ -499,10 +499,10 @@ function Tasks() {
                           <span className={`px-2 py-0.5 rounded ${badge}`}>{new Date(task.due_date).toLocaleString()}</span>
                         ) : '-'}
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-600">
+                      <td className="px-3 py-2 text-xs text-slate-600 hidden lg:table-cell">
                         {(user.role === 'Admin' || user.role === 'BackOffice') ? (users.find(u => u.id === task.user_id)?.email || '-') : t('tasks.ui.myself') || 'Myself'}
                       </td>
-                      <td className="px-3 py-2 text-xs">
+                      <td className="px-3 py-2 text-xs hidden lg:table-cell">
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleToggleTimer(task)}

@@ -804,7 +804,7 @@ function Leads() {
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell" style={{ maxWidth: '160px' }}>
                       <button onClick={() => requestSort('company')} className="flex items-center">{t('common.company')} {getSortIcon('company')}</button>
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden md:table-cell">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase hidden lg:table-cell">
                       <button onClick={() => requestSort('source')} className="flex items-center">{t('common.source')} {getSortIcon('source')}</button>
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300">
@@ -849,7 +849,7 @@ function Leads() {
                       <td className="px-3 py-2 hidden md:table-cell" style={{ maxWidth: '160px' }}>
                         <div className="text-xs text-slate-900 dark:text-slate-100 truncate">{lead.company}{lead.country && `, ${lead.country}`}</div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell text-xs text-slate-900 dark:text-slate-100">
+                      <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell text-xs text-slate-900 dark:text-slate-100">
                         {lead.source}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
