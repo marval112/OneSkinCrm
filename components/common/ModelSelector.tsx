@@ -6,6 +6,7 @@ import {
     setPreferredOpenRouterModel,
     isGeminiQuotaExhausted
 } from '../../services/geminiService';
+import { getOpenAIKey } from '../../services/aiSettingsService';
 import { useTranslation } from '../../services/i18nService';
 
 interface ModelSelectorProps {
@@ -26,6 +27,32 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ visionOnly = false, scann
     const { language } = useTranslation();
     const [selectedModel, setSelectedModel] = React.useState<string>(getPreferredOpenRouterModel(visionOnly));
     const quotaExhausted = isGeminiQuotaExhausted();
+    const openAIKey = getOpenAIKey();
+
+    // Priority 1: OpenAI (Primary)
+    if (openAIKey) {
+        if (compact) {
+            return (
+                <div className={`flex items-center gap-1.5 ${className}`}>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Using:</span>
+                    <span className="text-[10px] font-medium text-green-600 dark:text-green-400">
+                        OpenAI (GPT-4o)
+                    </span>
+                </div>
+            );
+        }
+        return (
+            <div className={`flex flex-col gap-1 ${className}`}>
+                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+                    Using Primary Model
+                </label>
+                <div className="w-full px-3 py-1.5 text-xs border border-green-200 dark:border-green-800 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    OpenAI (GPT-4o)
+                </div>
+            </div>
+        );
+    }
 
     // Don't render if Gemini is still active (unless forceShow is true, e.g., in error dialogs)
     if (!quotaExhausted && !forceShow) {
