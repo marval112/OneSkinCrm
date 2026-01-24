@@ -242,6 +242,7 @@ export function setPreferredOpenRouterModel(modelId: string, visionTask: boolean
 }
 
 // Export for use in Settings and UI components
+export { isGeminiQuotaExhausted, clearGeminiQuotaExhaustion };
 
 
 
